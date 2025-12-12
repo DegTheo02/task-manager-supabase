@@ -15,12 +15,19 @@ import {
   Legend
 } from "chart.js";
 
-import { Bar, Line } from "react-chartjs-2";
+import ChartDataLabels from "chartjs-plugin-datalabels";
+import { Bar } from "react-chartjs-2";
 
 ChartJS.register(
-  CategoryScale, LinearScale, BarElement,
-  ArcElement, PointElement, LineElement,
-  Tooltip, Legend
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Legend,
+  ChartDataLabels
 );
 
 // -------------------------------
@@ -74,8 +81,12 @@ function computeOwnerPercentages(stats) {
 }
 
 // -------------------------------
-// COMPONENT
+// TOTAL helpers
 // -------------------------------
+function totalTasks(stats) {
+  return stats.reduce((a, r) => a + r.TOTAL, 0);
+}
+
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -88,7 +99,7 @@ export default function Dashboard() {
     setFiltered(data || []);
   }
 
-  // FILTERS
+  // FILTER LOGIC
   function applyFilters(f) {
     let result = [...tasks];
 
@@ -118,9 +129,9 @@ export default function Dashboard() {
     setFiltered(result);
   }
 
-  // -----------------------------
+  // -------------------------------
   // KPI CALCULATIONS
-  // -----------------------------
+  // -------------------------------
   const total = filtered.length;
 
   const open = filtered.filter(t => t.status === "OPEN").length;
@@ -139,57 +150,87 @@ export default function Dashboard() {
   const ownerStats = computeOwnerStats(filtered, owners);
   const ownerPercentages = computeOwnerPercentages(ownerStats);
 
-  // -----------------------------
-  // CHARTS
-  // -----------------------------
-  // TOTAL TASKS PER OWNER (Simple Bar)
-  const barData = {
-    labels: owners,
-    datasets: [
-      {
-        label: "Tasks per Owner",
-        data: ownerStats.map(o => o.TOTAL),
-        backgroundColor: "#3B82F6"
-      }
-    ]
-  };
+  // -------------------------------
+  // STACKED CHART DATA + LABELS
+  // -------------------------------
+  const stackedPercentageData = ownerStats.map(o => {
+    const total = o.TOTAL || 1;
+    return {
+      OPEN: Math.round((o.OPEN / total) * 100),
+      ONGOING: Math.round((o.ONGOING / total) * 100),
+      OVERDUE: Math.round((o.OVERDUE / total) * 100),
+      ON_HOLD: Math.round((o.ON_HOLD / total) * 100),
+      CLOSED_ON_TIME: Math.round((o.CLOSED_ON_TIME / total) * 100),
+      CLOSED_PAST_DUE: Math.round((o.CLOSED_PAST_DUE / total) * 100)
+    };
+  });
 
-  // STACKED COLUMN CHART
   const stackedData = {
     labels: owners,
     datasets: [
-      { label: "Open", data: ownerStats.map(o => o.OPEN), backgroundColor: "#3B82F6" },
-      { label: "Ongoing", data: ownerStats.map(o => o.ONGOING), backgroundColor: "#0EA5A8" },
-      { label: "Overdue", data: ownerStats.map(o => o.OVERDUE), backgroundColor: "#DC2626" },
-      { label: "On Hold", data: ownerStats.map(o => o.ON_HOLD), backgroundColor: "#6B7280" },
-      { label: "Closed On Time", data: ownerStats.map(o => o.CLOSED_ON_TIME), backgroundColor: "#16A34A" },
-      { label: "Closed Past Due", data: ownerStats.map(o => o.CLOSED_PAST_DUE), backgroundColor: "#F97316" }
+      {
+        label: "Open",
+        data: ownerStats.map(o => o.OPEN),
+        percentages: stackedPercentageData.map(p => p.OPEN),
+        backgroundColor: "#3B82F6"
+      },
+      {
+        label: "Ongoing",
+        data: ownerStats.map(o => o.ONGOING),
+        percentages: stackedPercentageData.map(p => p.ONGOING),
+        backgroundColor: "#0EA5A8"
+      },
+      {
+        label: "Overdue",
+        data: ownerStats.map(o => o.OVERDUE),
+        percentages: stackedPercentageData.map(p => p.OVERDUE),
+        backgroundColor: "#DC2626"
+      },
+      {
+        label: "On Hold",
+        data: ownerStats.map(o => o.ON_HOLD),
+        percentages: stackedPercentageData.map(p => p.ON_HOLD),
+        backgroundColor: "#6B7280"
+      },
+      {
+        label: "Closed On Time",
+        data: ownerStats.map(o => o.CLOSED_ON_TIME),
+        percentages: stackedPercentageData.map(p => p.CLOSED_ON_TIME),
+        backgroundColor: "#16A34A"
+      },
+      {
+        label: "Closed Past Due",
+        data: ownerStats.map(o => o.CLOSED_PAST_DUE),
+        percentages: stackedPercentageData.map(p => p.CLOSED_PAST_DUE),
+        backgroundColor: "#F97316"
+      }
     ]
   };
 
   const stackedOptions = {
     responsive: true,
-    plugins: { legend: { position: "top" } },
-    scales: { x: { stacked: true }, y: { stacked: true } }
-  };
-
-  // LINE CHART — TASK CREATION TREND
-  const dates = [...new Set(filtered.map(t => t.assigned_date))].sort();
-  const lineData = {
-    labels: dates,
-    datasets: [
-      {
-        label: "Tasks Created Over Time",
-        data: dates.map(d => filtered.filter(t => t.assigned_date === d).length),
-        borderColor: "#2563EB",
-        backgroundColor: "rgba(37,99,235,0.3)"
+    plugins: {
+      legend: { position: "top" },
+      datalabels: {
+        color: "white",
+        anchor: "center",
+        align: "center",
+        formatter: (value, ctx) => {
+          const pct = ctx.dataset.percentages[ctx.dataIndex];
+          return pct > 0 ? pct + "%" : "";
+        },
+        font: { size: 12, weight: "bold" }
       }
-    ]
+    },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true }
+    }
   };
 
-  // -----------------------------
+  // -------------------------------
   // RENDER
-  // -----------------------------
+  // -------------------------------
   return (
     <div style={{ padding: 20 }}>
       <h1>Dashboard</h1>
@@ -214,19 +255,11 @@ export default function Dashboard() {
         <KPI title="Total Tasks" value={total} color="#000000" />
       </div>
 
-      {/* CHARTS */}
-      <h2 style={{ marginTop: 40 }}>Charts</h2>
-
-      <h3>Tasks per Owner</h3>
-      <Bar data={barData} />
-
+      {/* STACKED COLUMN CHART */}
       <h3 style={{ marginTop: 40 }}>Task Distribution per Owner (Stacked)</h3>
       <Bar data={stackedData} options={stackedOptions} />
 
-      <h3 style={{ marginTop: 40 }}>Task Creation Trend</h3>
-      <Line data={lineData} />
-
-      {/* TABLE 1 - RAW NUMBERS */}
+      {/* RAW TABLE */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner</h2>
 
       <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
@@ -256,10 +289,24 @@ export default function Dashboard() {
               <td style={{ ...td, fontWeight: "bold" }}>{row.TOTAL}</td>
             </tr>
           ))}
+
+          {/* TOTAL ROW */}
+          <tr style={{ background: "#E0E0E0", fontWeight: "bold" }}>
+            <td style={td}>TOTAL</td>
+            <td style={td}>{ownerStats.reduce((a, r) => a + r.OPEN, 0)}</td>
+            <td style={td}>{ownerStats.reduce((a, r) => a + r.ONGOING, 0)}</td>
+            <td style={td}>{ownerStats.reduce((a, r) => a + r.OVERDUE, 0)}</td>
+            <td style={td}>{ownerStats.reduce((a, r) => a + r.ON_HOLD, 0)}</td>
+            <td style={td}>{ownerStats.reduce((a, r) => a + r.CLOSED_ON_TIME, 0)}</td>
+            <td style={td}>{ownerStats.reduce((a, r) => a + r.CLOSED_PAST_DUE, 0)}</td>
+            <td style={td}>
+              {ownerStats.reduce((a, r) => a + r.TOTAL, 0)}
+            </td>
+          </tr>
         </tbody>
       </table>
 
-      {/* TABLE 2 - PERCENTAGES */}
+      {/* PERCENTAGE TABLE */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
 
       <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
@@ -289,6 +336,63 @@ export default function Dashboard() {
               <td style={{ ...td, fontWeight: "bold" }}>{row.pctOnTimeRate}%</td>
             </tr>
           ))}
+
+          {/* TOTAL PERCENT ROW */}
+          <tr style={{ background: "#E0E0E0", fontWeight: "bold" }}>
+            <td style={td}>TOTAL</td>
+
+            <td style={td}>
+              {Math.round(
+                (ownerStats.reduce((a, r) => a + r.OPEN, 0) /
+                  totalTasks(ownerStats)) * 100
+              )}%
+            </td>
+
+            <td style={td}>
+              {Math.round(
+                (ownerStats.reduce((a, r) => a + r.ONGOING, 0) /
+                  totalTasks(ownerStats)) * 100
+              )}%
+            </td>
+
+            <td style={td}>
+              {Math.round(
+                (ownerStats.reduce((a, r) => a + r.OVERDUE, 0) /
+                  totalTasks(ownerStats)) * 100
+              )}%
+            </td>
+
+            <td style={td}>
+              {Math.round(
+                (ownerStats.reduce((a, r) => a + r.ON_HOLD, 0) /
+                  totalTasks(ownerStats)) * 100
+              )}%
+            </td>
+
+            <td style={td}>
+              {Math.round(
+                (ownerStats.reduce((a, r) => a + r.CLOSED_ON_TIME, 0) /
+                  totalTasks(ownerStats)) * 100
+              )}%
+            </td>
+
+            <td style={td}>
+              {Math.round(
+                (ownerStats.reduce((a, r) => a + r.CLOSED_PAST_DUE, 0) /
+                  totalTasks(ownerStats)) * 100
+              )}%
+            </td>
+
+            {/* GLOBAL ON-TIME RATE */}
+            <td style={td}>
+              {(() => {
+                const onTime = ownerStats.reduce((a, r) => a + r.CLOSED_ON_TIME, 0);
+                const late = ownerStats.reduce((a, r) => a + r.CLOSED_PAST_DUE, 0);
+                const tot = onTime + late;
+                return tot === 0 ? "0%" : Math.round((onTime / tot) * 100) + "%";
+              })()}
+            </td>
+          </tr>
         </tbody>
       </table>
 
@@ -309,7 +413,7 @@ const td = {
   textAlign: "center"
 };
 
-/* KPI CARD COMPONENT */
+/* KPI COMPONENT */
 function KPI({ title, value, color }) {
   return (
     <div style={{
