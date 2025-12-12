@@ -1,22 +1,127 @@
-import { Link, useLocation } from "react-router-dom";
+import React, { useState } from "react";
 
-export default function Navbar() {
-  const loc = useLocation();
+const OWNER_LIST = [
+  "AURELLE","CHRISTIAN","SERGEA","FABRICE","FLORIAN",
+  "JOSIAS","ESTHER","MARIUS","THEOPHANE"
+];
 
-  const style = (p) => ({
-    padding: "10px 15px",
-    marginRight: "10px",
-    textDecoration: "none",
-    borderRadius: "6px",
-    background: loc.pathname === p ? "#3B82F6" : "#E5E7EB",
-    color: loc.pathname === p ? "white" : "black"
+const STATUS_LIST = [
+  "OPEN","ONGOING","OVERDUE","ON HOLD",
+  "CLOSED ON TIME","CLOSED PAST DUE"
+];
+
+export default function Filters({ onChange }) {
+
+  const [filters, setFilters] = useState({
+    owner: "",
+    status: "",
+    search: "",
+    assignedFrom: "",
+    assignedTo: "",
+    deadlineFrom: "",
+    deadlineTo: ""
   });
 
+  function updateField(field, value) {
+    const updated = { ...filters, [field]: value };
+    setFilters(updated);
+    onChange(updated);   // send filters to parent
+  }
+
+  function reset() {
+    const cleared = {
+      owner: "",
+      status: "",
+      search: "",
+      assignedFrom: "",
+      assignedTo: "",
+      deadlineFrom: "",
+      deadlineTo: ""
+    };
+    setFilters(cleared);
+    onChange(cleared);
+  }
+
   return (
-    <nav style={{ padding: 10, borderBottom: "1px solid #ddd" }}>
-      <Link to="/dashboard" style={style("/dashboard")}>Dashboard</Link>
-      <Link to="/kanban" style={style("/kanban")}>Kanban</Link>
-      <Link to="/tasks" style={style("/tasks")}>Tasks</Link>
-    </nav>
+    <div style={{
+      padding: 15,
+      background: "#F9FAFB",
+      borderRadius: "8px",
+      marginBottom: 20,
+      border: "1px solid #E5E7EB"
+    }}>
+      <h3>Filters</h3>
+
+      {/* SEARCH */}
+      <input
+        placeholder="Search by title..."
+        value={filters.search}
+        onChange={e => updateField("search", e.target.value)}
+        style={{ width: "200px", marginRight: "10px" }}
+      />
+
+      {/* OWNER */}
+      <select
+        value={filters.owner}
+        onChange={e => updateField("owner", e.target.value)}
+        style={{ marginRight: "10px" }}
+      >
+        <option value="">All Owners</option>
+        {OWNER_LIST.map(o => <option key={o}>{o}</option>)}
+      </select>
+
+      {/* STATUS */}
+      <select
+        value={filters.status}
+        onChange={e => updateField("status", e.target.value)}
+        style={{ marginRight: "10px" }}
+      >
+        <option value="">All Statuses</option>
+        {STATUS_LIST.map(s => <option key={s}>{s}</option>)}
+      </select>
+
+      {/* ASSIGNED DATE RANGE */}
+      <label style={{ marginLeft: "10px" }}>Assigned:</label>
+      <input
+        type="date"
+        value={filters.assignedFrom}
+        onChange={e => updateField("assignedFrom", e.target.value)}
+      />
+      <span> - </span>
+      <input
+        type="date"
+        value={filters.assignedTo}
+        onChange={e => updateField("assignedTo", e.target.value)}
+      />
+
+      {/* DEADLINE RANGE */}
+      <label style={{ marginLeft: "15px" }}>Deadline:</label>
+      <input
+        type="date"
+        value={filters.deadlineFrom}
+        onChange={e => updateField("deadlineFrom", e.target.value)}
+      />
+      <span> - </span>
+      <input
+        type="date"
+        value={filters.deadlineTo}
+        onChange={e => updateField("deadlineTo", e.target.value)}
+      />
+
+      {/* RESET BUTTON */}
+      <button
+        onClick={reset}
+        style={{
+          marginLeft: "15px",
+          background: "#DC2626",
+          color: "white",
+          border: "none",
+          padding: "5px 10px",
+          borderRadius: "6px"
+        }}
+      >
+        Reset
+      </button>
+    </div>
   );
 }
