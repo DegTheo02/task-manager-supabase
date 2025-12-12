@@ -3,21 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
 const STATUS_OPTIONS = [
-  'OPEN','ONGOING','CLOSED ON TIME','CLOSED PAST DUE','OVERDUE','ON HOLD'
+  'OPEN', 'ONGOING', 'CLOSED ON TIME', 'CLOSED PAST DUE', 'OVERDUE', 'ON HOLD'
 ];
+
+const STATUS_COLORS = {
+  "OPEN": "#3B82F6",
+  "ONGOING": "#0EA5A8",
+  "CLOSED ON TIME": "#16A34A",
+  "CLOSED PAST DUE": "#F97316",
+  "OVERDUE": "#DC2626",
+  "ON HOLD": "#6B7280"
+};
 
 const OWNERS = [
- 'AURELLE','CHRISTIAN','SERGEA','FABRICE','FLORIAN','JOSIAS','ESTHER','MARIUS','THEOPHANE'
+  'AURELLE','CHRISTIAN','SERGEA','FABRICE','FLORIAN','JOSIAS','ESTHER','MARIUS','THEOPHANE'
 ];
 
-// Count weekdays (Mon–Fri)
+// Weekday counter
 function countWeekdays(startDate, endDate) {
   let count = 0;
   let current = new Date(startDate);
-
   while (current <= endDate) {
     const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;  // exclude Sat(6) & Sun(0)
+    if (d !== 0 && d !== 6) count++;
     current.setDate(current.getDate() + 1);
   }
   return count;
@@ -26,80 +34,113 @@ function countWeekdays(startDate, endDate) {
 export default function App() {
 
   const [tasks, setTasks] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     title: '',
     initial_deadline: '',
     new_deadline: '',
     owner: '',
-    status: 'OPEN'
+    status: 'OPEN',
+    closing_date: ''
   });
-  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending:false });
-    if (!error) setTasks(data || []);
+    setTasks(data || []);
+  }
+
+  function reset() {
+    setEditingId(null);
+    setForm({
+      title:'',
+      initial_deadline:'',
+      new_deadline:'',
+      owner:'',
+      status:'OPEN',
+      closing_date:''
+    });
   }
 
   async function handleSubmit(e){
     e.preventDefault();
+
     if(!form.title.trim()) return alert("Title required");
     if(!form.owner) return alert("Owner required");
 
-    const payload = {
+    // If closing status chosen → require closing date
+    if ((form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE') &&
+        !form.closing_date) {
+      return alert("Please enter a closing date");
+    }
+
+    let payload = {
       title: form.title,
       initial_deadline: form.initial_deadline || null,
       new_deadline: form.new_deadline || null,
       owner: form.owner,
-      status: form.status
+      status: form.status,
+      closing_date: form.closing_date || null
     };
+
+    // compute duration if closing fields exist
+    if (form.closing_date &&
+        (form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE')) {
+
+      const assignedRes = await supabase
+        .from('tasks')
+        .select('assigned_date')
+        .eq('id', editingId)
+        .maybeSingle();
+
+      const assignedDate = editingId && assignedRes.data
+        ? new Date(assignedRes.data.assigned_date)
+        : new Date(); // fallback
+
+      const duration = countWeekdays(assignedDate, new Date(form.closing_date));
+      payload.duration_days = duration;
+    }
 
     if(editingId){
       await supabase.from('tasks').update(payload).eq('id', editingId);
     } else {
       await supabase.from('tasks').insert(payload);
     }
+
     reset();
     load();
   }
 
-  function reset(){
-    setForm({ title:'', initial_deadline:'', new_deadline:'', owner:'', status:'OPEN' });
-    setEditingId(null);
-  }
-
-  async function changeStatus(task, newStatus){
-    let payload = { status: newStatus };
-
-    // When task is closed → compute closing date + weekday duration
-    if(newStatus === 'CLOSED ON TIME' || newStatus === 'CLOSED PAST DUE'){
-      const today = new Date();
-      const assigned = new Date(task.assigned_date);
-      const duration = countWeekdays(assigned, today);
-
-      payload.closing_date = today.toISOString().slice(0,10);
-      payload.duration_days = duration;
-    }
-
-    await supabase.from('tasks').update(payload).eq('id', task.id);
-    load();
+  function handleEdit(t){
+    setEditingId(t.id);
+    setForm({
+      title: t.title,
+      initial_deadline: t.initial_deadline || '',
+      new_deadline: t.new_deadline || '',
+      owner: t.owner,
+      status: t.status,
+      closing_date: t.closing_date || ''
+    });
+    window.scrollTo({ top: 0, behavior:'smooth' });
   }
 
   return (
     <div style={{padding:20,fontFamily:'Arial'}}>
       <h1>BI&CVM - Task Manager</h1>
 
+      {/* FORM */}
       <form onSubmit={handleSubmit} style={{marginBottom:20}}>
 
         <input
           placeholder="Title"
           value={form.title}
           onChange={e=>setForm({...form,title:e.target.value})}
-          style={{display:'block',marginBottom:10}}
+          style={{display:'block',marginBottom:10,width:'300px'}}
         />
 
         <label>Initial Deadline</label>
@@ -135,28 +176,48 @@ export default function App() {
           {STATUS_OPTIONS.map(s=> <option key={s}>{s}</option>)}
         </select>
 
-        <button type="submit">{editingId?'Update':'Create'}</button>
+        {/* CONDITIONAL CLOSING DATE FIELD */}
+        {(form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE') && (
+          <>
+            <label>Closing Date</label>
+            <input type="date"
+              value={form.closing_date}
+              onChange={e=>setForm({...form,closing_date:e.target.value})}
+              style={{display:'block',marginBottom:10}}
+            />
+          </>
+        )}
+
+        <button type="submit">{editingId ? "Update Task" : "Create Task"}</button>
       </form>
 
-      {tasks.map(t=>(
-        <div key={t.id} style={{border:'1px solid #ccc',padding:10,marginBottom:10}}>
-          <strong>{t.title}</strong> <br/>
-          Status: {t.status} <br/>
-          Owner: {t.owner} <br/>
-          Assigned: {t.assigned_date} <br/>
-          Closing Date: {t.closing_date || '—'} <br/>
-          Duration: {t.duration_days || '—'} weekdays <br/>
+      {/* TASK LIST */}
+      {tasks.map(t => (
+        <div key={t.id}
+             style={{border:'1px solid #ccc',padding:10,marginBottom:10,borderLeft:`6px solid ${STATUS_COLORS[t.status]}`}}>
+          <strong>{t.title}</strong>
+          <span style={{
+            background:STATUS_COLORS[t.status],
+            color:'white',
+            padding:'2px 6px',
+            marginLeft:10,
+            borderRadius:4
+          }}>
+            {t.status}
+          </span>
 
-          <label>Change Status:</label>
-          <select
-            value={t.status}
-            onChange={e=>changeStatus(t,e.target.value)}
-            style={{marginLeft:10}}
-          >
-            {STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}
-          </select>
+          <br/>Owner: {t.owner}
+          <br/>Assigned: {t.assigned_date}
+          <br/>Initial Deadline: {t.initial_deadline || '—'}
+          <br/>New Deadline: {t.new_deadline || '—'}
+          <br/>Closing Date: {t.closing_date || '—'}
+          <br/>Duration: {t.duration_days || '—'} weekdays
+          <br/><br/>
+
+          <button onClick={()=>handleEdit(t)}>Edit Task</button>
         </div>
       ))}
+
     </div>
   );
 }
