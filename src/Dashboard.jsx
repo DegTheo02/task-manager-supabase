@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
+import Filters from "./Filters";
 
 // Weekday counter
 function countWeekdays(startDate, endDate) {
@@ -8,7 +9,7 @@ function countWeekdays(startDate, endDate) {
 
   while (current <= endDate) {
     const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
+    if (d !== 0 && d !== 6) count++; // Monday–Friday
     current.setDate(current.getDate() + 1);
   }
   return count;
@@ -16,32 +17,66 @@ function countWeekdays(startDate, endDate) {
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
+  const [filtered, setFiltered] = useState([]);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     const { data } = await supabase.from("tasks").select("*");
     setTasks(data || []);
+    setFiltered(data || []); // initial view = all tasks
   }
 
-  // --- KPI CALCULATIONS ---
+  // --- FILTER LOGIC (same as Kanban) ---
+  function applyFilters(f) {
+    let result = [...tasks];
 
-  const total = tasks.length;
+    if (f.search)
+      result = result.filter(t =>
+        t.title.toLowerCase().includes(f.search.toLowerCase())
+      );
 
-  const open = tasks.filter(t => t.status === "OPEN").length;
-  const ongoing = tasks.filter(t => t.status === "ONGOING").length;
-  const overdue = tasks.filter(t => t.status === "OVERDUE").length;
-  const onhold = tasks.filter(t => t.status === "ON HOLD").length;
+    if (f.owner)
+      result = result.filter(t => t.owner === f.owner);
 
-  const closedOnTime = tasks.filter(t => t.status === "CLOSED ON TIME").length;
-  const closedLate = tasks.filter(t => t.status === "CLOSED PAST DUE").length;
+    if (f.status)
+      result = result.filter(t => t.status === f.status);
+
+    if (f.assignedFrom)
+      result = result.filter(t => t.assigned_date >= f.assignedFrom);
+
+    if (f.assignedTo)
+      result = result.filter(t => t.assigned_date <= f.assignedTo);
+
+    if (f.deadlineFrom)
+      result = result.filter(t => t.initial_deadline >= f.deadlineFrom);
+
+    if (f.deadlineTo)
+      result = result.filter(t => t.initial_deadline <= f.deadlineTo);
+
+    setFiltered(result);
+  }
+
+  // ----------------------
+  // KPI CALCULATIONS (use "filtered")
+  // ----------------------
+
+  const total = filtered.length;
+
+  const open = filtered.filter(t => t.status === "OPEN").length;
+  const ongoing = filtered.filter(t => t.status === "ONGOING").length;
+  const overdue = filtered.filter(t => t.status === "OVERDUE").length;
+  const onhold = filtered.filter(t => t.status === "ON HOLD").length;
+
+  const closedOnTime = filtered.filter(t => t.status === "CLOSED ON TIME").length;
+  const closedLate = filtered.filter(t => t.status === "CLOSED PAST DUE").length;
   const closedTotal = closedOnTime + closedLate;
 
   const percentOnTime = closedTotal > 0
     ? Math.round((closedOnTime / closedTotal) * 100)
     : 0;
 
-  const durations = tasks
+  const durations = filtered
     .filter(t => t.duration_days)
     .map(t => t.duration_days);
 
@@ -49,20 +84,23 @@ export default function Dashboard() {
     ? Math.round(durations.reduce((a,b) => a + b, 0) / durations.length)
     : 0;
 
-  // Count by owner
+  // Tasks per owner
   const owners = [
-    'AURELLE','CHRISTIAN','SERGEA','FABRICE','FLORIAN',
-    'JOSIAS','ESTHER','MARIUS','THEOPHANE'
+    "AURELLE","CHRISTIAN","SERGEA","FABRICE","FLORIAN",
+    "JOSIAS","ESTHER","MARIUS","THEOPHANE"
   ];
 
   const tasksPerOwner = owners.map(owner => ({
     owner,
-    count: tasks.filter(t => t.owner === owner).length
+    count: filtered.filter(t => t.owner === owner).length
   }));
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
       <h1>Dashboard</h1>
+
+      {/* FILTER PANEL */}
+      <Filters onChange={applyFilters} />
 
       {/* KPI GRID */}
       <div style={{
@@ -71,7 +109,6 @@ export default function Dashboard() {
         gap: "20px",
         marginTop: "20px"
       }}>
-
         <KPI title="OPEN" value={open} color="#3B82F6" />
         <KPI title="ONGOING" value={ongoing} color="#0EA5A8" />
         <KPI title="OVERDUE" value={overdue} color="#DC2626" />
@@ -81,9 +118,7 @@ export default function Dashboard() {
         <KPI title="Closed Late" value={closedLate} color="#F97316" />
 
         <KPI title="% Completed On Time" value={`${percentOnTime}%`} color="#2563EB" />
-
         <KPI title="Average Duration (Weekdays)" value={avgDuration} color="#7C3AED" />
-
         <KPI title="Total Tasks" value={total} color="#000000" />
       </div>
 
