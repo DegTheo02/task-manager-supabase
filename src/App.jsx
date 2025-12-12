@@ -13,7 +13,6 @@ const STATUS_COLORS = {
 };
 
 export default function App(){
-  const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [form, setForm] = useState({
     title: '',
@@ -27,38 +26,25 @@ export default function App(){
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(false);
 
-  useEffect(()=>{
-    supabase.auth.getUser().then(({ data })=>{ if(data?.user) setUser(data.user); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => { setUser(session?.user || null); });
-    fetchTasks();
-    return () => sub?.subscription?.unsubscribe?.();
-  }, []);
-
+  // Fetch tasks
   async function fetchTasks(){
     setLoading(true);
-    const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending:false });
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending:false });
     setLoading(false);
-    if(error){ console.error(error); return; }
-    setTasks(data || []);
+    if(error) console.error(error);
+    else setTasks(data || []);
   }
 
-  async function signIn(){
-    const email = prompt('Enter your email for magic link sign-in:');
-    if(!email) return;
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if(error) return alert(error.message);
-    alert('Check your email for the magic link.');
-  }
+  useEffect(() => { fetchTasks(); }, []);
 
-  async function signOut(){ await supabase.auth.signOut(); setUser(null); }
-
-  function resetForm(){ setForm({ title:'', assigned_date:new Date().toISOString().slice(0,10), initial_deadline:'', new_deadline:'', owner:'', status:'OPEN' }); setEditingId(null); }
-
+  // Handle submit
   async function handleSubmit(e){
     e.preventDefault();
     if(!form.title.trim()) return alert('Please enter a title');
     if(!form.owner) return alert('Please select an owner');
-    if(!user) return alert('Please sign in to create tasks');
 
     const payload = {
       title: form.title,
@@ -67,7 +53,6 @@ export default function App(){
       new_deadline: form.new_deadline || null,
       owner: form.owner,
       status: form.status,
-      created_by: user.id,
     };
 
     if(editingId){
@@ -77,39 +62,49 @@ export default function App(){
       const { error } = await supabase.from('tasks').insert(payload);
       if(error) return alert(error.message);
     }
+
     fetchTasks();
     resetForm();
+  }
+
+  function resetForm(){
+    setForm({
+      title:'',
+      assigned_date:new Date().toISOString().slice(0,10),
+      initial_deadline:'',
+      new_deadline:'',
+      owner:'',
+      status:'OPEN'
+    });
+    setEditingId(null);
   }
 
   function handleEdit(task){
     setEditingId(task.id);
     setForm({
       title: task.title,
-      assigned_date: task.assigned_date ? task.assigned_date.slice(0,10) : new Date().toISOString().slice(0,10),
-      initial_deadline: task.initial_deadline ? task.initial_deadline.slice(0,10) : '',
-      new_deadline: task.new_deadline ? task.new_deadline.slice(0,10) : '',
+      assigned_date: task.assigned_date,
+      initial_deadline: task.initial_deadline || '',
+      new_deadline: task.new_deadline || '',
       owner: task.owner,
-      status: task.status,
+      status: task.status
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function handleDelete(id){
     if(!confirm('Delete this task?')) return;
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if(error) return alert(error.message);
+    await supabase.from('tasks').delete().eq('id', id);
     fetchTasks();
   }
 
   async function toggleStatus(id, status){
-    const { error } = await supabase.from('tasks').update({ status }).eq('id', id);
-    if(error) return alert(error.message);
+    await supabase.from('tasks').update({ status }).eq('id', id);
     fetchTasks();
   }
 
   async function applyNewDeadline(id, date){
-    const { error } = await supabase.from('tasks').update({ new_deadline: date }).eq('id', id);
-    if(error) return alert(error.message);
+    await supabase.from('tasks').update({ new_deadline: date }).eq('id', id);
     fetchTasks();
   }
 
@@ -118,26 +113,17 @@ export default function App(){
   return (
     <div className="container">
       <div className="card">
-        <header style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+        <header style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <h1>Task Manager</h1>
-          <div>
-            {user ? (
-              <div style={{display:'flex', gap:12, alignItems:'center'}}>
-                <div>Signed in: <strong>{user.email}</strong></div>
-                <button onClick={signOut}>Sign out</button>
-              </div>
-            ) : (
-              <button onClick={signIn}>Sign in (magic link)</button>
-            )}
-          </div>
         </header>
 
-        <section style={{marginBottom:12}}>
+        {/* Create / Edit Task */}
+        <section style={{marginTop:20}}>
           <h2>Create / Edit Task</h2>
           <form onSubmit={handleSubmit} style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
             <div style={{gridColumn:'1 / -1'}}>
               <label>Title</label>
-              <input value={form.title} onChange={e=>setForm(s=>({...s, title:e.target.value}))} placeholder="Task title" />
+              <input value={form.title} onChange={e=>setForm(s=>({...s, title:e.target.value}))} />
             </div>
 
             <div>
@@ -172,53 +158,58 @@ export default function App(){
 
             <div style={{gridColumn:'1 / -1', display:'flex', justifyContent:'flex-end', gap:8}}>
               <button type="button" onClick={resetForm}>Clear</button>
-              <button type="submit">{editingId ? 'Save' : 'Create'}</button>
+              <button>Create</button>
             </div>
           </form>
         </section>
 
-        <section style={{marginBottom:12}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-            <div>
-              <label>Filter</label>
-              <select value={filter} onChange={e=>setFilter(e.target.value)}>
-                <option value="ALL">ALL</option>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>Total tasks: <strong>{tasks.length}</strong></div>
-          </div>
+        {/* Filter */}
+        <section style={{marginTop:30}}>
+          <label>Filter</label>
+          <select value={filter} onChange={e=>setFilter(e.target.value)}>
+            <option value="ALL">ALL</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </section>
 
-          <div style={{display:'grid', gap:12}}>
-            {loading && <div className="card">Loading…</div>}
-            {visibleTasks.map(task => {
-              const deadline = task.new_deadline || task.initial_deadline;
-              const isLate = deadline && new Date(deadline) < new Date() && task.status !== 'CLOSED';
-              const bg = STATUS_COLORS[task.status] || '#0ea5a4';
-              return (
-                <article key={task.id} className="card" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        {/* Task list */}
+        <section style={{marginTop:20}}>
+          {loading && <div>Loading...</div>}
+          {visibleTasks.map(task => {
+            const deadline = task.new_deadline || task.initial_deadline;
+            const isLate = deadline && new Date(deadline) < new Date() && task.status !== 'CLOSED';
+            const bg = STATUS_COLORS[task.status];
+
+            return (
+              <article key={task.id} className="card" style={{marginTop:12, padding:12}}>
+                <div style={{display:'flex', justifyContent:'space-between'}}>
                   <div>
-                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
-                      <h3 style={{margin:0}}>{task.title}</h3>
-                      <div style={{background:bg, color:'white', padding:'4px 8px', borderRadius:6, fontWeight:600}}>{task.status}</div>
-                      {isLate && <div style={{color:'#dc2626'}}>(Late)</div>}
+                    <div style={{display:'flex', gap:10, alignItems:'center'}}>
+                      <h3>{task.title}</h3>
+                      <span style={{background:bg, color:'white', padding:'3px 6px', borderRadius:4}}>
+                        {task.status}
+                      </span>
+                      {isLate && <span style={{color:'red'}}>(Late)</span>}
                     </div>
-                    <div style={{marginTop:6, color:'#475569'}}>Owner: {task.owner} • Assigned: {task.assigned_date}</div>
-                    <div style={{marginTop:6, color:'#475569'}}>Initial: {task.initial_deadline || '—'} • Current: {task.new_deadline || task.initial_deadline || '—'}</div>
+                    <div>Owner: {task.owner}</div>
+                    <div>Assigned: {task.assigned_date}</div>
+                    <div>Deadline: {task.new_deadline || task.initial_deadline || '—'}</div>
                   </div>
 
                   <div style={{display:'flex', gap:8}}>
                     <select value={task.status} onChange={e=>toggleStatus(task.id, e.target.value)}>
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+
                     <input type="date" value={task.new_deadline || ''} onChange={e=>applyNewDeadline(task.id, e.target.value)} />
+
                     <button onClick={()=>handleEdit(task)}>Edit</button>
                     <button onClick={()=>handleDelete(task.id)}>Delete</button>
                   </div>
-                </article>
-              );
-            })}
-          </div>
+                </div>
+              </article>
+            );
+          })}
         </section>
       </div>
     </div>
