@@ -15,25 +15,13 @@ import {
   Legend
 } from "chart.js";
 
-import { Bar, Pie, Line } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement,
   ArcElement, PointElement, LineElement,
   Tooltip, Legend
 );
-
-// Weekdays counter
-function countWeekdays(startDate, endDate) {
-  let count = 0;
-  let current = new Date(startDate);
-  while (current <= endDate) {
-    const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
 
 // -------------------------------
 // OWNER LIST
@@ -44,7 +32,7 @@ const owners = [
 ];
 
 // -------------------------------
-// COMPUTE RAW STATS PER OWNER
+// RAW STATS PER OWNER
 // -------------------------------
 function computeOwnerStats(tasks, owners) {
   return owners.map(owner => {
@@ -64,11 +52,11 @@ function computeOwnerStats(tasks, owners) {
 }
 
 // -------------------------------
-// COMPUTE PERCENTAGES PER OWNER
+// PERCENTAGES PER OWNER
 // -------------------------------
 function computeOwnerPercentages(stats) {
   return stats.map(row => {
-    const total = row.TOTAL || 1; // avoids divide-by-zero
+    const total = row.TOTAL || 1;
 
     return {
       owner: row.owner,
@@ -78,16 +66,20 @@ function computeOwnerPercentages(stats) {
       pctOnHold: Math.round((row.ON_HOLD / total) * 100),
       pctClosedOnTime: Math.round((row.CLOSED_ON_TIME / total) * 100),
       pctClosedLate: Math.round((row.CLOSED_PAST_DUE / total) * 100),
-      pctOnTimeRate: Math.round((row.CLOSED_ON_TIME / ((row.CLOSED_ON_TIME + row.CLOSED_PAST_DUE) || 1)) * 100)
+      pctOnTimeRate: Math.round(
+        (row.CLOSED_ON_TIME / ((row.CLOSED_ON_TIME + row.CLOSED_PAST_DUE) || 1)) * 100
+      )
     };
   });
 }
 
+// -------------------------------
+// COMPONENT
+// -------------------------------
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [filtered, setFiltered] = useState([]);
 
-  // Load tasks
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -96,7 +88,7 @@ export default function Dashboard() {
     setFiltered(data || []);
   }
 
-  // FILTERING
+  // FILTERS
   function applyFilters(f) {
     let result = [...tasks];
 
@@ -139,17 +131,18 @@ export default function Dashboard() {
   const closedLate = filtered.filter(t => t.status === "CLOSED PAST DUE").length;
 
   const closedTotal = closedOnTime + closedLate;
-  const percentOnTime = closedTotal > 0 ? Math.round((closedOnTime / closedTotal) * 100) : 0;
+  const percentOnTime = closedTotal > 0
+    ? Math.round((closedOnTime / closedTotal) * 100)
+    : 0;
 
-  // Dashboard owner tables
+  // OWNER TABLES
   const ownerStats = computeOwnerStats(filtered, owners);
   const ownerPercentages = computeOwnerPercentages(ownerStats);
 
   // -----------------------------
-  // CHART DATA
+  // CHARTS
   // -----------------------------
-
-  // Bar Chart
+  // TOTAL TASKS PER OWNER (Simple Bar)
   const barData = {
     labels: owners,
     datasets: [
@@ -161,24 +154,26 @@ export default function Dashboard() {
     ]
   };
 
-  // Pie Chart
-  const pieData = {
-    labels: [
-      "OPEN", "ONGOING", "OVERDUE",
-      "ON HOLD", "CLOSED ON TIME", "CLOSED PAST DUE"
-    ],
+  // STACKED COLUMN CHART
+  const stackedData = {
+    labels: owners,
     datasets: [
-      {
-        data: [open, ongoing, overdue, onhold, closedOnTime, closedLate],
-        backgroundColor: [
-          "#3B82F6", "#0EA5A8", "#DC2626",
-          "#6B7280", "#16A34A", "#F97316"
-        ]
-      }
+      { label: "Open", data: ownerStats.map(o => o.OPEN), backgroundColor: "#3B82F6" },
+      { label: "Ongoing", data: ownerStats.map(o => o.ONGOING), backgroundColor: "#0EA5A8" },
+      { label: "Overdue", data: ownerStats.map(o => o.OVERDUE), backgroundColor: "#DC2626" },
+      { label: "On Hold", data: ownerStats.map(o => o.ON_HOLD), backgroundColor: "#6B7280" },
+      { label: "Closed On Time", data: ownerStats.map(o => o.CLOSED_ON_TIME), backgroundColor: "#16A34A" },
+      { label: "Closed Past Due", data: ownerStats.map(o => o.CLOSED_PAST_DUE), backgroundColor: "#F97316" }
     ]
   };
 
-  // Line chart (tasks created over time)
+  const stackedOptions = {
+    responsive: true,
+    plugins: { legend: { position: "top" } },
+    scales: { x: { stacked: true }, y: { stacked: true } }
+  };
+
+  // LINE CHART — TASK CREATION TREND
   const dates = [...new Set(filtered.map(t => t.assigned_date))].sort();
   const lineData = {
     labels: dates,
@@ -225,8 +220,8 @@ export default function Dashboard() {
       <h3>Tasks per Owner</h3>
       <Bar data={barData} />
 
-      <h3 style={{ marginTop: 40 }}>Task Status Distribution</h3>
-      <Pie data={pieData} />
+      <h3 style={{ marginTop: 40 }}>Task Distribution per Owner (Stacked)</h3>
+      <Bar data={stackedData} options={stackedOptions} />
 
       <h3 style={{ marginTop: 40 }}>Task Creation Trend</h3>
       <Line data={lineData} />
