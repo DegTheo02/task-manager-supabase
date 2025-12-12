@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
 import Avatar from "./Avatar";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
+//import * as XLSX from "xlsx";
+//import jsPDF from "jspdf";
 
 // Weekday counter for duration
 function countWeekdays(startDate, endDate) {
