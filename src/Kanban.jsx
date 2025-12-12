@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
+import Avatar from "./Avatar";
 
 const STATUS_COLUMNS = [
   { key: "OPEN", label: "Open" },
@@ -126,7 +127,11 @@ export default function Kanban() {
                   }}
                 >
                   <strong>{task.title}</strong><br />
-                  <small>Owner: {task.owner}</small><br />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <Avatar name={task.owner} size={26} />
+                    <small>{task.owner}</small>
+                  </div>
+
                   <small>Assigned: {task.assigned_date}</small>
 
                   <br /><br />
