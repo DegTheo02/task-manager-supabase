@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
@@ -19,15 +18,16 @@ const OWNERS = [
   'AURELLE','CHRISTIAN','SERGEA','FABRICE','FLORIAN','JOSIAS','ESTHER','MARIUS','THEOPHANE'
 ];
 
-// Weekday counter
 function countWeekdays(startDate, endDate) {
   let count = 0;
   let current = new Date(startDate);
+
   while (current <= endDate) {
-    const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count++; // Monday–Friday only
     current.setDate(current.getDate() + 1);
   }
+
   return count;
 }
 
@@ -70,13 +70,13 @@ export default function App() {
   async function handleSubmit(e){
     e.preventDefault();
 
-    if(!form.title.trim()) return alert("Title required");
-    if(!form.owner) return alert("Owner required");
+    if(!form.title.trim()) return alert("Title is required.");
+    if(!form.owner) return alert("Owner is required.");
 
     // If closing status chosen → require closing date
     if ((form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE') &&
         !form.closing_date) {
-      return alert("Please enter a closing date");
+      return alert("Please enter a closing date.");
     }
 
     let payload = {
@@ -88,21 +88,18 @@ export default function App() {
       closing_date: form.closing_date || null
     };
 
-    // compute duration if closing fields exist
-    if (form.closing_date &&
-        (form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE')) {
+    if (
+      form.closing_date &&
+      (form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE')
+    ) {
+      const assignedDate = editingId
+        ? (await supabase.from('tasks').select('assigned_date').eq('id', editingId).maybeSingle()).data?.assigned_date
+        : new Date().toISOString().slice(0,10);
 
-      const assignedRes = await supabase
-        .from('tasks')
-        .select('assigned_date')
-        .eq('id', editingId)
-        .maybeSingle();
-
-      const assignedDate = editingId && assignedRes.data
-        ? new Date(assignedRes.data.assigned_date)
-        : new Date(); // fallback
-
-      const duration = countWeekdays(assignedDate, new Date(form.closing_date));
+      const duration = countWeekdays(
+        new Date(assignedDate),
+        new Date(form.closing_date)
+      );
       payload.duration_days = duration;
     }
 
@@ -126,11 +123,20 @@ export default function App() {
       status: t.status,
       closing_date: t.closing_date || ''
     });
+
     window.scrollTo({ top: 0, behavior:'smooth' });
   }
 
+  async function deleteTask(id) {
+    const ok = window.confirm("Are you sure you want to delete this task?");
+    if (!ok) return;
+
+    await supabase.from('tasks').delete().eq('id', id);
+    load();
+  }
+
   return (
-    <div style={{padding:20,fontFamily:'Arial'}}>
+    <div style={{padding:20, fontFamily:'Arial'}}>
       <h1>BI&CVM - Task Manager</h1>
 
       {/* FORM */}
@@ -176,7 +182,6 @@ export default function App() {
           {STATUS_OPTIONS.map(s=> <option key={s}>{s}</option>)}
         </select>
 
-        {/* CONDITIONAL CLOSING DATE FIELD */}
         {(form.status === 'CLOSED ON TIME' || form.status === 'CLOSED PAST DUE') && (
           <>
             <label>Closing Date</label>
@@ -194,7 +199,13 @@ export default function App() {
       {/* TASK LIST */}
       {tasks.map(t => (
         <div key={t.id}
-             style={{border:'1px solid #ccc',padding:10,marginBottom:10,borderLeft:`6px solid ${STATUS_COLORS[t.status]}`}}>
+             style={{
+               border:'1px solid #ccc',
+               padding:10,
+               marginBottom:10,
+               borderLeft:`6px solid ${STATUS_COLORS[t.status]}`
+             }}>
+
           <strong>{t.title}</strong>
           <span style={{
             background:STATUS_COLORS[t.status],
@@ -212,12 +223,26 @@ export default function App() {
           <br/>New Deadline: {t.new_deadline || '—'}
           <br/>Closing Date: {t.closing_date || '—'}
           <br/>Duration: {t.duration_days || '—'} weekdays
+
           <br/><br/>
 
           <button onClick={()=>handleEdit(t)}>Edit Task</button>
+
+          <button
+            onClick={()=>deleteTask(t.id)}
+            style={{
+              marginLeft:10,
+              background:'red',
+              color:'white',
+              padding:'4px 8px',
+              border:'none',
+              borderRadius:4
+            }}
+          >
+            Delete
+          </button>
         </div>
       ))}
-
     </div>
   );
 }
