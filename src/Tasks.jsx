@@ -172,12 +172,7 @@ export default function Tasks() {
       title: task.title,
       initial_deadline: task.initial_deadline || "",
       new_deadline: task.new_deadline || "",
-
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <Avatar name={task.owner} size={26} />
-        <span>{task.owner}</span>
-      </div>
+      <br />Owner: {task.owner}
 
       status: task.status,
       closing_date: task.closing_date || ""
