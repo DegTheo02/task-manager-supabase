@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
+import Avatar from "./Avatar";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 
 // Weekday counter for duration
 function countWeekdays(startDate, endDate) {
@@ -9,7 +12,7 @@ function countWeekdays(startDate, endDate) {
 
   while (current <= endDate) {
     const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
+    if (d !== 0 && d !== 6) count++; // only weekdays
     current.setDate(current.getDate() + 1);
   }
   return count;
@@ -21,21 +24,20 @@ const STATUS_OPTIONS = [
 ];
 
 const OWNERS = [
-  "AURELLE","CHRISTIAN","SERGEA","FABRICE","FLORIAN",
-  "JOSIAS","ESTHER","MARIUS","THEOPHANE"
+  "AURELLE", "CHRISTIAN", "SERGEA", "FABRICE", "FLORIAN",
+  "JOSIAS", "ESTHER", "MARIUS", "THEOPHANE"
 ];
 
 const STATUS_COLORS = {
-  "OPEN": "#3B82F6",
-  "ONGOING": "#0EA5A8",
+  OPEN: "#3B82F6",
+  ONGOING: "#0EA5A8",
+  OVERDUE: "#DC2626",
+  "ON HOLD": "#6B7280",
   "CLOSED ON TIME": "#16A34A",
-  "CLOSED PAST DUE": "#F97316",
-  "OVERDUE": "#DC2626",
-  "ON HOLD": "#6B7280"
+  "CLOSED PAST DUE": "#F97316"
 };
 
 export default function Tasks() {
-
   const [tasks, setTasks] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -49,7 +51,7 @@ export default function Tasks() {
     closing_date: ""
   });
 
-  // Load tasks
+  // Load tasks from Supabase
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -62,7 +64,9 @@ export default function Tasks() {
     setFiltered(data || []);
   }
 
-  // ----- FILTER HANDLER -----
+  // ---------------------------
+  // FILTERING LOGIC
+  // ---------------------------
   function applyFilters(f) {
     let result = [...tasks];
 
@@ -92,7 +96,9 @@ export default function Tasks() {
     setFiltered(result);
   }
 
-  // ----- FORM RESET -----
+  // ---------------------------
+  // RESET FORM
+  // ---------------------------
   function resetForm() {
     setEditingId(null);
     setForm({
@@ -105,7 +111,9 @@ export default function Tasks() {
     });
   }
 
-  // ----- CREATE OR UPDATE TASK -----
+  // ---------------------------
+  // CREATE OR UPDATE TASK
+  // ---------------------------
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -126,16 +134,19 @@ export default function Tasks() {
       closing_date: form.closing_date || null
     };
 
-    // CLOSED TASK — require closing date
-    if ((form.status === "CLOSED ON TIME" || form.status === "CLOSED PAST DUE") &&
-        !form.closing_date) {
+    // Closing date required if task is closed
+    if (
+      (form.status === "CLOSED ON TIME" || form.status === "CLOSED PAST DUE") &&
+      !form.closing_date
+    ) {
       return alert("Please enter a Closing Date.");
     }
 
-    // Duration calculation on CLOSED
-    if (form.closing_date &&
-        (form.status === "CLOSED ON TIME" || form.status === "CLOSED PAST DUE"))
-    {
+    // Duration calculation
+    if (
+      form.closing_date &&
+      (form.status === "CLOSED ON TIME" || form.status === "CLOSED PAST DUE")
+    ) {
       let assignedDate = today;
 
       if (editingId) {
@@ -157,7 +168,7 @@ export default function Tasks() {
     if (editingId) {
       await supabase.from("tasks").update(payload).eq("id", editingId);
     } else {
-      payload.assigned_date = today; // new task assignment date
+      payload.assigned_date = today;
       await supabase.from("tasks").insert(payload);
     }
 
@@ -165,45 +176,86 @@ export default function Tasks() {
     load();
   }
 
-  // ----- EDIT TASK -----
+  // ---------------------------
+  // EDIT TASK
+  // ---------------------------
   function handleEdit(task) {
     setEditingId(task.id);
     setForm({
       title: task.title,
       initial_deadline: task.initial_deadline || "",
       new_deadline: task.new_deadline || "",
-      <br />Owner: {task.owner}
-
+      owner: task.owner,
       status: task.status,
       closing_date: task.closing_date || ""
     });
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ----- DELETE TASK -----
+  // ---------------------------
+  // DELETE TASK
+  // ---------------------------
   async function deleteTask(id) {
     const ok = window.confirm("Delete this task?");
     if (!ok) return;
-
     await supabase.from("tasks").delete().eq("id", id);
     load();
   }
 
+  // ---------------------------
+  // EXPORT TO EXCEL
+  // ---------------------------
+  function exportExcel() {
+    const ws = XLSX.utils.json_to_sheet(filtered);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+    XLSX.writeFile(wb, "tasks.xlsx");
+  }
+
+  // ---------------------------
+  // EXPORT TO PDF
+  // ---------------------------
+  function exportPDF() {
+    const doc = new jsPDF();
+    doc.text("Task List", 10, 10);
+
+    let y = 20;
+    filtered.forEach(t => {
+      doc.text(`${t.title} — ${t.status} — ${t.owner}`, 10, y);
+      y += 10;
+    });
+
+    doc.save("tasks.pdf");
+  }
+
+  // ---------------------------
+  // RENDER
+  // ---------------------------
   return (
     <div style={{ padding: 20 }}>
-
       <h1>Tasks</h1>
 
-      {/* FILTER BAR */}
+      {/* FILTERS */}
       <Filters onChange={applyFilters} />
+
+      {/* EXPORT BUTTONS */}
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={exportExcel} style={{ marginRight: 10 }}>
+          Export to Excel
+        </button>
+        <button onClick={exportPDF}>
+          Export to PDF
+        </button>
+      </div>
 
       {/* FORM */}
       <form onSubmit={handleSubmit} style={{
         background: "#F9FAFB",
-        padding: "20px",
-        borderRadius: "8px",
+        padding: 20,
+        borderRadius: 8,
         border: "1px solid #E5E7EB",
-        marginBottom: "30px"
+        marginBottom: 30
       }}>
         <h3>{editingId ? "Edit Task" : "Create Task"}</h3>
 
@@ -211,18 +263,20 @@ export default function Tasks() {
           placeholder="Title"
           value={form.title}
           onChange={e => setForm({ ...form, title: e.target.value })}
-          style={{ width: "300px", marginBottom: 10, display: "block" }}
+          style={{ width: 300, marginBottom: 10, display: "block" }}
         />
 
         <label>Initial Deadline</label>
-        <input type="date"
+        <input
+          type="date"
           value={form.initial_deadline}
           onChange={e => setForm({ ...form, initial_deadline: e.target.value })}
           style={{ marginBottom: 10, display: "block" }}
         />
 
         <label>New Deadline</label>
-        <input type="date"
+        <input
+          type="date"
           value={form.new_deadline}
           onChange={e => setForm({ ...form, new_deadline: e.target.value })}
           style={{ marginBottom: 10, display: "block" }}
@@ -250,7 +304,8 @@ export default function Tasks() {
         {(form.status === "CLOSED ON TIME" || form.status === "CLOSED PAST DUE") && (
           <>
             <label>Closing Date</label>
-            <input type="date"
+            <input
+              type="date"
               value={form.closing_date}
               onChange={e => setForm({ ...form, closing_date: e.target.value })}
               style={{ marginBottom: 10, display: "block" }}
@@ -279,31 +334,31 @@ export default function Tasks() {
       {filtered.map(task => (
         <div key={task.id} style={{
           background: "#FFF",
-          padding: "10px",
-          borderRadius: "6px",
-          marginBottom: "10px",
+          padding: 10,
+          borderRadius: 6,
+          marginBottom: 10,
           borderLeft: `6px solid ${STATUS_COLORS[task.status]}`,
           boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
         }}>
           <strong>{task.title}</strong>
+
           <span style={{
             background: STATUS_COLORS[task.status],
             color: "white",
             padding: "2px 6px",
-            borderRadius: "5px",
-            marginLeft: "10px",
-            fontSize: "12px"
+            borderRadius: 5,
+            marginLeft: 10,
+            fontSize: 12
           }}>
             {task.status}
           </span>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {/* Avatar Owner Block */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
             <Avatar name={task.owner} size={26} />
             <span>{task.owner}</span>
           </div>
 
-
-          
           <br />Assigned: {task.assigned_date}
           <br />Initial Deadline: {task.initial_deadline || "—"}
           <br />New Deadline: {task.new_deadline || "—"}
@@ -321,7 +376,6 @@ export default function Tasks() {
           </button>
         </div>
       ))}
-
     </div>
   );
 }
