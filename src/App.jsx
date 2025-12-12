@@ -1,3 +1,18 @@
+body.dark {
+  background: #1E1E1E;
+  color: white;
+}
+
+.card-dark {
+  background: #2D2D2D !important;
+  color: white !important;
+}
+
+.nav-dark {
+  background: #111 !important;
+}
+
+
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
