@@ -302,7 +302,13 @@ export default function Tasks() {
             {task.status}
           </span>
 
-          <br />Owner: {task.owner}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Avatar name={task.owner} size={26} />
+            <span>{task.owner}</span>
+          </div>
+
+
+          
           <br />Assigned: {task.assigned_date}
           <br />Initial Deadline: {task.initial_deadline || "—"}
           <br />New Deadline: {task.new_deadline || "—"}
