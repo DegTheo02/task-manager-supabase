@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Avatar from "./Avatar";
 
+/* ----------------------------------
+   CONSTANTS
+---------------------------------- */
 const OWNERS = [
   "AURELLE",
   "CHRISTIAN",
@@ -23,6 +26,9 @@ const STATUSES = [
   "ON HOLD"
 ];
 
+/* ----------------------------------
+   COMPONENT
+---------------------------------- */
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -51,16 +57,10 @@ export default function Tasks() {
     setTasks(data || []);
   }
 
-  // ----------------------------
-  // FORM UPDATE
-  // ----------------------------
   function updateField(field, value) {
     setForm({ ...form, [field]: value });
   }
 
-  // ----------------------------
-  // CREATE / UPDATE
-  // ----------------------------
   async function saveTask() {
     if (
       !form.title ||
@@ -83,9 +83,6 @@ export default function Tasks() {
     loadTasks();
   }
 
-  // ----------------------------
-  // EDIT
-  // ----------------------------
   function editTask(task) {
     setEditingId(task.id);
     setForm({
@@ -98,84 +95,102 @@ export default function Tasks() {
     });
   }
 
-  // ----------------------------
-  // DELETE
-  // ----------------------------
   async function deleteTask(id) {
     if (!window.confirm("Delete this task?")) return;
     await supabase.from("tasks").delete().eq("id", id);
     loadTasks();
   }
 
-  // ----------------------------
-  // RENDER
-  // ----------------------------
+  /* ----------------------------------
+     RENDER
+  ---------------------------------- */
   return (
     <div style={{ padding: 20 }}>
       <h1>Tasks</h1>
 
       {/* FORM */}
-      <div style={formStyle}>
-        <input
-          placeholder="Task title"
-          value={form.title}
-          onChange={e => updateField("title", e.target.value)}
-        />
+      <div style={formGrid}>
+        <Field label="Title">
+          <input
+            style={inputStyle}
+            value={form.title}
+            onChange={e => updateField("title", e.target.value)}
+            placeholder="Task title"
+          />
+        </Field>
 
-        <input
-          type="date"
-          value={form.assigned_date}
-          onChange={e => updateField("assigned_date", e.target.value)}
-        />
+        <Field label="Assigned Date">
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.assigned_date}
+            onChange={e => updateField("assigned_date", e.target.value)}
+          />
+        </Field>
 
-        <input
-          type="date"
-          value={form.initial_deadline}
-          onChange={e => updateField("initial_deadline", e.target.value)}
-        />
+        <Field label="Initial Deadline">
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.initial_deadline}
+            onChange={e => updateField("initial_deadline", e.target.value)}
+          />
+        </Field>
 
-        <input
-          type="date"
-          value={form.new_deadline}
-          onChange={e => updateField("new_deadline", e.target.value)}
-        />
+        <Field label="New Deadline">
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.new_deadline}
+            onChange={e => updateField("new_deadline", e.target.value)}
+          />
+        </Field>
 
-        <select
-          value={form.owner}
-          onChange={e => updateField("owner", e.target.value)}
-        >
-          <option value="">-- Select owner --</option>
-          {OWNERS.map(o => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
-
-        <select
-          value={form.status}
-          onChange={e => updateField("status", e.target.value)}
-        >
-          {STATUSES.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-
-        <button onClick={saveTask}>
-          {editingId ? "Update Task" : "Create Task"}
-        </button>
-
-        {editingId && (
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setForm(emptyForm);
-            }}
+        <Field label="Owner">
+          <select
+            style={inputStyle}
+            value={form.owner}
+            onChange={e => updateField("owner", e.target.value)}
           >
-            Cancel
+            <option value="">-- Select owner --</option>
+            {OWNERS.map(o => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Status">
+          <select
+            style={inputStyle}
+            value={form.status}
+            onChange={e => updateField("status", e.target.value)}
+          >
+            {STATUSES.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </Field>
+
+        {/* ACTIONS */}
+        <div style={actionsStyle}>
+          <button onClick={saveTask}>
+            {editingId ? "Update Task" : "Create Task"}
           </button>
-        )}
+
+          {editingId && (
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* TASK TABLE */}
+      {/* TABLE */}
       <table style={tableStyle}>
         <thead>
           <tr>
@@ -192,7 +207,7 @@ export default function Tasks() {
         <tbody>
           {tasks.map(t => (
             <tr key={t.id}>
-              <td style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <td style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <Avatar name={t.owner} />
                 {t.owner}
               </td>
@@ -215,14 +230,50 @@ export default function Tasks() {
   );
 }
 
-// ----------------------------
-// STYLES
-// ----------------------------
-const formStyle = {
+/* ----------------------------------
+   HELPER COMPONENTS
+---------------------------------- */
+function Field({ label, children }) {
+  return (
+    <div style={fieldStyle}>
+      <label style={labelStyle}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+/* ----------------------------------
+   STYLES
+---------------------------------- */
+const formGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 16,
+  marginBottom: 24,
+  alignItems: "end"
+};
+
+const fieldStyle = {
+  display: "flex",
+  flexDirection: "column"
+};
+
+const labelStyle = {
+  fontSize: 13,
+  fontWeight: 600,
+  marginBottom: 6
+};
+
+const inputStyle = {
+  height: 36,
+  padding: "6px 10px",
+  fontSize: 14
+};
+
+const actionsStyle = {
+  display: "flex",
   gap: 10,
-  marginBottom: 20
+  alignItems: "flex-end"
 };
 
 const tableStyle = {
