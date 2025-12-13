@@ -1,7 +1,7 @@
 import React from "react";
 
 /* ----------------------------------
-   CONSTANTS
+   CONSTANTS 
 ---------------------------------- */
 const OWNERS = [
   "AURELLE",
