@@ -132,10 +132,10 @@ export default function Dashboard() {
   });
 
   /* ----------------------------------
-     CHART DATA (100% STACKED)
+     CHART DATA (100% STACKED – HORIZONTAL)
   ---------------------------------- */
   const chartData = {
-    labels: OWNERS,
+    labels: OWNERS, // owners on Y-axis
     datasets: STATUSES.map(status => ({
       label: status,
       data: ownerStats.map(o =>
@@ -146,15 +146,28 @@ export default function Dashboard() {
   };
 
   const chartOptions = {
+    indexAxis: "y", // ✅ HORIZONTAL STACKED BARS
     responsive: true,
     maintainAspectRatio: false,
     scales: {
-      x: { stacked: true },
-      y: {
+      x: {
         stacked: true,
         min: 0,
         max: 100,
-        ticks: { callback: v => `${v}%` }
+        ticks: {
+          callback: v => `${v}%`
+        },
+        title: {
+          display: true,
+          text: "Percentage (%)"
+        }
+      },
+      y: {
+        stacked: true,
+        title: {
+          display: true,
+          text: "Owner"
+        }
       }
     },
     plugins: {
