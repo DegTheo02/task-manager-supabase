@@ -13,22 +13,11 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
-/* ----------------------------------
-   REGISTER CHART
----------------------------------- */
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Tooltip,
-  Legend,
-  Title
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, Title);
 
-/* 🔴 EXPLICIT CDN DATALABELS REGISTRATION */
-const ChartDataLabels = window.ChartDataLabels;
-if (ChartDataLabels) {
-  ChartJS.register(ChartDataLabels);
+// Register CDN datalabels if available
+if (window.ChartDataLabels) {
+  ChartJS.register(window.ChartDataLabels);
 }
 
 /* ----------------------------------
@@ -147,9 +136,7 @@ export default function Dashboard() {
     totals[s] = ownerStats.reduce((a, r) => a + r[s], 0);
   });
 
-  /* ----------------------------------
-     CHART DATA (100% STACKED)
-  ---------------------------------- */
+  /* CHART DATA (100% STACKED) */
   const chartData = {
     labels: OWNERS,
     datasets: STATUSES.map(s => ({
@@ -163,7 +150,6 @@ export default function Dashboard() {
 
   const chartOptions = {
     responsive: true,
-    maintainAspectRatio: false,
     scales: {
       x: { stacked: true },
       y: {
@@ -179,19 +165,13 @@ export default function Dashboard() {
         display: true,
         text: "Task Distribution per Owner (100%)"
       },
-
-      /* 🔴 FORCE DATALABELS */
       datalabels: {
         display: true,
-        clamp: true,
+        color: "white",
         anchor: "center",
         align: "center",
-        color: "#ffffff",
-        font: {
-          weight: "bold",
-          size: 11
-        },
-        formatter: value => (value > 0 ? value + "%" : "")
+        font: { weight: "bold", size: 11 },
+        formatter: v => (v > 0 ? v + "%" : "")
       }
     }
   };
@@ -207,6 +187,7 @@ export default function Dashboard() {
 
       {/* KPI CARDS */}
       <div style={kpiGrid}>
+        {/* TOTAL */}
         <div style={kpiCard}>
           <div style={kpiTitle}>TOTAL</div>
           <div style={kpiValueRow}>
@@ -227,15 +208,15 @@ export default function Dashboard() {
       </div>
 
       {/* CHART */}
-      <div style={{ marginTop: 40, height: 360 }}>
+      <div style={{ marginTop: 40 }}>
         <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* TABLE 1 */}
+      {/* TABLE 1: COUNTS */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
       <OwnerCountTable data={ownerStats} totals={totals} />
 
-      {/* TABLE 2 */}
+      {/* TABLE 2: PERCENTAGES */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
       <OwnerPercentageTable data={ownerStats} />
     </div>
