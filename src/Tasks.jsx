@@ -41,7 +41,7 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /* FILTERS (MULTI-SELECT) */
+  /* FILTERS */
   const [filters, setFilters] = useState({
     owners: [],
     statuses: [],
@@ -216,8 +216,10 @@ export default function Tasks() {
 
       {/* ================= FILTERS ================= */}
       <div style={filterBar}>
+        {/* OWNERS MULTI-SELECT DROPDOWN */}
         <select
           multiple
+          size={1}
           value={filters.owners}
           onChange={e =>
             setFilters(f => ({
@@ -226,11 +228,14 @@ export default function Tasks() {
             }))
           }
         >
+          <option disabled>Owners</option>
           {OWNERS.map(o => <option key={o}>{o}</option>)}
         </select>
 
+        {/* STATUS MULTI-SELECT DROPDOWN */}
         <select
           multiple
+          size={1}
           value={filters.statuses}
           onChange={e =>
             setFilters(f => ({
@@ -239,6 +244,7 @@ export default function Tasks() {
             }))
           }
         >
+          <option disabled>Status</option>
           {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
 
@@ -281,7 +287,13 @@ export default function Tasks() {
               <tr key={t.id}>
                 <td style={td}>{t.title}</td>
                 <td style={td}>{t.owner}</td>
-                <td style={{ ...td, color: STATUS_COLORS[t.status], fontWeight: 700 }}>
+                <td
+                  style={{
+                    ...td,
+                    color: STATUS_COLORS[t.status],
+                    fontWeight: 700
+                  }}
+                >
                   {t.status}
                 </td>
                 <td style={td}>{t.assigned_date}</td>
