@@ -16,9 +16,11 @@ import { Bar } from "react-chartjs-2";
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, Title);
 
 // Register CDN datalabels if available
-if (window.ChartDataLabels) {
-  ChartJS.register(window.ChartDataLabels);
+const ChartDataLabels = window.ChartDataLabels;
+if (ChartDataLabels) {
+  ChartJS.register(ChartDataLabels);
 }
+
 
 /* ----------------------------------
    CONSTANTS
