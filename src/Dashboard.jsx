@@ -73,7 +73,7 @@ export default function Dashboard() {
       .then(({ data }) => setTasks(data || []));
   }, []);
 
-  /* APPLY FILTERS (UPDATED) */
+  /* APPLY FILTERS */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
       if (filters.owner && t.owner !== filters.owner) return false;
@@ -115,7 +115,7 @@ export default function Dashboard() {
   });
 
   /* ----------------------------------
-     OWNER STATS (STACKED BAR)
+     OWNER STATS
   ---------------------------------- */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
@@ -127,7 +127,7 @@ export default function Dashboard() {
   });
 
   /* ----------------------------------
-     CHART DATA (100% STACKED – VERTICAL)
+     CHART DATA (100% STACKED)
   ---------------------------------- */
   const chartData = {
     labels: OWNERS,
@@ -149,9 +149,7 @@ export default function Dashboard() {
         stacked: true,
         min: 0,
         max: 100,
-        ticks: {
-          callback: v => `${v}%`
-        }
+        ticks: { callback: v => `${v}%` }
       }
     },
     plugins: {
@@ -170,7 +168,7 @@ export default function Dashboard() {
     <div style={{ padding: 20 }}>
       <h1>Dashboard</h1>
 
-      {/* FILTERS (UPDATED) */}
+      {/* FILTERS */}
       <Filters onChange={setFilters} />
 
       {/* KPI CARDS */}
@@ -191,7 +189,7 @@ export default function Dashboard() {
         <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* TABLE */}
+      {/* ================= TABLE 1 ================= */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
       <table style={dashboardTable}>
         <thead>
@@ -211,6 +209,33 @@ export default function Dashboard() {
                 <td key={s} style={td}>{r[s]}</td>
               ))}
               <td style={td}><b>{r.TOTAL}</b></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* ================= TABLE 2 (RESTORED) ================= */}
+      <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
+      <table style={dashboardTable}>
+        <thead>
+          <tr>
+            <th style={th}>Owner</th>
+            {STATUSES.map(s => (
+              <th key={s} style={th}>% {s}</th>
+            ))}
+            <th style={th}>TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ownerStats.map(r => (
+            <tr key={r.owner}>
+              <td style={ownerTd}>{r.owner}</td>
+              {STATUSES.map(s => (
+                <td key={s} style={td}>
+                  {r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%
+                </td>
+              ))}
+              <td style={td}><b>100%</b></td>
             </tr>
           ))}
         </tbody>
