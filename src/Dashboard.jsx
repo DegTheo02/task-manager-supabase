@@ -14,7 +14,7 @@ import {
 import { Bar } from "react-chartjs-2";
 
 /* ----------------------------------
-   REGISTER CHART.JS
+   REGISTER CHART
 ---------------------------------- */
 ChartJS.register(
   CategoryScale,
@@ -25,9 +25,7 @@ ChartJS.register(
   Title
 );
 
-/* ----------------------------------
-   REGISTER DATALABELS (CDN)
----------------------------------- */
+/* 🔴 EXPLICIT CDN DATALABELS REGISTRATION */
 const ChartDataLabels = window.ChartDataLabels;
 if (ChartDataLabels) {
   ChartJS.register(ChartDataLabels);
@@ -67,14 +65,14 @@ const STATUS_COLORS = {
 };
 
 /* ----------------------------------
-   DASHBOARD COMPONENT
+   COMPONENT
 ---------------------------------- */
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [filters, setFilters] = useState({});
 
-  /* LOAD TASKS */
+  /* LOAD DATA */
   useEffect(() => {
     loadTasks();
   }, []);
@@ -122,10 +120,10 @@ export default function Dashboard() {
   const totalTasks = filteredTasks.length || 1;
 
   /* KPI DATA */
-  const kpis = STATUSES.map(status => {
-    const count = filteredTasks.filter(t => t.status === status).length;
+  const kpis = STATUSES.map(s => {
+    const count = filteredTasks.filter(t => t.status === s).length;
     return {
-      status,
+      status: s,
       count,
       percent: Math.round((count / totalTasks) * 100)
     };
@@ -154,12 +152,12 @@ export default function Dashboard() {
   ---------------------------------- */
   const chartData = {
     labels: OWNERS,
-    datasets: STATUSES.map(status => ({
-      label: status,
+    datasets: STATUSES.map(s => ({
+      label: s,
       data: ownerStats.map(o =>
-        o.TOTAL === 0 ? 0 : Math.round((o[status] / o.TOTAL) * 100)
+        o.TOTAL === 0 ? 0 : Math.round((o[s] / o.TOTAL) * 100)
       ),
-      backgroundColor: STATUS_COLORS[status]
+      backgroundColor: STATUS_COLORS[s]
     }))
   };
 
@@ -172,9 +170,7 @@ export default function Dashboard() {
         stacked: true,
         beginAtZero: true,
         max: 100,
-        ticks: {
-          callback: v => v + "%"
-        }
+        ticks: { callback: v => v + "%" }
       }
     },
     plugins: {
@@ -183,6 +179,8 @@ export default function Dashboard() {
         display: true,
         text: "Task Distribution per Owner (100%)"
       },
+
+      /* 🔴 FORCE DATALABELS */
       datalabels: {
         display: true,
         clamp: true,
@@ -209,7 +207,6 @@ export default function Dashboard() {
 
       {/* KPI CARDS */}
       <div style={kpiGrid}>
-        {/* TOTAL KPI */}
         <div style={kpiCard}>
           <div style={kpiTitle}>TOTAL</div>
           <div style={kpiValueRow}>
@@ -231,18 +228,14 @@ export default function Dashboard() {
 
       {/* CHART */}
       <div style={{ marginTop: 40, height: 360 }}>
-        <Bar
-          data={chartData}
-          options={chartOptions}
-          plugins={[ChartDataLabels]}
-        />
+        <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* TABLE 1: COUNTS */}
+      {/* TABLE 1 */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
       <OwnerCountTable data={ownerStats} totals={totals} />
 
-      {/* TABLE 2: PERCENTAGES */}
+      {/* TABLE 2 */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
       <OwnerPercentageTable data={ownerStats} />
     </div>
@@ -304,9 +297,7 @@ function OwnerPercentageTable({ data }) {
             <td style={ownerCell}>{r.owner}</td>
             {STATUSES.map(s => (
               <td key={s} style={tableCell}>
-                {r.TOTAL === 0
-                  ? "0%"
-                  : Math.round((r[s] / r.TOTAL) * 100) + "%"}
+                {r.TOTAL === 0 ? "0%" : Math.round((r[s] / r.TOTAL) * 100) + "%"}
               </td>
             ))}
             <td style={tableCell}><b>100%</b></td>
