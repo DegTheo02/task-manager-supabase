@@ -13,37 +13,50 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
-// Register Chart.js
+/* ----------------------------------
+   CHART REGISTRATION
+---------------------------------- */
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, Title);
 
-// Register datalabels from CDN
 if (window.ChartDataLabels) {
   ChartJS.register(window.ChartDataLabels);
 }
 
-// CONSTANTS
+/* ----------------------------------
+   CONSTANTS
+---------------------------------- */
 const OWNERS = [
-  "AURELLE", "CHRISTIAN", "SERGEA", "FABRICE", "FLORIAN",
-  "JOSIAS", "ESTHER", "MARIUS", "THEOPHANE"
+  "AURELLE",
+  "CHRISTIAN",
+  "SERGEA",
+  "FABRICE",
+  "FLORIAN",
+  "JOSIAS",
+  "ESTHER",
+  "MARIUS",
+  "THEOPHANE"
 ];
 
 const STATUSES = [
   "OPEN",
   "ONGOING",
-  "CLOSED ON TIME",
-  "CLOSED PAST DUE",
   "OVERDUE",
-  "ON HOLD"
+  "ON HOLD",
+  "CLOSED ON TIME",
+  "CLOSED PAST DUE"
 ];
 
+/* ----------------------------------
+   COMPONENT
+---------------------------------- */
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [filters, setFilters] = useState({});
 
-  // ----------------------------------
-  // LOAD DATA
-  // ----------------------------------
+  /* ----------------------------------
+     LOAD DATA
+  ---------------------------------- */
   useEffect(() => {
     loadTasks();
   }, []);
@@ -53,9 +66,9 @@ export default function Dashboard() {
     setTasks(data || []);
   }
 
-  // ----------------------------------
-  // APPLY FILTERS (SINGLE SOURCE)
-  // ----------------------------------
+  /* ----------------------------------
+     APPLY FILTERS (SINGLE SOURCE)
+  ---------------------------------- */
   useEffect(() => {
     let data = [...tasks];
 
@@ -73,50 +86,29 @@ export default function Dashboard() {
       data = data.filter(t => t.status === filters.status);
     }
 
-    if (filters.assignedFrom) {
-      data = data.filter(t => t.assigned_date >= filters.assignedFrom);
-    }
-
-    if (filters.assignedTo) {
-      data = data.filter(t => t.assigned_date <= filters.assignedTo);
-    }
-
-    if (filters.deadlineFrom) {
-      data = data.filter(t => t.initial_deadline >= filters.deadlineFrom);
-    }
-
-    if (filters.deadlineTo) {
-      data = data.filter(t => t.initial_deadline <= filters.deadlineTo);
-    }
-
     setFilteredTasks(data);
   }, [filters, tasks]);
 
-  // ----------------------------------
-  // KPIs (FROM filteredTasks ONLY)
-  // ----------------------------------
-  const totalTasks = filteredTasks.length;
-
-  const kpi = status =>
+  /* ----------------------------------
+     KPI HELPERS
+  ---------------------------------- */
+  const countStatus = status =>
     filteredTasks.filter(t => t.status === status).length;
 
-  const closedOnTime = kpi("CLOSED ON TIME");
-  const closedPastDue = kpi("CLOSED PAST DUE");
+  const closedOnTime = countStatus("CLOSED ON TIME");
+  const closedPastDue = countStatus("CLOSED PAST DUE");
   const totalClosed = closedOnTime + closedPastDue;
+
   const onTimeRate =
     totalClosed === 0 ? 0 : Math.round((closedOnTime / totalClosed) * 100);
 
-  // ----------------------------------
-  // OWNER STATS (RAW COUNTS)
-  // ----------------------------------
+  /* ----------------------------------
+     OWNER STATS
+  ---------------------------------- */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
 
-    const row = {
-      owner,
-      TOTAL: list.length
-    };
-
+    const row = { owner, TOTAL: list.length };
     STATUSES.forEach(s => {
       row[s] = list.filter(t => t.status === s).length;
     });
@@ -124,136 +116,123 @@ export default function Dashboard() {
     return row;
   });
 
-  // ----------------------------------
-  // TOTALS
-  // ----------------------------------
-  const totals = {
-    TOTAL: ownerStats.reduce((a, r) => a + r.TOTAL, 0)
-  };
-
+  /* ----------------------------------
+     TOTALS
+  ---------------------------------- */
+  const totals = { TOTAL: ownerStats.reduce((a, r) => a + r.TOTAL, 0) };
   STATUSES.forEach(s => {
     totals[s] = ownerStats.reduce((a, r) => a + r[s], 0);
   });
 
-  // ----------------------------------
-  // STACKED CHART DATA
-  // ----------------------------------
-  const stackedData = {
+  /* ----------------------------------
+     CHART DATA
+  ---------------------------------- */
+  const chartData = {
     labels: OWNERS,
     datasets: [
-      { label: "OPEN", data: ownerStats.map(o => o["OPEN"]), backgroundColor: "#3B82F6" },
-      { label: "ONGOING", data: ownerStats.map(o => o["ONGOING"]), backgroundColor: "#0EA5A8" },
-      { label: "OVERDUE", data: ownerStats.map(o => o["OVERDUE"]), backgroundColor: "#DC2626" },
+      { label: "OPEN", data: ownerStats.map(o => o.OPEN), backgroundColor: "#3B82F6" },
+      { label: "ONGOING", data: ownerStats.map(o => o.ONGOING), backgroundColor: "#0EA5A8" },
+      { label: "OVERDUE", data: ownerStats.map(o => o.OVERDUE), backgroundColor: "#DC2626" },
       { label: "ON HOLD", data: ownerStats.map(o => o["ON HOLD"]), backgroundColor: "#6B7280" },
       { label: "CLOSED ON TIME", data: ownerStats.map(o => o["CLOSED ON TIME"]), backgroundColor: "#16A34A" },
       { label: "CLOSED PAST DUE", data: ownerStats.map(o => o["CLOSED PAST DUE"]), backgroundColor: "#F97316" }
     ]
   };
 
-  const stackedOptions = {
+  const chartOptions = {
     responsive: true,
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, beginAtZero: true }
+    },
     plugins: {
       legend: { position: "top" },
       title: { display: true, text: "Task Distribution per Owner (Stacked)" },
       datalabels: {
         color: "white",
-        formatter: value => (value > 0 ? value : ""),
-        font: { weight: "bold" }
+        font: { weight: "bold" },
+        formatter: v => (v > 0 ? v : "")
       }
-    },
-    scales: {
-      x: { stacked: true },
-      y: { stacked: true, beginAtZero: true }
     }
   };
 
-  // ----------------------------------
-  // RENDER
-  // ----------------------------------
+  /* ----------------------------------
+     RENDER
+  ---------------------------------- */
   return (
     <div style={{ padding: 20 }}>
       <h1>Dashboard</h1>
 
-      {/* FILTERS */}
       <Filters onChange={setFilters} />
 
       {/* KPI CARDS */}
       <div style={kpiGrid}>
-        <KPI title="Total Tasks" value={totalTasks} />
-        <KPI title="Open" value={kpi("OPEN")} />
-        <KPI title="Ongoing" value={kpi("ONGOING")} />
-        <KPI title="Overdue" value={kpi("OVERDUE")} />
-        <KPI title="On Hold" value={kpi("ON HOLD")} />
+        <KPI title="Total Tasks" value={filteredTasks.length} />
+        <KPI title="Open" value={countStatus("OPEN")} />
+        <KPI title="Ongoing" value={countStatus("ONGOING")} />
+        <KPI title="Overdue" value={countStatus("OVERDUE")} />
+        <KPI title="On Hold" value={countStatus("ON HOLD")} />
         <KPI title="Closed On Time" value={closedOnTime} />
         <KPI title="Closed Past Due" value={closedPastDue} />
-        <KPI title="% On Time" value={onTimeRate + "%"} />
+        <KPI title="% On-Time" value={`${onTimeRate}%`} />
       </div>
 
-      {/* STACKED CHART */}
+      {/* CHART */}
       <div style={{ marginTop: 40 }}>
-        <Bar data={stackedData} options={stackedOptions} />
+        <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* RAW TABLE */}
+      {/* TABLE 1 */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner</h2>
       <OwnerTable data={ownerStats} totals={totals} />
 
-      {/* PERCENTAGE TABLE */}
+      {/* TABLE 2 */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
       <PercentageTable data={ownerStats} totals={totals} />
     </div>
   );
 }
 
-// ----------------------------------
-// COMPONENTS
-// ----------------------------------
+/* ----------------------------------
+   SUB COMPONENTS
+---------------------------------- */
 function KPI({ title, value }) {
   return (
     <div style={kpiCard}>
       <div>{title}</div>
-      <div style={{ fontSize: 28, fontWeight: "bold" }}>{value}</div>
+      <div style={{ fontSize: 26, fontWeight: "bold" }}>{value}</div>
     </div>
   );
 }
 
 function OwnerTable({ data, totals }) {
   return (
-    <table style={table}>
+    <table style={dashboardTable}>
       <thead>
         <tr>
-          <th>Owner</th>
-          <th>OPEN</th>
-          <th>ONGOING</th>
-          <th>OVERDUE</th>
-          <th>ON HOLD</th>
-          <th>CLOSED ON TIME</th>
-          <th>CLOSED PAST DUE</th>
-          <th><b>TOTAL</b></th>
+          <th style={tableHeader}>Owner</th>
+          {STATUSES.map(s => (
+            <th key={s} style={tableHeader}>{s}</th>
+          ))}
+          <th style={tableHeader}>TOTAL</th>
         </tr>
       </thead>
       <tbody>
         {data.map(r => (
           <tr key={r.owner}>
-            <td>{r.owner}</td>
-            <td>{r["OPEN"]}</td>
-            <td>{r["ONGOING"]}</td>
-            <td>{r["OVERDUE"]}</td>
-            <td>{r["ON HOLD"]}</td>
-            <td>{r["CLOSED ON TIME"]}</td>
-            <td>{r["CLOSED PAST DUE"]}</td>
-            <td><b>{r.TOTAL}</b></td>
+            <td style={ownerCell}>{r.owner}</td>
+            {STATUSES.map(s => (
+              <td key={s} style={tableCell}>{r[s]}</td>
+            ))}
+            <td style={tableCell}><b>{r.TOTAL}</b></td>
           </tr>
         ))}
-        <tr style={{ background: "#E5E7EB", fontWeight: "bold" }}>
-          <td>TOTAL</td>
-          <td>{totals["OPEN"]}</td>
-          <td>{totals["ONGOING"]}</td>
-          <td>{totals["OVERDUE"]}</td>
-          <td>{totals["ON HOLD"]}</td>
-          <td>{totals["CLOSED ON TIME"]}</td>
-          <td>{totals["CLOSED PAST DUE"]}</td>
-          <td>{totals.TOTAL}</td>
+        <tr style={totalRow}>
+          <td style={ownerCell}>TOTAL</td>
+          {STATUSES.map(s => (
+            <td key={s} style={tableCell}>{totals[s]}</td>
+          ))}
+          <td style={tableCell}>{totals.TOTAL}</td>
         </tr>
       </tbody>
     </table>
@@ -262,17 +241,14 @@ function OwnerTable({ data, totals }) {
 
 function PercentageTable({ data, totals }) {
   return (
-    <table style={table}>
+    <table style={dashboardTable}>
       <thead>
         <tr>
-          <th>Owner</th>
-          <th>% OPEN</th>
-          <th>% ONGOING</th>
-          <th>% OVERDUE</th>
-          <th>% ON HOLD</th>
-          <th>% CLOSED ON TIME</th>
-          <th>% CLOSED PAST DUE</th>
-          <th><b>% ON-TIME RATE</b></th>
+          <th style={tableHeader}>Owner</th>
+          {STATUSES.map(s => (
+            <th key={s} style={tableHeader}>% {s}</th>
+          ))}
+          <th style={tableHeader}>% ON-TIME</th>
         </tr>
       </thead>
       <tbody>
@@ -284,46 +260,40 @@ function PercentageTable({ data, totals }) {
 
           return (
             <tr key={r.owner}>
-              <td>{r.owner}</td>
+              <td style={ownerCell}>{r.owner}</td>
               {STATUSES.map(s => (
-                <td key={s}>{Math.round((r[s] / total) * 100)}%</td>
+                <td key={s} style={tableCell}>
+                  {Math.round((r[s] / total) * 100)}%
+                </td>
               ))}
-              <td><b>{onTime}%</b></td>
+              <td style={tableCell}><b>{onTime}%</b></td>
             </tr>
           );
         })}
 
-        <tr style={{ background: "#E5E7EB", fontWeight: "bold" }}>
-          <td>TOTAL</td>
+        <tr style={totalRow}>
+          <td style={ownerCell}>TOTAL</td>
           {STATUSES.map(s => (
-            <td key={s}>
+            <td key={s} style={tableCell}>
               {totals.TOTAL === 0
                 ? "0%"
                 : Math.round((totals[s] / totals.TOTAL) * 100) + "%"}
             </td>
           ))}
-          <td>
-            {totals["CLOSED ON TIME"] + totals["CLOSED PAST DUE"] === 0
-              ? "0%"
-              : Math.round(
-                  (totals["CLOSED ON TIME"] /
-                    (totals["CLOSED ON TIME"] + totals["CLOSED PAST DUE"])) *
-                    100
-                ) + "%"}
-          </td>
+          <td style={tableCell}>100%</td>
         </tr>
       </tbody>
     </table>
   );
 }
 
-// ----------------------------------
-// STYLES
-// ----------------------------------
+/* ----------------------------------
+   STYLES
+---------------------------------- */
 const kpiGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 15,
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: 14,
   marginTop: 20
 };
 
@@ -335,8 +305,35 @@ const kpiCard = {
   textAlign: "center"
 };
 
-const table = {
+const dashboardTable = {
   width: "100%",
   borderCollapse: "collapse",
-  marginTop: 10
+  marginTop: 10,
+  fontSize: 14
+};
+
+const tableHeader = {
+  border: "1px solid #D1D5DB",
+  backgroundColor: "#F3F4F6",
+  padding: "8px",
+  textAlign: "center",
+  fontWeight: 700
+};
+
+const tableCell = {
+  border: "1px solid #D1D5DB",
+  padding: "8px",
+  textAlign: "center"
+};
+
+const ownerCell = {
+  border: "1px solid #D1D5DB",
+  padding: "8px",
+  textAlign: "left",
+  fontWeight: 600
+};
+
+const totalRow = {
+  backgroundColor: "#E5E7EB",
+  fontWeight: 700
 };
