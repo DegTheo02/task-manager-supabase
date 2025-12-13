@@ -32,98 +32,99 @@ const RECURRENCE_TYPES = [
   "Recurring Monthly"
 ];
 
-/* ----------------------------------
-   FILTERS
----------------------------------- */
 export default function Filters({ onChange }) {
   const update = (key, value) => {
     onChange(prev => ({ ...prev, [key]: value }));
   };
 
   return (
-    <div style={filterBar}>
-      {/* OWNER */}
-      <select
-        style={select}
-        onChange={e => update("owner", e.target.value)}
-      >
-        <option value="">Owner</option>
-        {OWNERS.map(o => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
+    <div style={filterContainer}>
+      {/* ROW 1 */}
+      <div style={filterRow}>
+        <select style={select} onChange={e => update("owner", e.target.value)}>
+          <option value="">Owner</option>
+          {OWNERS.map(o => <option key={o}>{o}</option>)}
+        </select>
 
-      {/* TEAM */}
-      <select
-        style={select}
-        onChange={e => update("team", e.target.value)}
-      >
-        <option value="">Team</option>
-        {TEAMS.map(t => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-      </select>
+        <select style={select} onChange={e => update("team", e.target.value)}>
+          <option value="">Team</option>
+          {TEAMS.map(t => <option key={t}>{t}</option>)}
+        </select>
 
-      {/* STATUS */}
-      <select
-        style={select}
-        onChange={e => update("status", e.target.value)}
-      >
-        <option value="">Status</option>
-        {STATUSES.map(s => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </select>
+        <select style={select} onChange={e => update("status", e.target.value)}>
+          <option value="">Status</option>
+          {STATUSES.map(s => <option key={s}>{s}</option>)}
+        </select>
 
-      {/* RECURRENCE */}
-      <select
-        style={select}
-        onChange={e => update("recurrence_type", e.target.value)}
-      >
-        <option value="">Recurrence</option>
-        {RECURRENCE_TYPES.map(r => (
-          <option key={r} value={r}>{r}</option>
-        ))}
-      </select>
+        <select
+          style={select}
+          onChange={e => update("recurrence_type", e.target.value)}
+        >
+          <option value="">Recurrence</option>
+          {RECURRENCE_TYPES.map(r => <option key={r}>{r}</option>)}
+        </select>
+      </div>
 
-      {/* ASSIGNED DATE */}
-      <input
-        type="date"
-        style={dateInput}
-        onChange={e => update("assigned_from", e.target.value)}
-      />
+      {/* ROW 2 */}
+      <div style={filterRow}>
+        <div style={dateGroup}>
+          <span style={label}>Assigned date</span>
+          <input
+            type="date"
+            style={dateInput}
+            onChange={e => update("assigned_from", e.target.value)}
+          />
+          <input
+            type="date"
+            style={dateInput}
+            onChange={e => update("assigned_to", e.target.value)}
+          />
+        </div>
 
-      <input
-        type="date"
-        style={dateInput}
-        onChange={e => update("assigned_to", e.target.value)}
-      />
-
-      {/* DEADLINE */}
-      <input
-        type="date"
-        style={dateInput}
-        onChange={e => update("deadline_from", e.target.value)}
-      />
-
-      <input
-        type="date"
-        style={dateInput}
-        onChange={e => update("deadline_to", e.target.value)}
-      />
+        <div style={dateGroup}>
+          <span style={label}>Deadline</span>
+          <input
+            type="date"
+            style={dateInput}
+            onChange={e => update("deadline_from", e.target.value)}
+          />
+          <input
+            type="date"
+            style={dateInput}
+            onChange={e => update("deadline_to", e.target.value)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ----------------------------------
-   STYLES (COMPACT)
+   STYLES
 ---------------------------------- */
-const filterBar = {
+const filterContainer = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  marginBottom: 16
+};
+
+const filterRow = {
   display: "flex",
   gap: 8,
-  flexWrap: "wrap",
   alignItems: "center",
-  marginBottom: 16
+  flexWrap: "wrap"
+};
+
+const dateGroup = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6
+};
+
+const label = {
+  fontWeight: 600,
+  fontSize: 12
 };
 
 const select = {
