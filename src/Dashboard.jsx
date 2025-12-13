@@ -26,7 +26,7 @@ ChartJS.register(
 );
 
 /* ----------------------------------
-   SAFE DATALABELS HANDLING
+   SAFE DATALABELS HANDLING (CDN)
 ---------------------------------- */
 const ChartDataLabels = window.ChartDataLabels || null;
 if (ChartDataLabels) {
@@ -68,7 +68,7 @@ const STATUS_COLORS = {
 };
 
 /* ----------------------------------
-   DASHBOARD COMPONENT
+   DASHBOARD
 ---------------------------------- */
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
@@ -164,13 +164,17 @@ export default function Dashboard() {
         text: "Task Distribution per Owner (100%)"
       },
       datalabels: {
-        display: true,
+        display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
         anchor: "center",
         align: "center",
-        clamp: true,
+        clamp: false,
+        clip: false,
         color: "#ffffff",
-        font: { weight: "bold", size: 11 },
-        formatter: v => (v > 0 ? `${v}%` : "")
+        font: {
+          weight: "bold",
+          size: 11
+        },
+        formatter: value => `${value}%`
       }
     }
   };
