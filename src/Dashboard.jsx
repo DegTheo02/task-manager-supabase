@@ -2,429 +2,209 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
 
-// Chart.js imports
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
-  ArcElement,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend
-} from "chart.js";
-
-import ChartDataLabels from "chartjs-plugin-datalabels";
-import { Bar } from "react-chartjs-2";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  PointElement,
-  LineElement,
   Tooltip,
   Legend,
-  ChartDataLabels
-);
+  Title,
+} from "chart.js";
 
-// -------------------------------
-// OWNER LIST
-// -------------------------------
-const owners = [
-  "AURELLE", "CHRISTIAN", "SERGEA", "FABRICE", "FLORIAN",
-  "JOSIAS", "ESTHER", "MARIUS", "THEOPHANE"
-];
+import { Bar } from "react-chartjs-2";
 
-// -------------------------------
-// RAW STATS PER OWNER
-// -------------------------------
-function computeOwnerStats(tasks, owners) {
-  return owners.map(owner => {
-    const ownerTasks = tasks.filter(t => t.owner === owner);
+// Register core chart components
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, Title);
 
-    return {
-      owner,
-      OPEN: ownerTasks.filter(t => t.status === "OPEN").length,
-      ONGOING: ownerTasks.filter(t => t.status === "ONGOING").length,
-      OVERDUE: ownerTasks.filter(t => t.status === "OVERDUE").length,
-      ON_HOLD: ownerTasks.filter(t => t.status === "ON HOLD").length,
-      CLOSED_ON_TIME: ownerTasks.filter(t => t.status === "CLOSED ON TIME").length,
-      CLOSED_PAST_DUE: ownerTasks.filter(t => t.status === "CLOSED PAST DUE").length,
-      TOTAL: ownerTasks.length
-    };
-  });
-}
-
-// -------------------------------
-// PERCENTAGES PER OWNER
-// -------------------------------
-function computeOwnerPercentages(stats) {
-  return stats.map(row => {
-    const total = row.TOTAL || 1;
-
-    return {
-      owner: row.owner,
-      pctOpen: Math.round((row.OPEN / total) * 100),
-      pctOngoing: Math.round((row.ONGOING / total) * 100),
-      pctOverdue: Math.round((row.OVERDUE / total) * 100),
-      pctOnHold: Math.round((row.ON_HOLD / total) * 100),
-      pctClosedOnTime: Math.round((row.CLOSED_ON_TIME / total) * 100),
-      pctClosedLate: Math.round((row.CLOSED_PAST_DUE / total) * 100),
-      pctOnTimeRate: Math.round(
-        (row.CLOSED_ON_TIME / ((row.CLOSED_ON_TIME + row.CLOSED_PAST_DUE) || 1)) * 100
-      )
-    };
-  });
-}
-
-// -------------------------------
-// TOTAL helpers
-// -------------------------------
-function totalTasks(stats) {
-  return stats.reduce((a, r) => a + r.TOTAL, 0);
+// Register DataLabels from CDN
+if (window.ChartDataLabels) {
+  ChartJS.register(window.ChartDataLabels);
 }
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
-  const [filtered, setFiltered] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
 
-  useEffect(() => { load(); }, []);
+  const owners = [
+    "AURELLE",
+    "CHRISTIAN",
+    "SERGEA",
+    "FABRICE",
+    "FLORIAN",
+    "JOSIAS",
+    "ESTHER",
+    "MARIUS",
+    "THEOPHANE",
+  ];
 
-  async function load() {
-    const { data } = await supabase.from("tasks").select("*");
-    setTasks(data || []);
-    setFiltered(data || []);
-  }
+  const statuses = [
+    "OPEN",
+    "ONGOING",
+    "CLOSED ON TIME",
+    "CLOSED PAST DUE",
+    "OVERDUE",
+    "ON HOLD",
+  ];
 
-  // FILTER LOGIC
-  function applyFilters(f) {
-    let result = [...tasks];
+  /** 📌 Fetch tasks */
+  const fetchTasks = async () => {
+    const { data, error } = await supabase.from("tasks").select("*");
+    if (!error) setTasks(data);
+  };
 
-    if (f.search)
-      result = result.filter(t =>
-        t.title.toLowerCase().includes(f.search.toLowerCase())
-      );
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
-    if (f.owner)
-      result = result.filter(t => t.owner === f.owner);
+  useEffect(() => {
+    setFilteredTasks(tasks);
+  }, [tasks]);
 
-    if (f.status)
-      result = result.filter(t => t.status === f.status);
+  /** 📌 Apply filters */
+  const handleFilter = (filtered) => {
+    setFilteredTasks(filtered);
+  };
 
-    if (f.assignedFrom)
-      result = result.filter(t => t.assigned_date >= f.assignedFrom);
+  /** 📌 Count tasks per owner */
+  const countTasksByOwner = owners.map((owner) => {
+    const list = filteredTasks.filter((t) => t.owner === owner);
 
-    if (f.assignedTo)
-      result = result.filter(t => t.assigned_date <= f.assignedTo);
-
-    if (f.deadlineFrom)
-      result = result.filter(t => t.initial_deadline >= f.deadlineFrom);
-
-    if (f.deadlineTo)
-      result = result.filter(t => t.initial_deadline <= f.deadlineTo);
-
-    setFiltered(result);
-  }
-
-  // -------------------------------
-  // KPI CALCULATIONS
-  // -------------------------------
-  const total = filtered.length;
-
-  const open = filtered.filter(t => t.status === "OPEN").length;
-  const ongoing = filtered.filter(t => t.status === "ONGOING").length;
-  const overdue = filtered.filter(t => t.status === "OVERDUE").length;
-  const onhold = filtered.filter(t => t.status === "ON HOLD").length;
-  const closedOnTime = filtered.filter(t => t.status === "CLOSED ON TIME").length;
-  const closedLate = filtered.filter(t => t.status === "CLOSED PAST DUE").length;
-
-  const closedTotal = closedOnTime + closedLate;
-  const percentOnTime = closedTotal > 0
-    ? Math.round((closedOnTime / closedTotal) * 100)
-    : 0;
-
-  // OWNER TABLES
-  const ownerStats = computeOwnerStats(filtered, owners);
-  const ownerPercentages = computeOwnerPercentages(ownerStats);
-
-  // -------------------------------
-  // STACKED CHART DATA + LABELS
-  // -------------------------------
-  const stackedPercentageData = ownerStats.map(o => {
-    const total = o.TOTAL || 1;
     return {
-      OPEN: Math.round((o.OPEN / total) * 100),
-      ONGOING: Math.round((o.ONGOING / total) * 100),
-      OVERDUE: Math.round((o.OVERDUE / total) * 100),
-      ON_HOLD: Math.round((o.ON_HOLD / total) * 100),
-      CLOSED_ON_TIME: Math.round((o.CLOSED_ON_TIME / total) * 100),
-      CLOSED_PAST_DUE: Math.round((o.CLOSED_PAST_DUE / total) * 100)
+      owner,
+      total: list.length,
+      OPEN: list.filter((t) => t.status === "OPEN").length,
+      ONGOING: list.filter((t) => t.status === "ONGOING").length,
+      CLOSED_ON_TIME: list.filter((t) => t.status === "CLOSED ON TIME").length,
+      CLOSED_PAST_DUE: list.filter((t) => t.status === "CLOSED PAST DUE").length,
+      OVERDUE: list.filter((t) => t.status === "OVERDUE").length,
+      ON_HOLD: list.filter((t) => t.status === "ON HOLD").length,
     };
   });
 
+  /** 📌 Totals */
+  const totals = {
+    OPEN: countTasksByOwner.reduce((a, r) => a + r.OPEN, 0),
+    ONGOING: countTasksByOwner.reduce((a, r) => a + r.ONGOING, 0),
+    CLOSED_ON_TIME: countTasksByOwner.reduce((a, r) => a + r.CLOSED_ON_TIME, 0),
+    CLOSED_PAST_DUE: countTasksByOwner.reduce(
+      (a, r) => a + r.CLOSED_PAST_DUE,
+      0
+    ),
+    OVERDUE: countTasksByOwner.reduce((a, r) => a + r.OVERDUE, 0),
+    ON_HOLD: countTasksByOwner.reduce((a, r) => a + r.ON_HOLD, 0),
+    total: countTasksByOwner.reduce((a, r) => a + r.total, 0),
+  };
+
+  /** 📌 Stacked bar chart data */
   const stackedData = {
     labels: owners,
     datasets: [
       {
-        label: "Open",
-        data: ownerStats.map(o => o.OPEN),
-        percentages: stackedPercentageData.map(p => p.OPEN),
-        backgroundColor: "#3B82F6"
+        label: "OPEN",
+        data: countTasksByOwner.map((r) => r.OPEN),
+        backgroundColor: "#0ea5e9",
       },
       {
-        label: "Ongoing",
-        data: ownerStats.map(o => o.ONGOING),
-        percentages: stackedPercentageData.map(p => p.ONGOING),
-        backgroundColor: "#0EA5A8"
+        label: "ONGOING",
+        data: countTasksByOwner.map((r) => r.ONGOING),
+        backgroundColor: "#6366f1",
       },
       {
-        label: "Overdue",
-        data: ownerStats.map(o => o.OVERDUE),
-        percentages: stackedPercentageData.map(p => p.OVERDUE),
-        backgroundColor: "#DC2626"
+        label: "CLOSED ON TIME",
+        data: countTasksByOwner.map((r) => r.CLOSED_ON_TIME),
+        backgroundColor: "#22c55e",
       },
       {
-        label: "On Hold",
-        data: ownerStats.map(o => o.ON_HOLD),
-        percentages: stackedPercentageData.map(p => p.ON_HOLD),
-        backgroundColor: "#6B7280"
+        label: "CLOSED PAST DUE",
+        data: countTasksByOwner.map((r) => r.CLOSED_PAST_DUE),
+        backgroundColor: "#f97316",
       },
       {
-        label: "Closed On Time",
-        data: ownerStats.map(o => o.CLOSED_ON_TIME),
-        percentages: stackedPercentageData.map(p => p.CLOSED_ON_TIME),
-        backgroundColor: "#16A34A"
+        label: "OVERDUE",
+        data: countTasksByOwner.map((r) => r.OVERDUE),
+        backgroundColor: "#ef4444",
       },
       {
-        label: "Closed Past Due",
-        data: ownerStats.map(o => o.CLOSED_PAST_DUE),
-        percentages: stackedPercentageData.map(p => p.CLOSED_PAST_DUE),
-        backgroundColor: "#F97316"
-      }
-    ]
+        label: "ON HOLD",
+        data: countTasksByOwner.map((r) => r.ON_HOLD),
+        backgroundColor: "#a855f7",
+      },
+    ],
   };
 
+  /** 📌 Chart options */
   const stackedOptions = {
     responsive: true,
     plugins: {
       legend: { position: "top" },
+      title: { display: true, text: "Task Distribution per Owner (Stacked)" },
       datalabels: {
-        color: "white",
         anchor: "center",
-        align: "center",
-        formatter: (value, ctx) => {
-          const pct = ctx.dataset.percentages[ctx.dataIndex];
-          return pct > 0 ? pct + "%" : "";
-        },
-        font: { size: 12, weight: "bold" }
-      }
+        color: "#fff",
+        formatter: (value) => (value > 0 ? value : ""),
+      },
     },
     scales: {
       x: { stacked: true },
-      y: { stacked: true }
-    }
+      y: { stacked: true, beginAtZero: true },
+    },
   };
 
-  // -------------------------------
-  // RENDER
-  // -------------------------------
   return (
     <div style={{ padding: 20 }}>
       <h1>Dashboard</h1>
 
-      {/* FILTER BAR */}
-      <Filters onChange={applyFilters} />
+      {/* Filters */}
+      <Filters onFilter={handleFilter} tasks={tasks} />
 
-      {/* KPI CARDS */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: 20,
-        marginTop: 20
-      }}>
-        <KPI title="Open" value={open} color="#3B82F6" />
-        <KPI title="Ongoing" value={ongoing} color="#0EA5A8" />
-        <KPI title="Overdue" value={overdue} color="#DC2626" />
-        <KPI title="On Hold" value={onhold} color="#6B7280" />
-        <KPI title="Closed On Time" value={closedOnTime} color="#16A34A" />
-        <KPI title="Closed Late" value={closedLate} color="#F97316" />
-        <KPI title="% On Time" value={percentOnTime + "%"} color="#2563EB" />
-        <KPI title="Total Tasks" value={total} color="#000000" />
+      {/* Stacked Chart */}
+      <div style={{ marginTop: 30 }}>
+        <Bar data={stackedData} options={stackedOptions} />
       </div>
 
-      {/* STACKED COLUMN CHART */}
-      <h3 style={{ marginTop: 40 }}>Task Distribution per Owner (Stacked)</h3>
-      <Bar data={stackedData} options={stackedOptions} />
-
-      {/* RAW TABLE */}
+      {/* Tasks per Owner Table */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner</h2>
-
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
-        <thead>
-          <tr style={{ background: "#ECEFF1" }}>
-            <th style={th}>Owner</th>
-            <th style={th}>Open</th>
-            <th style={th}>Ongoing</th>
-            <th style={th}>Overdue</th>
-            <th style={th}>On Hold</th>
-            <th style={th}>Closed On Time</th>
-            <th style={th}>Closed Past Due</th>
-            <th style={th}><strong>Total</strong></th>
+      <table border="1" cellPadding="6" style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead style={{ background: "#f4f4f4" }}>
+          <tr>
+            <th>Owner</th>
+            <th>Total</th>
+            <th>OPEN</th>
+            <th>ONGOING</th>
+            <th>CLOSED ON TIME</th>
+            <th>CLOSED PAST DUE</th>
+            <th>OVERDUE</th>
+            <th>ON HOLD</th>
           </tr>
         </thead>
-
         <tbody>
-          {ownerStats.map(row => (
+          {countTasksByOwner.map((row) => (
             <tr key={row.owner}>
-              <td style={td}>{row.owner}</td>
-              <td style={td}>{row.OPEN}</td>
-              <td style={td}>{row.ONGOING}</td>
-              <td style={td}>{row.OVERDUE}</td>
-              <td style={td}>{row.ON_HOLD}</td>
-              <td style={td}>{row.CLOSED_ON_TIME}</td>
-              <td style={td}>{row.CLOSED_PAST_DUE}</td>
-              <td style={{ ...td, fontWeight: "bold" }}>{row.TOTAL}</td>
+              <td>{row.owner}</td>
+              <td>{row.total}</td>
+              <td>{row.OPEN}</td>
+              <td>{row.ONGOING}</td>
+              <td>{row.CLOSED_ON_TIME}</td>
+              <td>{row.CLOSED_PAST_DUE}</td>
+              <td>{row.OVERDUE}</td>
+              <td>{row.ON_HOLD}</td>
             </tr>
           ))}
 
           {/* TOTAL ROW */}
-          <tr style={{ background: "#E0E0E0", fontWeight: "bold" }}>
-            <td style={td}>TOTAL</td>
-            <td style={td}>{ownerStats.reduce((a, r) => a + r.OPEN, 0)}</td>
-            <td style={td}>{ownerStats.reduce((a, r) => a + r.ONGOING, 0)}</td>
-            <td style={td}>{ownerStats.reduce((a, r) => a + r.OVERDUE, 0)}</td>
-            <td style={td}>{ownerStats.reduce((a, r) => a + r.ON_HOLD, 0)}</td>
-            <td style={td}>{ownerStats.reduce((a, r) => a + r.CLOSED_ON_TIME, 0)}</td>
-            <td style={td}>{ownerStats.reduce((a, r) => a + r.CLOSED_PAST_DUE, 0)}</td>
-            <td style={td}>
-              {ownerStats.reduce((a, r) => a + r.TOTAL, 0)}
-            </td>
+          <tr style={{ background: "#e5e7eb", fontWeight: "bold" }}>
+            <td>Total</td>
+            <td>{totals.total}</td>
+            <td>{totals.OPEN}</td>
+            <td>{totals.ONGOING}</td>
+            <td>{totals.CLOSED_ON_TIME}</td>
+            <td>{totals.CLOSED_PAST_DUE}</td>
+            <td>{totals.OVERDUE}</td>
+            <td>{totals.ON_HOLD}</td>
           </tr>
         </tbody>
       </table>
-
-      {/* PERCENTAGE TABLE */}
-      <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
-
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
-        <thead>
-          <tr style={{ background: "#ECEFF1" }}>
-            <th style={th}>Owner</th>
-            <th style={th}>% Open</th>
-            <th style={th}>% Ongoing</th>
-            <th style={th}>% Overdue</th>
-            <th style={th}>% On Hold</th>
-            <th style={th}>% Closed On Time</th>
-            <th style={th}>% Closed Past Due</th>
-            <th style={th}><strong>% On-Time Rate</strong></th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {ownerPercentages.map(row => (
-            <tr key={row.owner}>
-              <td style={td}>{row.owner}</td>
-              <td style={td}>{row.pctOpen}%</td>
-              <td style={td}>{row.pctOngoing}%</td>
-              <td style={td}>{row.pctOverdue}%</td>
-              <td style={td}>{row.pctOnHold}%</td>
-              <td style={td}>{row.pctClosedOnTime}%</td>
-              <td style={td}>{row.pctClosedLate}%</td>
-              <td style={{ ...td, fontWeight: "bold" }}>{row.pctOnTimeRate}%</td>
-            </tr>
-          ))}
-
-          {/* TOTAL PERCENT ROW */}
-          <tr style={{ background: "#E0E0E0", fontWeight: "bold" }}>
-            <td style={td}>TOTAL</td>
-
-            <td style={td}>
-              {Math.round(
-                (ownerStats.reduce((a, r) => a + r.OPEN, 0) /
-                  totalTasks(ownerStats)) * 100
-              )}%
-            </td>
-
-            <td style={td}>
-              {Math.round(
-                (ownerStats.reduce((a, r) => a + r.ONGOING, 0) /
-                  totalTasks(ownerStats)) * 100
-              )}%
-            </td>
-
-            <td style={td}>
-              {Math.round(
-                (ownerStats.reduce((a, r) => a + r.OVERDUE, 0) /
-                  totalTasks(ownerStats)) * 100
-              )}%
-            </td>
-
-            <td style={td}>
-              {Math.round(
-                (ownerStats.reduce((a, r) => a + r.ON_HOLD, 0) /
-                  totalTasks(ownerStats)) * 100
-              )}%
-            </td>
-
-            <td style={td}>
-              {Math.round(
-                (ownerStats.reduce((a, r) => a + r.CLOSED_ON_TIME, 0) /
-                  totalTasks(ownerStats)) * 100
-              )}%
-            </td>
-
-            <td style={td}>
-              {Math.round(
-                (ownerStats.reduce((a, r) => a + r.CLOSED_PAST_DUE, 0) /
-                  totalTasks(ownerStats)) * 100
-              )}%
-            </td>
-
-            {/* GLOBAL ON-TIME RATE */}
-            <td style={td}>
-              {(() => {
-                const onTime = ownerStats.reduce((a, r) => a + r.CLOSED_ON_TIME, 0);
-                const late = ownerStats.reduce((a, r) => a + r.CLOSED_PAST_DUE, 0);
-                const tot = onTime + late;
-                return tot === 0 ? "0%" : Math.round((onTime / tot) * 100) + "%";
-              })()}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-    </div>
-  );
-}
-
-/* Table Cell Styles */
-const th = {
-  padding: 8,
-  border: "1px solid #ccc",
-  textAlign: "center"
-};
-
-const td = {
-  padding: 8,
-  border: "1px solid #ccc",
-  textAlign: "center"
-};
-
-/* KPI COMPONENT */
-function KPI({ title, value, color }) {
-  return (
-    <div style={{
-      background: color,
-      color: "white",
-      padding: 20,
-      borderRadius: 8,
-      textAlign: "center"
-    }}>
-      <div>{title}</div>
-      <div style={{ fontSize: 32, fontWeight: "bold" }}>{value}</div>
     </div>
   );
 }
