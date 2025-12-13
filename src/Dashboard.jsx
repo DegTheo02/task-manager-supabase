@@ -13,9 +13,6 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
-/* ----------------------------------
-   CHART REGISTRATION
----------------------------------- */
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, Title);
 
 if (window.ChartDataLabels) {
@@ -54,9 +51,6 @@ export default function Dashboard() {
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [filters, setFilters] = useState({});
 
-  /* ----------------------------------
-     LOAD DATA
-  ---------------------------------- */
   useEffect(() => {
     loadTasks();
   }, []);
@@ -67,16 +61,10 @@ export default function Dashboard() {
   }
 
   /* ----------------------------------
-     APPLY FILTERS (SINGLE SOURCE)
+     APPLY FILTERS (GLOBAL)
   ---------------------------------- */
   useEffect(() => {
     let data = [...tasks];
-
-    if (filters.search) {
-      data = data.filter(t =>
-        t.title?.toLowerCase().includes(filters.search.toLowerCase())
-      );
-    }
 
     if (filters.owner) {
       data = data.filter(t => t.owner === filters.owner);
@@ -86,72 +74,92 @@ export default function Dashboard() {
       data = data.filter(t => t.status === filters.status);
     }
 
+    if (filters.assigned_from) {
+      data = data.filter(t => t.assigned_date >= filters.assigned_from);
+    }
+
+    if (filters.assigned_to) {
+      data = data.filter(t => t.assigned_date <= filters.assigned_to);
+    }
+
+    if (filters.deadline_from) {
+      data = data.filter(t =>
+        (t.new_deadline || t.initial_deadline) >= filters.deadline_from
+      );
+    }
+
+    if (filters.deadline_to) {
+      data = data.filter(t =>
+        (t.new_deadline || t.initial_deadline) <= filters.deadline_to
+      );
+    }
+
     setFilteredTasks(data);
   }, [filters, tasks]);
 
+  const totalTasks = filteredTasks.length || 1;
+
   /* ----------------------------------
-     KPI HELPERS
+     KPI DATA
   ---------------------------------- */
-  const countStatus = status =>
-    filteredTasks.filter(t => t.status === status).length;
-
-  const closedOnTime = countStatus("CLOSED ON TIME");
-  const closedPastDue = countStatus("CLOSED PAST DUE");
-  const totalClosed = closedOnTime + closedPastDue;
-
-  const onTimeRate =
-    totalClosed === 0 ? 0 : Math.round((closedOnTime / totalClosed) * 100);
+  const kpis = STATUSES.map(s => {
+    const count = filteredTasks.filter(t => t.status === s).length;
+    return {
+      status: s,
+      count,
+      percent: Math.round((count / totalTasks) * 100)
+    };
+  });
 
   /* ----------------------------------
      OWNER STATS
   ---------------------------------- */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
+    const total = list.length || 1;
 
     const row = { owner, TOTAL: list.length };
     STATUSES.forEach(s => {
-      row[s] = list.filter(t => t.status === s).length;
+      row[s] = Math.round(
+        (list.filter(t => t.status === s).length / total) * 100
+      );
     });
 
     return row;
   });
 
   /* ----------------------------------
-     TOTALS
-  ---------------------------------- */
-  const totals = { TOTAL: ownerStats.reduce((a, r) => a + r.TOTAL, 0) };
-  STATUSES.forEach(s => {
-    totals[s] = ownerStats.reduce((a, r) => a + r[s], 0);
-  });
-
-  /* ----------------------------------
-     CHART DATA
+     CHART DATA (100% STACKED)
   ---------------------------------- */
   const chartData = {
     labels: OWNERS,
-    datasets: [
-      { label: "OPEN", data: ownerStats.map(o => o.OPEN), backgroundColor: "#3B82F6" },
-      { label: "ONGOING", data: ownerStats.map(o => o.ONGOING), backgroundColor: "#0EA5A8" },
-      { label: "OVERDUE", data: ownerStats.map(o => o.OVERDUE), backgroundColor: "#DC2626" },
-      { label: "ON HOLD", data: ownerStats.map(o => o["ON HOLD"]), backgroundColor: "#6B7280" },
-      { label: "CLOSED ON TIME", data: ownerStats.map(o => o["CLOSED ON TIME"]), backgroundColor: "#16A34A" },
-      { label: "CLOSED PAST DUE", data: ownerStats.map(o => o["CLOSED PAST DUE"]), backgroundColor: "#F97316" }
-    ]
+    datasets: STATUSES.map((s, i) => ({
+      label: s,
+      data: ownerStats.map(o => o[s]),
+      backgroundColor: statusColors[s]
+    }))
   };
 
   const chartOptions = {
     responsive: true,
     scales: {
       x: { stacked: true },
-      y: { stacked: true, beginAtZero: true }
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        max: 100,
+        ticks: { callback: v => v + "%" }
+      }
     },
     plugins: {
       legend: { position: "top" },
-      title: { display: true, text: "Task Distribution per Owner (Stacked)" },
+      title: {
+        display: true,
+        text: "Task Distribution per Owner (100%)"
+      },
       datalabels: {
         color: "white",
-        font: { weight: "bold" },
-        formatter: v => (v > 0 ? v : "")
+        formatter: v => (v > 0 ? v + "%" : "")
       }
     }
   };
@@ -167,14 +175,15 @@ export default function Dashboard() {
 
       {/* KPI CARDS */}
       <div style={kpiGrid}>
-        <KPI title="Total Tasks" value={filteredTasks.length} />
-        <KPI title="Open" value={countStatus("OPEN")} />
-        <KPI title="Ongoing" value={countStatus("ONGOING")} />
-        <KPI title="Overdue" value={countStatus("OVERDUE")} />
-        <KPI title="On Hold" value={countStatus("ON HOLD")} />
-        <KPI title="Closed On Time" value={closedOnTime} />
-        <KPI title="Closed Past Due" value={closedPastDue} />
-        <KPI title="% On-Time" value={`${onTimeRate}%`} />
+        {kpis.map(k => (
+          <div key={k.status} style={kpiCard}>
+            <div>{k.status}</div>
+            <div style={kpiValue}>
+              <span>{k.count}</span>
+              <span>{k.percent}%</span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* CHART */}
@@ -182,37 +191,24 @@ export default function Dashboard() {
         <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* TABLE 1 */}
-      <h2 style={{ marginTop: 40 }}>Tasks per Owner</h2>
-      <OwnerTable data={ownerStats} totals={totals} />
-
-      {/* TABLE 2 */}
+      {/* TABLE */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
-      <PercentageTable data={ownerStats} totals={totals} />
+      <PercentageTable data={ownerStats} />
     </div>
   );
 }
 
 /* ----------------------------------
-   SUB COMPONENTS
+   TABLE
 ---------------------------------- */
-function KPI({ title, value }) {
-  return (
-    <div style={kpiCard}>
-      <div>{title}</div>
-      <div style={{ fontSize: 26, fontWeight: "bold" }}>{value}</div>
-    </div>
-  );
-}
-
-function OwnerTable({ data, totals }) {
+function PercentageTable({ data }) {
   return (
     <table style={dashboardTable}>
       <thead>
         <tr>
           <th style={tableHeader}>Owner</th>
           {STATUSES.map(s => (
-            <th key={s} style={tableHeader}>{s}</th>
+            <th key={s} style={tableHeader}>% {s}</th>
           ))}
           <th style={tableHeader}>TOTAL</th>
         </tr>
@@ -222,66 +218,11 @@ function OwnerTable({ data, totals }) {
           <tr key={r.owner}>
             <td style={ownerCell}>{r.owner}</td>
             {STATUSES.map(s => (
-              <td key={s} style={tableCell}>{r[s]}</td>
+              <td key={s} style={tableCell}>{r[s]}%</td>
             ))}
-            <td style={tableCell}><b>{r.TOTAL}</b></td>
+            <td style={tableCell}><b>100%</b></td>
           </tr>
         ))}
-        <tr style={totalRow}>
-          <td style={ownerCell}>TOTAL</td>
-          {STATUSES.map(s => (
-            <td key={s} style={tableCell}>{totals[s]}</td>
-          ))}
-          <td style={tableCell}>{totals.TOTAL}</td>
-        </tr>
-      </tbody>
-    </table>
-  );
-}
-
-function PercentageTable({ data, totals }) {
-  return (
-    <table style={dashboardTable}>
-      <thead>
-        <tr>
-          <th style={tableHeader}>Owner</th>
-          {STATUSES.map(s => (
-            <th key={s} style={tableHeader}>% {s}</th>
-          ))}
-          <th style={tableHeader}>% ON-TIME</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => {
-          const total = r.TOTAL || 1;
-          const closed = r["CLOSED ON TIME"] + r["CLOSED PAST DUE"];
-          const onTime =
-            closed === 0 ? 0 : Math.round((r["CLOSED ON TIME"] / closed) * 100);
-
-          return (
-            <tr key={r.owner}>
-              <td style={ownerCell}>{r.owner}</td>
-              {STATUSES.map(s => (
-                <td key={s} style={tableCell}>
-                  {Math.round((r[s] / total) * 100)}%
-                </td>
-              ))}
-              <td style={tableCell}><b>{onTime}%</b></td>
-            </tr>
-          );
-        })}
-
-        <tr style={totalRow}>
-          <td style={ownerCell}>TOTAL</td>
-          {STATUSES.map(s => (
-            <td key={s} style={tableCell}>
-              {totals.TOTAL === 0
-                ? "0%"
-                : Math.round((totals[s] / totals.TOTAL) * 100) + "%"}
-            </td>
-          ))}
-          <td style={tableCell}>100%</td>
-        </tr>
       </tbody>
     </table>
   );
@@ -300,9 +241,15 @@ const kpiGrid = {
 const kpiCard = {
   background: "#111827",
   color: "white",
-  padding: 16,
-  borderRadius: 8,
-  textAlign: "center"
+  padding: 14,
+  borderRadius: 8
+};
+
+const kpiValue = {
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: 22,
+  fontWeight: "bold"
 };
 
 const dashboardTable = {
@@ -333,7 +280,11 @@ const ownerCell = {
   fontWeight: 600
 };
 
-const totalRow = {
-  backgroundColor: "#E5E7EB",
-  fontWeight: 700
+const statusColors = {
+  OPEN: "#3B82F6",
+  ONGOING: "#0EA5A8",
+  OVERDUE: "#DC2626",
+  "ON HOLD": "#6B7280",
+  "CLOSED ON TIME": "#16A34A",
+  "CLOSED PAST DUE": "#F97316"
 };
