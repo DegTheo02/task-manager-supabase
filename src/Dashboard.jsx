@@ -3,7 +3,7 @@ import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
 
 import {
-  Chart as ChartJS,
+  Chart as ChartJS, 
   CategoryScale,
   LinearScale,
   BarElement,
