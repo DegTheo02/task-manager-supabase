@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import React from "react";
 
 /* ----------------------------------
    CONSTANTS
 ---------------------------------- */
 const OWNERS = [
-  "",
   "AURELLE",
   "CHRISTIAN",
   "SERGEA",
@@ -17,7 +16,6 @@ const OWNERS = [
 ];
 
 const STATUSES = [
-  "",
   "OPEN",
   "ONGOING",
   "OVERDUE",
@@ -26,158 +24,116 @@ const STATUSES = [
   "CLOSED PAST DUE"
 ];
 
+const TEAMS = ["BI", "CVM", "SM"];
+
+const RECURRENCE_TYPES = [
+  "Non-Recurring",
+  "Recurring Weekly",
+  "Recurring Monthly"
+];
+
 /* ----------------------------------
-   COMPONENT
+   FILTERS
 ---------------------------------- */
 export default function Filters({ onChange }) {
-  const [filters, setFilters] = useState({
-    owner: "",
-    status: "",
-    assigned_from: "",
-    assigned_to: "",
-    deadline_from: "",
-    deadline_to: ""
-  });
-
-  useEffect(() => {
-    onChange(filters);
-  }, [filters, onChange]);
-
-  function update(field, value) {
-    setFilters(prev => ({ ...prev, [field]: value }));
-  }
-
-  function reset() {
-    setFilters({
-      owner: "",
-      status: "",
-      assigned_from: "",
-      assigned_to: "",
-      deadline_from: "",
-      deadline_to: ""
-    });
-  }
+  const update = (key, value) => {
+    onChange(prev => ({ ...prev, [key]: value }));
+  };
 
   return (
-    <div style={container}>
+    <div style={filterBar}>
       {/* OWNER */}
-      <FilterField label="Owner">
-        <select
-          value={filters.owner}
-          onChange={e => update("owner", e.target.value)}
-        >
-          {OWNERS.map(o => (
-            <option key={o} value={o}>
-              {o || "All"}
-            </option>
-          ))}
-        </select>
-      </FilterField>
+      <select
+        style={select}
+        onChange={e => update("owner", e.target.value)}
+      >
+        <option value="">Owner</option>
+        {OWNERS.map(o => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+
+      {/* TEAM */}
+      <select
+        style={select}
+        onChange={e => update("team", e.target.value)}
+      >
+        <option value="">Team</option>
+        {TEAMS.map(t => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
 
       {/* STATUS */}
-      <FilterField label="Status">
-        <select
-          value={filters.status}
-          onChange={e => update("status", e.target.value)}
-        >
-          {STATUSES.map(s => (
-            <option key={s} value={s}>
-              {s || "All"}
-            </option>
-          ))}
-        </select>
-      </FilterField>
+      <select
+        style={select}
+        onChange={e => update("status", e.target.value)}
+      >
+        <option value="">Status</option>
+        {STATUSES.map(s => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </select>
 
-      {/* ASSIGNED DATE RANGE */}
-      <FilterField label="Assigned From">
-        <input
-          type="date"
-          value={filters.assigned_from}
-          onChange={e => update("assigned_from", e.target.value)}
-        />
-      </FilterField>
+      {/* RECURRENCE */}
+      <select
+        style={select}
+        onChange={e => update("recurrence_type", e.target.value)}
+      >
+        <option value="">Recurrence</option>
+        {RECURRENCE_TYPES.map(r => (
+          <option key={r} value={r}>{r}</option>
+        ))}
+      </select>
 
-      <FilterField label="Assigned To">
-        <input
-          type="date"
-          value={filters.assigned_to}
-          onChange={e => update("assigned_to", e.target.value)}
-        />
-      </FilterField>
+      {/* ASSIGNED DATE */}
+      <input
+        type="date"
+        style={dateInput}
+        onChange={e => update("assigned_from", e.target.value)}
+      />
 
-      {/* DEADLINE RANGE */}
-      <FilterField label="Deadline From">
-        <input
-          type="date"
-          value={filters.deadline_from}
-          onChange={e => update("deadline_from", e.target.value)}
-        />
-      </FilterField>
+      <input
+        type="date"
+        style={dateInput}
+        onChange={e => update("assigned_to", e.target.value)}
+      />
 
-      <FilterField label="Deadline To">
-        <input
-          type="date"
-          value={filters.deadline_to}
-          onChange={e => update("deadline_to", e.target.value)}
-        />
-      </FilterField>
+      {/* DEADLINE */}
+      <input
+        type="date"
+        style={dateInput}
+        onChange={e => update("deadline_from", e.target.value)}
+      />
 
-      {/* RESET */}
-      <div style={{ alignSelf: "flex-end" }}>
-        <button onClick={reset}>Reset</button>
-      </div>
+      <input
+        type="date"
+        style={dateInput}
+        onChange={e => update("deadline_to", e.target.value)}
+      />
     </div>
   );
 }
 
 /* ----------------------------------
-   HELPER COMPONENT
+   STYLES (COMPACT)
 ---------------------------------- */
-function FilterField({ label, children }) {
-  return (
-    <div style={field}>
-      <label style={labelStyle}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-/* ----------------------------------
-   STYLES
----------------------------------- */
-const container = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 14,
-  marginBottom: 20,
-  alignItems: "end"
-};
-
-const field = {
+const filterBar = {
   display: "flex",
-  flexDirection: "column"
+  gap: 8,
+  flexWrap: "wrap",
+  alignItems: "center",
+  marginBottom: 16
 };
 
-const labelStyle = {
-  fontSize: 13,
-  fontWeight: 600,
-  marginBottom: 4
+const select = {
+  height: 32,
+  padding: "4px 6px",
+  minWidth: 120
 };
 
-/* Apply uniform styling */
-const inputStyle = {
-  height: 34,
-  padding: "6px 8px",
-  fontSize: 14
+const dateInput = {
+  height: 32,
+  padding: "4px 6px",
+  width: 130
 };
-
-/* Inject styles automatically */
-const styleSheet = document.createElement("style");
-styleSheet.innerHTML = `
-  input, select {
-    height: 34px;
-    padding: 6px 8px;
-    font-size: 14px;
-  }
-`;
-document.head.appendChild(styleSheet);
