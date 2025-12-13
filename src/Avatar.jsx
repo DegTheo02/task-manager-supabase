@@ -1,30 +1,18 @@
-import React from "react";
-
-const colors = [
-  "#3B82F6", "#0EA5A8", "#16A34A",
-  "#F97316", "#DC2626", "#7C3AED"
-];
-
-export default function Avatar({ name, size = 32 }) {
-  if (!name) return null;
-
-  const letter = name.charAt(0).toUpperCase();
-  const color = colors[name.length % colors.length];
-
+export default function Avatar({ name }) {
   return (
     <div style={{
-      width: size,
-      height: size,
+      width: 28,
+      height: 28,
       borderRadius: "50%",
-      background: color,
+      background: "#2563eb",
       color: "white",
-      fontSize: size * 0.5,
-      fontWeight: "bold",
       display: "flex",
       alignItems: "center",
-      justifyContent: "center"
+      justifyContent: "center",
+      fontSize: 12,
+      fontWeight: "bold"
     }}>
-      {letter}
+      {name?.[0]}
     </div>
   );
 }
