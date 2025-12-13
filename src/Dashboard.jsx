@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
 
@@ -14,7 +14,7 @@ import {
 import { Bar } from "react-chartjs-2";
 
 /* ----------------------------------
-   REGISTER CHART.JS
+   REGISTER CHART.JS CORE
 ---------------------------------- */
 ChartJS.register(
   CategoryScale,
@@ -26,12 +26,13 @@ ChartJS.register(
 );
 
 /* ----------------------------------
-   REGISTER DATALABELS (CDN)
+   SAFE DATALABELS HANDLING
 ---------------------------------- */
-const ChartDataLabels = window.ChartDataLabels;
+const ChartDataLabels = window.ChartDataLabels || null;
 if (ChartDataLabels) {
   ChartJS.register(ChartDataLabels);
 }
+const chartPlugins = ChartDataLabels ? [ChartDataLabels] : [];
 
 /* ----------------------------------
    CONSTANTS
@@ -71,53 +72,36 @@ const STATUS_COLORS = {
 ---------------------------------- */
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
-  const [filteredTasks, setFilteredTasks] = useState([]);
   const [filters, setFilters] = useState({});
 
   /* LOAD TASKS */
   useEffect(() => {
-    loadTasks();
+    supabase
+      .from("tasks")
+      .select("*")
+      .then(({ data }) => setTasks(data || []));
   }, []);
 
-  async function loadTasks() {
-    const { data } = await supabase.from("tasks").select("*");
-    setTasks(data || []);
-  }
-
   /* APPLY FILTERS */
-  useEffect(() => {
-    let data = [...tasks];
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(t => {
+      if (filters.owner && t.owner !== filters.owner) return false;
+      if (filters.status && t.status !== filters.status) return false;
 
-    if (filters.owner) {
-      data = data.filter(t => t.owner === filters.owner);
-    }
+      if (filters.assigned_from && t.assigned_date < filters.assigned_from)
+        return false;
+      if (filters.assigned_to && t.assigned_date > filters.assigned_to)
+        return false;
 
-    if (filters.status) {
-      data = data.filter(t => t.status === filters.status);
-    }
+      const deadline = t.new_deadline || t.initial_deadline;
+      if (filters.deadline_from && deadline < filters.deadline_from)
+        return false;
+      if (filters.deadline_to && deadline > filters.deadline_to)
+        return false;
 
-    if (filters.assigned_from) {
-      data = data.filter(t => t.assigned_date >= filters.assigned_from);
-    }
-
-    if (filters.assigned_to) {
-      data = data.filter(t => t.assigned_date <= filters.assigned_to);
-    }
-
-    if (filters.deadline_from) {
-      data = data.filter(
-        t => (t.new_deadline || t.initial_deadline) >= filters.deadline_from
-      );
-    }
-
-    if (filters.deadline_to) {
-      data = data.filter(
-        t => (t.new_deadline || t.initial_deadline) <= filters.deadline_to
-      );
-    }
-
-    setFilteredTasks(data);
-  }, [filters, tasks]);
+      return true;
+    });
+  }, [tasks, filters]);
 
   const totalTasks = filteredTasks.length || 1;
 
@@ -131,15 +115,13 @@ export default function Dashboard() {
     };
   });
 
-  /* OWNER STATS (COUNTS) */
+  /* OWNER STATS */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
     const row = { owner, TOTAL: list.length };
-
     STATUSES.forEach(s => {
       row[s] = list.filter(t => t.status === s).length;
     });
-
     return row;
   });
 
@@ -170,11 +152,9 @@ export default function Dashboard() {
       x: { stacked: true },
       y: {
         stacked: true,
-        beginAtZero: true,
+        min: 0,
         max: 100,
-        ticks: {
-          callback: v => v + "%"
-        }
+        ticks: { callback: v => `${v}%` }
       }
     },
     plugins: {
@@ -185,15 +165,12 @@ export default function Dashboard() {
       },
       datalabels: {
         display: true,
-        clamp: true,
         anchor: "center",
         align: "center",
+        clamp: true,
         color: "#ffffff",
-        font: {
-          weight: "bold",
-          size: 11
-        },
-        formatter: value => (value > 0 ? value + "%" : "")
+        font: { weight: "bold", size: 11 },
+        formatter: v => (v > 0 ? `${v}%` : "")
       }
     }
   };
@@ -209,23 +186,14 @@ export default function Dashboard() {
 
       {/* KPI CARDS */}
       <div style={kpiGrid}>
-        {/* TOTAL KPI */}
-        <div style={kpiCard}>
-          <div style={kpiTitle}>TOTAL</div>
-          <div style={kpiValueRow}>
-            <span>{filteredTasks.length}</span>
-            <span>100%</span>
-          </div>
-        </div>
-
+        <KpiCard title="TOTAL" value={filteredTasks.length} percent={100} />
         {kpis.map(k => (
-          <div key={k.status} style={kpiCard}>
-            <div style={kpiTitle}>{k.status}</div>
-            <div style={kpiValueRow}>
-              <span>{k.count}</span>
-              <span>{k.percent}%</span>
-            </div>
-          </div>
+          <KpiCard
+            key={k.status}
+            title={k.status}
+            value={k.count}
+            percent={k.percent}
+          />
         ))}
       </div>
 
@@ -234,15 +202,14 @@ export default function Dashboard() {
         <Bar
           data={chartData}
           options={chartOptions}
-          plugins={[ChartDataLabels]}
+          plugins={chartPlugins}
         />
       </div>
 
-      {/* TABLE 1: COUNTS */}
+      {/* TABLES */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
       <OwnerCountTable data={ownerStats} totals={totals} />
 
-      {/* TABLE 2: PERCENTAGES */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
       <OwnerPercentageTable data={ownerStats} />
     </div>
@@ -250,36 +217,51 @@ export default function Dashboard() {
 }
 
 /* ----------------------------------
-   TABLE COMPONENTS
+   KPI CARD
+---------------------------------- */
+function KpiCard({ title, value, percent }) {
+  return (
+    <div style={kpiCard}>
+      <div style={kpiTitle}>{title}</div>
+      <div style={kpiValueRow}>
+        <span>{value}</span>
+        <span>{percent}%</span>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------
+   TABLES
 ---------------------------------- */
 function OwnerCountTable({ data, totals }) {
   return (
     <table style={dashboardTable}>
       <thead>
         <tr>
-          <th style={tableHeader}>Owner</th>
+          <th style={th}>Owner</th>
           {STATUSES.map(s => (
-            <th key={s} style={tableHeader}>{s}</th>
+            <th key={s} style={th}>{s}</th>
           ))}
-          <th style={tableHeader}>TOTAL</th>
+          <th style={th}>TOTAL</th>
         </tr>
       </thead>
       <tbody>
         {data.map(r => (
           <tr key={r.owner}>
-            <td style={ownerCell}>{r.owner}</td>
+            <td style={ownerTd}>{r.owner}</td>
             {STATUSES.map(s => (
-              <td key={s} style={tableCell}>{r[s]}</td>
+              <td key={s} style={td}>{r[s]}</td>
             ))}
-            <td style={tableCell}><b>{r.TOTAL}</b></td>
+            <td style={td}><b>{r.TOTAL}</b></td>
           </tr>
         ))}
         <tr style={totalRow}>
-          <td style={ownerCell}>TOTAL</td>
+          <td style={ownerTd}>TOTAL</td>
           {STATUSES.map(s => (
-            <td key={s} style={tableCell}>{totals[s]}</td>
+            <td key={s} style={td}>{totals[s]}</td>
           ))}
-          <td style={tableCell}>{totals.TOTAL}</td>
+          <td style={td}>{totals.TOTAL}</td>
         </tr>
       </tbody>
     </table>
@@ -291,25 +273,23 @@ function OwnerPercentageTable({ data }) {
     <table style={dashboardTable}>
       <thead>
         <tr>
-          <th style={tableHeader}>Owner</th>
+          <th style={th}>Owner</th>
           {STATUSES.map(s => (
-            <th key={s} style={tableHeader}>% {s}</th>
+            <th key={s} style={th}>% {s}</th>
           ))}
-          <th style={tableHeader}>TOTAL</th>
+          <th style={th}>TOTAL</th>
         </tr>
       </thead>
       <tbody>
         {data.map(r => (
           <tr key={r.owner}>
-            <td style={ownerCell}>{r.owner}</td>
+            <td style={ownerTd}>{r.owner}</td>
             {STATUSES.map(s => (
-              <td key={s} style={tableCell}>
-                {r.TOTAL === 0
-                  ? "0%"
-                  : Math.round((r[s] / r.TOTAL) * 100) + "%"}
+              <td key={s} style={td}>
+                {r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%
               </td>
             ))}
-            <td style={tableCell}><b>100%</b></td>
+            <td style={td}><b>100%</b></td>
           </tr>
         ))}
       </tbody>
@@ -351,32 +331,29 @@ const kpiValueRow = {
 const dashboardTable = {
   width: "100%",
   borderCollapse: "collapse",
-  marginTop: 10,
-  fontSize: 14
+  marginTop: 10
 };
 
-const tableHeader = {
+const th = {
   border: "1px solid #D1D5DB",
-  backgroundColor: "#F3F4F6",
-  padding: "8px",
-  textAlign: "center",
-  fontWeight: 700
-};
-
-const tableCell = {
-  border: "1px solid #D1D5DB",
-  padding: "8px",
+  padding: 8,
+  background: "#F3F4F6",
   textAlign: "center"
 };
 
-const ownerCell = {
+const td = {
   border: "1px solid #D1D5DB",
-  padding: "8px",
+  padding: 8,
+  textAlign: "center"
+};
+
+const ownerTd = {
+  ...td,
   textAlign: "left",
   fontWeight: 600
 };
 
 const totalRow = {
-  backgroundColor: "#E5E7EB",
+  background: "#E5E7EB",
   fontWeight: 700
 };
