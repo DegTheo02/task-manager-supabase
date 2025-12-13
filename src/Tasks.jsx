@@ -25,6 +25,15 @@ const STATUSES = [
   "CLOSED PAST DUE"
 ];
 
+const STATUS_COLORS = {
+  OPEN: "#3B82F6",
+  ONGOING: "#0EA5A8",
+  OVERDUE: "#DC2626",
+  "ON HOLD": "#6B7280",
+  "CLOSED ON TIME": "#16A34A",
+  "CLOSED PAST DUE": "#F97316"
+};
+
 /* ----------------------------------
    TASKS PAGE
 ---------------------------------- */
@@ -32,15 +41,15 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /* FILTERS */
+  /* FILTERS (MULTI-SELECT) */
   const [filters, setFilters] = useState({
-    owner: "",
-    status: "",
+    owners: [],
+    statuses: [],
     deadline_from: "",
     deadline_to: ""
   });
 
-  /* NEW / EDIT FORM */
+  /* FORM */
   const emptyTask = {
     id: null,
     title: "",
@@ -69,12 +78,17 @@ export default function Tasks() {
   /* APPLY FILTERS */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
-      if (filters.owner && t.owner !== filters.owner) return false;
-      if (filters.status && t.status !== filters.status) return false;
+      if (filters.owners.length && !filters.owners.includes(t.owner))
+        return false;
+
+      if (filters.statuses.length && !filters.statuses.includes(t.status))
+        return false;
 
       const deadline = t.new_deadline || t.initial_deadline;
+
       if (filters.deadline_from && deadline < filters.deadline_from)
         return false;
+
       if (filters.deadline_to && deadline > filters.deadline_to)
         return false;
 
@@ -82,9 +96,7 @@ export default function Tasks() {
     });
   }, [tasks, filters]);
 
-  /* ----------------------------------
-     CREATE / UPDATE
-  ---------------------------------- */
+  /* CREATE / UPDATE */
   const saveTask = async () => {
     if (
       !form.title ||
@@ -97,24 +109,19 @@ export default function Tasks() {
       return;
     }
 
+    const payload = {
+      title: form.title,
+      owner: form.owner,
+      status: form.status,
+      assigned_date: form.assigned_date,
+      initial_deadline: form.initial_deadline,
+      new_deadline: form.new_deadline || null
+    };
+
     if (isEditing) {
-      await supabase.from("tasks").update({
-        title: form.title,
-        owner: form.owner,
-        status: form.status,
-        assigned_date: form.assigned_date,
-        initial_deadline: form.initial_deadline,
-        new_deadline: form.new_deadline || null
-      }).eq("id", form.id);
+      await supabase.from("tasks").update(payload).eq("id", form.id);
     } else {
-      await supabase.from("tasks").insert({
-        title: form.title,
-        owner: form.owner,
-        status: form.status,
-        assigned_date: form.assigned_date,
-        initial_deadline: form.initial_deadline,
-        new_deadline: form.new_deadline || null
-      });
+      await supabase.from("tasks").insert(payload);
     }
 
     setForm(emptyTask);
@@ -122,19 +129,15 @@ export default function Tasks() {
     loadTasks();
   };
 
-  /* ----------------------------------
-     DELETE
-  ---------------------------------- */
-  const deleteTask = async (id) => {
+  /* DELETE */
+  const deleteTask = async id => {
     if (!window.confirm("Delete this task?")) return;
     await supabase.from("tasks").delete().eq("id", id);
     loadTasks();
   };
 
-  /* ----------------------------------
-     EDIT
-  ---------------------------------- */
-  const editTask = (task) => {
+  /* EDIT */
+  const editTask = task => {
     setForm(task);
     setIsEditing(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -147,7 +150,7 @@ export default function Tasks() {
     <div style={{ padding: 20 }}>
       <h1>Tasks</h1>
 
-      {/* ================= CREATE / EDIT FORM ================= */}
+      {/* ================= FORM ================= */}
       <div style={formBox}>
         <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
 
@@ -162,9 +165,7 @@ export default function Tasks() {
           onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}
         >
           <option value="">Owner *</option>
-          {OWNERS.map(o => (
-            <option key={o} value={o}>{o}</option>
-          ))}
+          {OWNERS.map(o => <option key={o}>{o}</option>)}
         </select>
 
         <select
@@ -172,73 +173,73 @@ export default function Tasks() {
           onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
         >
           <option value="">Status *</option>
-          {STATUSES.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
 
-        <input
-          type="date"
-          value={form.assigned_date}
-          onChange={e =>
-            setForm(f => ({ ...f, assigned_date: e.target.value }))
-          }
-        />
+        <label>
+          Assigned date *
+          <input
+            type="date"
+            value={form.assigned_date}
+            onChange={e =>
+              setForm(f => ({ ...f, assigned_date: e.target.value }))
+            }
+          />
+        </label>
 
-        <input
-          type="date"
-          value={form.initial_deadline}
-          onChange={e =>
-            setForm(f => ({ ...f, initial_deadline: e.target.value }))
-          }
-        />
+        <label>
+          Initial deadline *
+          <input
+            type="date"
+            value={form.initial_deadline}
+            onChange={e =>
+              setForm(f => ({ ...f, initial_deadline: e.target.value }))
+            }
+          />
+        </label>
 
-        <input
-          type="date"
-          value={form.new_deadline || ""}
-          onChange={e =>
-            setForm(f => ({ ...f, new_deadline: e.target.value }))
-          }
-        />
+        <label>
+          New deadline
+          <input
+            type="date"
+            value={form.new_deadline || ""}
+            onChange={e =>
+              setForm(f => ({ ...f, new_deadline: e.target.value }))
+            }
+          />
+        </label>
 
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={saveTask}>
-            {isEditing ? "Update Task" : "Create Task"}
-          </button>
-
-          {isEditing && (
-            <button
-              onClick={() => {
-                setForm(emptyTask);
-                setIsEditing(false);
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
+        <button onClick={saveTask}>
+          {isEditing ? "Update Task" : "Create Task"}
+        </button>
       </div>
 
       {/* ================= FILTERS ================= */}
       <div style={filterBar}>
         <select
-          value={filters.owner}
-          onChange={e => setFilters(f => ({ ...f, owner: e.target.value }))}
+          multiple
+          value={filters.owners}
+          onChange={e =>
+            setFilters(f => ({
+              ...f,
+              owners: [...e.target.selectedOptions].map(o => o.value)
+            }))
+          }
         >
-          <option value="">All Owners</option>
-          {OWNERS.map(o => (
-            <option key={o} value={o}>{o}</option>
-          ))}
+          {OWNERS.map(o => <option key={o}>{o}</option>)}
         </select>
 
         <select
-          value={filters.status}
-          onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
+          multiple
+          value={filters.statuses}
+          onChange={e =>
+            setFilters(f => ({
+              ...f,
+              statuses: [...e.target.selectedOptions].map(o => o.value)
+            }))
+          }
         >
-          <option value="">All Statuses</option>
-          {STATUSES.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
 
         <input
@@ -256,20 +257,13 @@ export default function Tasks() {
             setFilters(f => ({ ...f, deadline_to: e.target.value }))
           }
         />
-
-        <button onClick={() => setFilters({
-          owner: "",
-          status: "",
-          deadline_from: "",
-          deadline_to: ""
-        })}>
-          Reset
-        </button>
       </div>
 
       {/* ================= TABLE ================= */}
+      <h2 style={{ marginTop: 30 }}>EXISTING TASKS</h2>
+
       {loading ? (
-        <p>Loading...</p>
+        <p>Loading…</p>
       ) : (
         <table style={table}>
           <thead>
@@ -287,7 +281,9 @@ export default function Tasks() {
               <tr key={t.id}>
                 <td style={td}>{t.title}</td>
                 <td style={td}>{t.owner}</td>
-                <td style={td}>{t.status}</td>
+                <td style={{ ...td, color: STATUS_COLORS[t.status], fontWeight: 700 }}>
+                  {t.status}
+                </td>
                 <td style={td}>{t.assigned_date}</td>
                 <td style={td}>{t.new_deadline || t.initial_deadline}</td>
                 <td style={td}>
@@ -309,7 +305,7 @@ export default function Tasks() {
 const formBox = {
   display: "grid",
   gap: 8,
-  maxWidth: 500,
+  maxWidth: 520,
   marginBottom: 30
 };
 
