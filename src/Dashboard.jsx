@@ -15,7 +15,7 @@ import {
   Legend
 } from "chart.js";
 
-import ChartDataLabels from "chartjs-plugin-datalabels";
+//import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Bar } from "react-chartjs-2";
 
 ChartJS.register(
@@ -27,7 +27,7 @@ ChartJS.register(
   LineElement,
   Tooltip,
   Legend,
-  ChartDataLabels
+  //ChartDataLabels
 );
 
 // -------------------------------
