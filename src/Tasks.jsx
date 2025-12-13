@@ -34,6 +34,24 @@ const STATUS_COLORS = {
   "CLOSED PAST DUE": "#F97316"
 };
 
+const RECURRENCE_TYPES = [
+  "Non-Recurring",
+  "Recurring Weekly",
+  "Recurring Monthly"
+];
+
+const OWNER_TEAM_MAP = {
+  AURELLE: "BI",
+  SERGEA: "BI",
+  CHRISTIAN: "BI",
+  FABRICE: "BI",
+  FLORIAN: "CVM",
+  ESTHER: "CVM",
+  JOSIAS: "CVM",
+  MARIUS: "CVM",
+  THEOPHANE: "SM"
+};
+
 /* ----------------------------------
    TASKS PAGE
 ---------------------------------- */
@@ -54,7 +72,9 @@ export default function Tasks() {
     id: null,
     title: "",
     owner: "",
+    team: "",
     status: "",
+    recurrence_type: "Non-Recurring",
     assigned_date: "",
     initial_deadline: "",
     new_deadline: ""
@@ -112,7 +132,9 @@ export default function Tasks() {
     const payload = {
       title: form.title,
       owner: form.owner,
+      team: form.team,
       status: form.status,
+      recurrence_type: form.recurrence_type,
       assigned_date: form.assigned_date,
       initial_deadline: form.initial_deadline,
       new_deadline: form.new_deadline || null
@@ -150,7 +172,7 @@ export default function Tasks() {
     <div style={{ padding: 20 }}>
       <h1>Tasks</h1>
 
-      {/* ================= NEW / EDIT FORM ================= */}
+      {/* ================= NEW / EDIT TASK ================= */}
       <div style={formBox}>
         <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
 
@@ -173,15 +195,29 @@ export default function Tasks() {
               <select
                 style={formInput}
                 value={form.owner}
-                onChange={e =>
-                  setForm(f => ({ ...f, owner: e.target.value }))
-                }
+                onChange={e => {
+                  const owner = e.target.value;
+                  setForm(f => ({
+                    ...f,
+                    owner,
+                    team: OWNER_TEAM_MAP[owner] || ""
+                  }));
+                }}
               >
                 <option value="">Select owner</option>
                 {OWNERS.map(o => (
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
+            </label>
+
+            <label style={formLabel}>
+              Team
+              <input
+                style={{ ...formInput, background: "#F3F4F6" }}
+                value={form.team}
+                disabled
+              />
             </label>
 
             <label style={formLabel}>
@@ -246,6 +282,24 @@ export default function Tasks() {
                   }))
                 }
               />
+            </label>
+
+            <label style={formLabel}>
+              Recurrence Type
+              <select
+                style={formInput}
+                value={form.recurrence_type}
+                onChange={e =>
+                  setForm(f => ({
+                    ...f,
+                    recurrence_type: e.target.value
+                  }))
+                }
+              >
+                {RECURRENCE_TYPES.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </label>
           </div>
         </div>
@@ -326,7 +380,9 @@ export default function Tasks() {
             <tr>
               <th style={th}>Title</th>
               <th style={th}>Owner</th>
+              <th style={th}>Team</th>
               <th style={th}>Status</th>
+              <th style={th}>Recurrence</th>
               <th style={th}>Assigned</th>
               <th style={th}>Deadline</th>
               <th style={th}>Actions</th>
@@ -337,6 +393,7 @@ export default function Tasks() {
               <tr key={t.id}>
                 <td style={td}>{t.title}</td>
                 <td style={td}>{t.owner}</td>
+                <td style={td}>{t.team}</td>
                 <td
                   style={{
                     ...td,
@@ -346,6 +403,7 @@ export default function Tasks() {
                 >
                   {t.status}
                 </td>
+                <td style={td}>{t.recurrence_type}</td>
                 <td style={td}>{t.assigned_date}</td>
                 <td style={td}>{t.new_deadline || t.initial_deadline}</td>
                 <td style={td}>
@@ -367,7 +425,7 @@ export default function Tasks() {
 const formBox = {
   display: "grid",
   gap: 10,
-  maxWidth: 700,
+  maxWidth: 800,
   marginBottom: 30
 };
 
