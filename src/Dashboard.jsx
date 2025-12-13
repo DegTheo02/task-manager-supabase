@@ -15,6 +15,7 @@ import { Bar } from "react-chartjs-2";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, Title);
 
+// Register CDN datalabels if available
 if (window.ChartDataLabels) {
   ChartJS.register(window.ChartDataLabels);
 }
@@ -42,6 +43,15 @@ const STATUSES = [
   "CLOSED ON TIME",
   "CLOSED PAST DUE"
 ];
+
+const STATUS_COLORS = {
+  OPEN: "#3B82F6",
+  ONGOING: "#0EA5A8",
+  OVERDUE: "#DC2626",
+  "ON HOLD": "#6B7280",
+  "CLOSED ON TIME": "#16A34A",
+  "CLOSED PAST DUE": "#F97316"
+};
 
 /* ----------------------------------
    COMPONENT
@@ -82,14 +92,14 @@ export default function Dashboard() {
     }
 
     if (filters.deadline_from) {
-      data = data.filter(t =>
-        (t.new_deadline || t.initial_deadline) >= filters.deadline_from
+      data = data.filter(
+        t => (t.new_deadline || t.initial_deadline) >= filters.deadline_from
       );
     }
 
     if (filters.deadline_to) {
-      data = data.filter(t =>
-        (t.new_deadline || t.initial_deadline) <= filters.deadline_to
+      data = data.filter(
+        t => (t.new_deadline || t.initial_deadline) <= filters.deadline_to
       );
     }
 
@@ -108,12 +118,11 @@ export default function Dashboard() {
     };
   });
 
-  /* OWNER STATS (COUNTS + %) */
+  /* OWNER STATS (COUNTS) */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
-    const total = list.length || 0;
+    const row = { owner, TOTAL: list.length };
 
-    const row = { owner, TOTAL: total };
     STATUSES.forEach(s => {
       row[s] = list.filter(t => t.status === s).length;
     });
@@ -135,7 +144,7 @@ export default function Dashboard() {
       data: ownerStats.map(o =>
         o.TOTAL === 0 ? 0 : Math.round((o[s] / o.TOTAL) * 100)
       ),
-      backgroundColor: statusColors[s]
+      backgroundColor: STATUS_COLORS[s]
     }))
   };
 
@@ -157,7 +166,11 @@ export default function Dashboard() {
         text: "Task Distribution per Owner (100%)"
       },
       datalabels: {
+        display: true,
         color: "white",
+        anchor: "center",
+        align: "center",
+        font: { weight: "bold", size: 11 },
         formatter: v => (v > 0 ? v + "%" : "")
       }
     }
@@ -174,10 +187,19 @@ export default function Dashboard() {
 
       {/* KPI CARDS */}
       <div style={kpiGrid}>
+        {/* TOTAL */}
+        <div style={kpiCard}>
+          <div style={kpiTitle}>TOTAL</div>
+          <div style={kpiValueRow}>
+            <span>{filteredTasks.length}</span>
+            <span>100%</span>
+          </div>
+        </div>
+
         {kpis.map(k => (
           <div key={k.status} style={kpiCard}>
-            <div>{k.status}</div>
-            <div style={kpiValue}>
+            <div style={kpiTitle}>{k.status}</div>
+            <div style={kpiValueRow}>
               <span>{k.count}</span>
               <span>{k.percent}%</span>
             </div>
@@ -202,7 +224,7 @@ export default function Dashboard() {
 }
 
 /* ----------------------------------
-   TABLES
+   TABLE COMPONENTS
 ---------------------------------- */
 function OwnerCountTable({ data, totals }) {
   return (
@@ -272,22 +294,29 @@ function OwnerPercentageTable({ data }) {
 ---------------------------------- */
 const kpiGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 14,
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: 12,
   marginTop: 20
 };
 
 const kpiCard = {
   background: "#111827",
   color: "white",
-  padding: 14,
-  borderRadius: 8
+  padding: "10px 12px",
+  borderRadius: 8,
+  textAlign: "center"
 };
 
-const kpiValue = {
+const kpiTitle = {
+  fontSize: 13,
+  fontWeight: 700,
+  marginBottom: 6
+};
+
+const kpiValueRow = {
   display: "flex",
   justifyContent: "space-between",
-  fontSize: 22,
+  fontSize: 20,
   fontWeight: "bold"
 };
 
@@ -322,13 +351,4 @@ const ownerCell = {
 const totalRow = {
   backgroundColor: "#E5E7EB",
   fontWeight: 700
-};
-
-const statusColors = {
-  OPEN: "#3B82F6",
-  ONGOING: "#0EA5A8",
-  OVERDUE: "#DC2626",
-  "ON HOLD": "#6B7280",
-  "CLOSED ON TIME": "#16A34A",
-  "CLOSED PAST DUE": "#F97316"
 };
