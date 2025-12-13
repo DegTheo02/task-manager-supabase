@@ -128,7 +128,7 @@ const label = {
 };
 
 const select = {
-  height: 32,
+  height: 15,
   padding: "4px 6px",
   minWidth: 120
 };
