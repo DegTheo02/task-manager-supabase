@@ -14,7 +14,7 @@ import {
 import { Bar } from "react-chartjs-2";
 
 /* ----------------------------------
-   REGISTER CHART.JS CORE
+   REGISTER CHART.JS
 ---------------------------------- */
 ChartJS.register(
   CategoryScale,
@@ -24,15 +24,6 @@ ChartJS.register(
   Legend,
   Title
 );
-
-/* ----------------------------------
-   SAFE DATALABELS HANDLING (CDN)
----------------------------------- */
-const ChartDataLabels = window.ChartDataLabels || null;
-if (ChartDataLabels) {
-  ChartJS.register(ChartDataLabels);
-}
-const chartPlugins = ChartDataLabels ? [ChartDataLabels] : [];
 
 /* ----------------------------------
    CONSTANTS
@@ -82,11 +73,17 @@ export default function Dashboard() {
       .then(({ data }) => setTasks(data || []));
   }, []);
 
-  /* APPLY FILTERS */
+  /* APPLY FILTERS (UPDATED) */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
       if (filters.owner && t.owner !== filters.owner) return false;
+      if (filters.team && t.team !== filters.team) return false;
       if (filters.status && t.status !== filters.status) return false;
+      if (
+        filters.recurrence_type &&
+        t.recurrence_type !== filters.recurrence_type
+      )
+        return false;
 
       if (filters.assigned_from && t.assigned_date < filters.assigned_from)
         return false;
@@ -105,7 +102,9 @@ export default function Dashboard() {
 
   const totalTasks = filteredTasks.length || 1;
 
-  /* KPI DATA */
+  /* ----------------------------------
+     KPIs
+  ---------------------------------- */
   const kpis = STATUSES.map(status => {
     const count = filteredTasks.filter(t => t.status === status).length;
     return {
@@ -115,7 +114,9 @@ export default function Dashboard() {
     };
   });
 
-  /* OWNER STATS */
+  /* ----------------------------------
+     OWNER STATS (STACKED BAR)
+  ---------------------------------- */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
     const row = { owner, TOTAL: list.length };
@@ -125,14 +126,8 @@ export default function Dashboard() {
     return row;
   });
 
-  /* TOTALS */
-  const totals = { TOTAL: ownerStats.reduce((a, r) => a + r.TOTAL, 0) };
-  STATUSES.forEach(s => {
-    totals[s] = ownerStats.reduce((a, r) => a + r[s], 0);
-  });
-
   /* ----------------------------------
-     CHART DATA (100% STACKED)
+     CHART DATA (100% STACKED – VERTICAL)
   ---------------------------------- */
   const chartData = {
     labels: OWNERS,
@@ -154,7 +149,9 @@ export default function Dashboard() {
         stacked: true,
         min: 0,
         max: 100,
-        ticks: { callback: v => `${v}%` }
+        ticks: {
+          callback: v => `${v}%`
+        }
       }
     },
     plugins: {
@@ -162,19 +159,6 @@ export default function Dashboard() {
       title: {
         display: true,
         text: "Task Distribution per Owner (100%)"
-      },
-      datalabels: {
-        display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
-        anchor: "center",
-        align: "center",
-        clamp: false,
-        clip: false,
-        color: "#ffffff",
-        font: {
-          weight: "bold",
-          size: 11
-        },
-        formatter: value => `${value}%`
       }
     }
   };
@@ -186,6 +170,7 @@ export default function Dashboard() {
     <div style={{ padding: 20 }}>
       <h1>Dashboard</h1>
 
+      {/* FILTERS (UPDATED) */}
       <Filters onChange={setFilters} />
 
       {/* KPI CARDS */}
@@ -201,21 +186,35 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* CHART */}
+      {/* STACKED BAR */}
       <div style={{ marginTop: 40, height: 360 }}>
-        <Bar
-          data={chartData}
-          options={chartOptions}
-          plugins={chartPlugins}
-        />
+        <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* TABLES */}
+      {/* TABLE */}
       <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
-      <OwnerCountTable data={ownerStats} totals={totals} />
-
-      <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
-      <OwnerPercentageTable data={ownerStats} />
+      <table style={dashboardTable}>
+        <thead>
+          <tr>
+            <th style={th}>Owner</th>
+            {STATUSES.map(s => (
+              <th key={s} style={th}>{s}</th>
+            ))}
+            <th style={th}>TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ownerStats.map(r => (
+            <tr key={r.owner}>
+              <td style={ownerTd}>{r.owner}</td>
+              {STATUSES.map(s => (
+                <td key={s} style={td}>{r[s]}</td>
+              ))}
+              <td style={td}><b>{r.TOTAL}</b></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -232,72 +231,6 @@ function KpiCard({ title, value, percent }) {
         <span>{percent}%</span>
       </div>
     </div>
-  );
-}
-
-/* ----------------------------------
-   TABLES
----------------------------------- */
-function OwnerCountTable({ data, totals }) {
-  return (
-    <table style={dashboardTable}>
-      <thead>
-        <tr>
-          <th style={th}>Owner</th>
-          {STATUSES.map(s => (
-            <th key={s} style={th}>{s}</th>
-          ))}
-          <th style={th}>TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => (
-          <tr key={r.owner}>
-            <td style={ownerTd}>{r.owner}</td>
-            {STATUSES.map(s => (
-              <td key={s} style={td}>{r[s]}</td>
-            ))}
-            <td style={td}><b>{r.TOTAL}</b></td>
-          </tr>
-        ))}
-        <tr style={totalRow}>
-          <td style={ownerTd}>TOTAL</td>
-          {STATUSES.map(s => (
-            <td key={s} style={td}>{totals[s]}</td>
-          ))}
-          <td style={td}>{totals.TOTAL}</td>
-        </tr>
-      </tbody>
-    </table>
-  );
-}
-
-function OwnerPercentageTable({ data }) {
-  return (
-    <table style={dashboardTable}>
-      <thead>
-        <tr>
-          <th style={th}>Owner</th>
-          {STATUSES.map(s => (
-            <th key={s} style={th}>% {s}</th>
-          ))}
-          <th style={th}>TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => (
-          <tr key={r.owner}>
-            <td style={ownerTd}>{r.owner}</td>
-            {STATUSES.map(s => (
-              <td key={s} style={td}>
-                {r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%
-              </td>
-            ))}
-            <td style={td}><b>100%</b></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
@@ -355,9 +288,4 @@ const ownerTd = {
   ...td,
   textAlign: "left",
   fontWeight: 600
-};
-
-const totalRow = {
-  background: "#E5E7EB",
-  fontWeight: 700
 };
