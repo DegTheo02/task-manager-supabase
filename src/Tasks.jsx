@@ -109,44 +109,17 @@ export default function Tasks() {
       <h1>Tasks</h1>
 
       {/* FORM */}
-      <div style={formGrid}>
-        <Field label="Title">
+      <div style={formContainer}>
+        <FormRow label="Title">
           <input
             style={inputStyle}
             value={form.title}
             onChange={e => updateField("title", e.target.value)}
             placeholder="Task title"
           />
-        </Field>
+        </FormRow>
 
-        <Field label="Assigned Date">
-          <input
-            style={inputStyle}
-            type="date"
-            value={form.assigned_date}
-            onChange={e => updateField("assigned_date", e.target.value)}
-          />
-        </Field>
-
-        <Field label="Initial Deadline">
-          <input
-            style={inputStyle}
-            type="date"
-            value={form.initial_deadline}
-            onChange={e => updateField("initial_deadline", e.target.value)}
-          />
-        </Field>
-
-        <Field label="New Deadline">
-          <input
-            style={inputStyle}
-            type="date"
-            value={form.new_deadline}
-            onChange={e => updateField("new_deadline", e.target.value)}
-          />
-        </Field>
-
-        <Field label="Owner">
+        <FormRow label="Owner">
           <select
             style={inputStyle}
             value={form.owner}
@@ -157,9 +130,36 @@ export default function Tasks() {
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
-        </Field>
+        </FormRow>
 
-        <Field label="Status">
+        <FormRow label="Assigned Date">
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.assigned_date}
+            onChange={e => updateField("assigned_date", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label="Initial Deadline">
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.initial_deadline}
+            onChange={e => updateField("initial_deadline", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label="New Deadline">
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.new_deadline}
+            onChange={e => updateField("new_deadline", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label="Status">
           <select
             style={inputStyle}
             value={form.status}
@@ -169,24 +169,27 @@ export default function Tasks() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-        </Field>
+        </FormRow>
 
         {/* ACTIONS */}
-        <div style={actionsStyle}>
-          <button onClick={saveTask}>
-            {editingId ? "Update Task" : "Create Task"}
-          </button>
-
-          {editingId && (
-            <button
-              onClick={() => {
-                setEditingId(null);
-                setForm(emptyForm);
-              }}
-            >
-              Cancel
+        <div style={actionsRow}>
+          <div />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={saveTask}>
+              {editingId ? "Update Task" : "Create Task"}
             </button>
-          )}
+
+            {editingId && (
+              <button
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(emptyForm);
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -231,13 +234,13 @@ export default function Tasks() {
 }
 
 /* ----------------------------------
-   HELPER COMPONENTS
+   HELPER COMPONENT
 ---------------------------------- */
-function Field({ label, children }) {
+function FormRow({ label, children }) {
   return (
-    <div style={fieldStyle}>
-      <label style={labelStyle}>{label}</label>
-      {children}
+    <div style={formRow}>
+      <label style={rowLabel}>{label}</label>
+      <div>{children}</div>
     </div>
   );
 }
@@ -245,35 +248,37 @@ function Field({ label, children }) {
 /* ----------------------------------
    STYLES
 ---------------------------------- */
-const formGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 16,
-  marginBottom: 24,
-  alignItems: "end"
-};
-
-const fieldStyle = {
+const formContainer = {
   display: "flex",
-  flexDirection: "column"
+  flexDirection: "column",
+  gap: 14,
+  maxWidth: 600,
+  marginBottom: 30
 };
 
-const labelStyle = {
-  fontSize: 13,
+const formRow = {
+  display: "grid",
+  gridTemplateColumns: "180px 1fr",
+  alignItems: "center",
+  gap: 12
+};
+
+const rowLabel = {
   fontWeight: 600,
-  marginBottom: 6
+  fontSize: 14
 };
 
 const inputStyle = {
   height: 36,
   padding: "6px 10px",
-  fontSize: 14
+  fontSize: 14,
+  width: "100%"
 };
 
-const actionsStyle = {
-  display: "flex",
-  gap: 10,
-  alignItems: "flex-end"
+const actionsRow = {
+  display: "grid",
+  gridTemplateColumns: "180px 1fr",
+  marginTop: 10
 };
 
 const tableStyle = {
