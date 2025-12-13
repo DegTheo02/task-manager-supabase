@@ -51,6 +51,7 @@ export default function Dashboard() {
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [filters, setFilters] = useState({});
 
+  /* LOAD DATA */
   useEffect(() => {
     loadTasks();
   }, []);
@@ -60,9 +61,7 @@ export default function Dashboard() {
     setTasks(data || []);
   }
 
-  /* ----------------------------------
-     APPLY FILTERS (GLOBAL)
-  ---------------------------------- */
+  /* APPLY FILTERS */
   useEffect(() => {
     let data = [...tasks];
 
@@ -99,9 +98,7 @@ export default function Dashboard() {
 
   const totalTasks = filteredTasks.length || 1;
 
-  /* ----------------------------------
-     KPI DATA
-  ---------------------------------- */
+  /* KPI DATA */
   const kpis = STATUSES.map(s => {
     const count = filteredTasks.filter(t => t.status === s).length;
     return {
@@ -111,31 +108,33 @@ export default function Dashboard() {
     };
   });
 
-  /* ----------------------------------
-     OWNER STATS
-  ---------------------------------- */
+  /* OWNER STATS (COUNTS + %) */
   const ownerStats = OWNERS.map(owner => {
     const list = filteredTasks.filter(t => t.owner === owner);
-    const total = list.length || 1;
+    const total = list.length || 0;
 
-    const row = { owner, TOTAL: list.length };
+    const row = { owner, TOTAL: total };
     STATUSES.forEach(s => {
-      row[s] = Math.round(
-        (list.filter(t => t.status === s).length / total) * 100
-      );
+      row[s] = list.filter(t => t.status === s).length;
     });
 
     return row;
   });
 
-  /* ----------------------------------
-     CHART DATA (100% STACKED)
-  ---------------------------------- */
+  /* TOTALS */
+  const totals = { TOTAL: ownerStats.reduce((a, r) => a + r.TOTAL, 0) };
+  STATUSES.forEach(s => {
+    totals[s] = ownerStats.reduce((a, r) => a + r[s], 0);
+  });
+
+  /* CHART DATA (100% STACKED) */
   const chartData = {
     labels: OWNERS,
-    datasets: STATUSES.map((s, i) => ({
+    datasets: STATUSES.map(s => ({
       label: s,
-      data: ownerStats.map(o => o[s]),
+      data: ownerStats.map(o =>
+        o.TOTAL === 0 ? 0 : Math.round((o[s] / o.TOTAL) * 100)
+      ),
       backgroundColor: statusColors[s]
     }))
   };
@@ -191,17 +190,55 @@ export default function Dashboard() {
         <Bar data={chartData} options={chartOptions} />
       </div>
 
-      {/* TABLE */}
+      {/* TABLE 1: COUNTS */}
+      <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
+      <OwnerCountTable data={ownerStats} totals={totals} />
+
+      {/* TABLE 2: PERCENTAGES */}
       <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
-      <PercentageTable data={ownerStats} />
+      <OwnerPercentageTable data={ownerStats} />
     </div>
   );
 }
 
 /* ----------------------------------
-   TABLE
+   TABLES
 ---------------------------------- */
-function PercentageTable({ data }) {
+function OwnerCountTable({ data, totals }) {
+  return (
+    <table style={dashboardTable}>
+      <thead>
+        <tr>
+          <th style={tableHeader}>Owner</th>
+          {STATUSES.map(s => (
+            <th key={s} style={tableHeader}>{s}</th>
+          ))}
+          <th style={tableHeader}>TOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map(r => (
+          <tr key={r.owner}>
+            <td style={ownerCell}>{r.owner}</td>
+            {STATUSES.map(s => (
+              <td key={s} style={tableCell}>{r[s]}</td>
+            ))}
+            <td style={tableCell}><b>{r.TOTAL}</b></td>
+          </tr>
+        ))}
+        <tr style={totalRow}>
+          <td style={ownerCell}>TOTAL</td>
+          {STATUSES.map(s => (
+            <td key={s} style={tableCell}>{totals[s]}</td>
+          ))}
+          <td style={tableCell}>{totals.TOTAL}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function OwnerPercentageTable({ data }) {
   return (
     <table style={dashboardTable}>
       <thead>
@@ -218,7 +255,9 @@ function PercentageTable({ data }) {
           <tr key={r.owner}>
             <td style={ownerCell}>{r.owner}</td>
             {STATUSES.map(s => (
-              <td key={s} style={tableCell}>{r[s]}%</td>
+              <td key={s} style={tableCell}>
+                {r.TOTAL === 0 ? "0%" : Math.round((r[s] / r.TOTAL) * 100) + "%"}
+              </td>
             ))}
             <td style={tableCell}><b>100%</b></td>
           </tr>
@@ -278,6 +317,11 @@ const ownerCell = {
   padding: "8px",
   textAlign: "left",
   fontWeight: 600
+};
+
+const totalRow = {
+  backgroundColor: "#E5E7EB",
+  fontWeight: 700
 };
 
 const statusColors = {
