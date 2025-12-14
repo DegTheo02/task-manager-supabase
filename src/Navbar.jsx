@@ -16,7 +16,7 @@ export default function Navbar() {
 const nav = {
   display: "flex",
   justifyContent: "space-between",
-  padding: 12,
+  padding: 5,
   background: "#111827",
   color: "white"
 };

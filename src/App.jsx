@@ -7,7 +7,9 @@ import Kanban from "./Kanban";
 export default function App() {
   return (
     <>
-      <Navbar />
+      <div style={stickyBar}>
+        <Navbar />
+      </div>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -17,3 +19,10 @@ export default function App() {
     </>
   );
 }
+
+
+const stickyBar = {
+  position: "sticky",
+  top: 0,
+  zIndex: 1000
+};

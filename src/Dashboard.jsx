@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
+import Navbar from "./Navbar";
+
 
 import {
-  Chart as ChartJS, 
+  Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -11,42 +13,74 @@ import {
   Legend,
   Title
 } from "chart.js";
+
 import { Bar } from "react-chartjs-2";
 
-/* ----------------------------------
-   REGISTER CHART.JS
----------------------------------- */
+/* ===============================
+   % LABEL PLUGIN (AUTO COLOR)
+================================ */
+const percentageLabelPlugin = {
+  id: "percentageLabelPlugin",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+
+    const getTextColor = (hex) => {
+      const c = hex.replace("#", "");
+      const r = parseInt(c.substring(0, 2), 16);
+      const g = parseInt(c.substring(2, 4), 16);
+      const b = parseInt(c.substring(4, 6), 16);
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      return luminance > 150 ? "#000" : "#fff";
+    };
+
+    chart.data.datasets.forEach((dataset, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (!meta || meta.hidden) return;
+
+      meta.data.forEach((bar, index) => {
+        const value = dataset.data[index];
+        if (!value || value < 5) return;
+
+        ctx.save();
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = getTextColor(dataset.backgroundColor);
+        ctx.fillText(`${value}%`, bar.x, bar.y + bar.height / 2);
+        ctx.restore();
+      });
+    });
+  }
+};
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
   Tooltip,
   Legend,
-  Title
+  Title,
+  percentageLabelPlugin
 );
 
-/* ----------------------------------
+/* ===============================
    CONSTANTS
----------------------------------- */
+================================ */
 const OWNERS = [
-  "AURELLE",
-  "CHRISTIAN",
-  "SERGEA",
-  "FABRICE",
-  "FLORIAN",
-  "JOSIAS",
-  "ESTHER",
-  "MARIUS",
-  "THEOPHANE"
+  "AURELLE","CHRISTIAN","SERGEA","FABRICE",
+  "FLORIAN","JOSIAS","ESTHER","MARIUS","THEOPHANE"
 ];
 
+const TEAMS = ["BI","CVM","SM"];
+
 const STATUSES = [
-  "OPEN",
-  "ONGOING",
-  "OVERDUE",
-  "ON HOLD",
   "CLOSED ON TIME",
-  "CLOSED PAST DUE"
+  "CLOSED PAST DUE",
+  "ONGOING",
+  "OPEN",
+  "OVERDUE",
+  "ON HOLD"
+  
 ];
 
 const STATUS_COLORS = {
@@ -58,11 +92,24 @@ const STATUS_COLORS = {
   "CLOSED PAST DUE": "#F97316"
 };
 
-/* ----------------------------------
+const STATUS_ICONS = {
+  OPEN: "🔵",
+  ONGOING: "🔄",
+  OVERDUE: "⛔",
+  "ON HOLD": "⏸",
+  "CLOSED ON TIME": "✅",
+  "CLOSED PAST DUE": "⚠️"
+};
+
+/* ===============================
    DASHBOARD
----------------------------------- */
+================================ */
 export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem("darkMode") === "true"
+  );
+
   const [filters, setFilters] = useState({
     owners: [],
     teams: [],
@@ -74,259 +121,360 @@ export default function Dashboard() {
     deadline_to: ""
   });
 
-  /* LOAD TASKS */
   useEffect(() => {
-    supabase
-      .from("tasks")
-      .select("*")
-      .then(({ data }) => setTasks(data || []));
+    supabase.from("tasks").select("*").then(({ data }) => {
+      setTasks(data || []);
+    });
   }, []);
 
-  /* APPLY FILTERS */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
-      if (filters.owners.length && !filters.owners.includes(t.owner))
-        return false;
-
-      if (filters.teams.length && !filters.teams.includes(t.team))
-        return false;
-
-      if (filters.statuses.length && !filters.statuses.includes(t.status))
-        return false;
-
-      if (
-        filters.recurrence_types.length &&
-        !filters.recurrence_types.includes(t.recurrence_type)
-      )
-        return false;
-
-      if (filters.assigned_from && t.assigned_date < filters.assigned_from)
-        return false;
-      if (filters.assigned_to && t.assigned_date > filters.assigned_to)
-        return false;
-
-      const deadline = t.new_deadline || t.initial_deadline;
-      if (filters.deadline_from && deadline < filters.deadline_from)
-        return false;
-      if (filters.deadline_to && deadline > filters.deadline_to)
-        return false;
-
+      if (filters.owners.length && !filters.owners.includes(t.owner)) return false;
+      if (filters.teams.length && !filters.teams.includes(t.team)) return false;
+      if (filters.statuses.length && !filters.statuses.includes(t.status)) return false;
       return true;
     });
   }, [tasks, filters]);
 
-  const totalTasks = filteredTasks.length || 1;
+    const totalTasks = filteredTasks.length;
 
-  /* KPIs */
-  const kpis = STATUSES.map(status => {
+  const kpiStats = STATUSES.map(status => {
     const count = filteredTasks.filter(t => t.status === status).length;
+    const percent = totalTasks
+      ? Math.round((count / totalTasks) * 100)
+      : 0;
+
     return {
       status,
       count,
-      percent: Math.round((count / totalTasks) * 100)
+      percent
     };
   });
 
-  /* OWNER STATS */
-  const ownerStats = OWNERS.map(owner => {
-    const list = filteredTasks.filter(t => t.owner === owner);
-    const row = { owner, TOTAL: list.length };
-    STATUSES.forEach(s => {
-      row[s] = list.filter(t => t.status === s).length;
+  const kpiContainer = {
+  display: "flex",
+  gap: 16,
+  flexWrap: "wrap",
+  marginTop: 20,
+  marginBottom: 100,
+  marginRight: 100
+};
+
+const kpiCard = (status, darkMode) => ({
+  minWidth: 150,
+  flex: "1 1 150px",
+  padding: 14,
+  borderRadius: 10,
+  background: darkMode ? "#111" : "white",
+  borderTop: `5px solid ${STATUS_COLORS[status]}`,
+  boxShadow: darkMode
+    ? "0 4px 12px rgba(0,0,0,0.6)"
+    : "0 4px 12px rgba(0,0,0,0.08)"
+});
+
+const kpiHeader = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  fontWeight: 700,
+  marginBottom: 15
+};
+
+const kpiBody = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center"
+};
+
+const kpiCount = {
+  fontSize: 20,
+  fontWeight: 800,
+  opacity: 0.8
+};
+
+const kpiPercent = {
+  fontSize: 26,
+  fontWeight: 700,
+  opacity: 1.5
+};
+
+
+  const buildStats = (values, key) =>
+    values.map(v => {
+      const list = filteredTasks.filter(t => t[key] === v);
+      const row = { label: v, TOTAL: list.length };
+      STATUSES.forEach(s => {
+        row[s] = list.filter(t => t.status === s).length;
+      });
+      return row;
     });
-    return row;
+
+  const teamStats = buildStats(TEAMS, "team");
+  const ownerStats = buildStats(
+    OWNERS.filter(o => filteredTasks.some(t => t.owner === o)),
+    "owner"
+  );
+
+  const columnPercentageTotals = (rows) => {
+  const totals = columnTotals(rows); // uses counts
+  const result = {};
+
+  STATUSES.forEach(s => {
+    result[s] = totals.TOTAL
+      ? Math.round((totals[s] / totals.TOTAL) * 100)
+      : 0;
   });
 
-  /* CHART DATA */
-  const chartData = {
-    labels: OWNERS,
-    datasets: STATUSES.map(status => ({
-      label: status,
-      data: ownerStats.map(o =>
-        o.TOTAL ? Math.round((o[status] / o.TOTAL) * 100) : 0
-      ),
-      backgroundColor: STATUS_COLORS[status]
-    }))
+  return result;
+};
+
+
+  const columnTotals = rows => {
+    const total = { TOTAL: 0 };
+    STATUSES.forEach(s => (total[s] = 0));
+    rows.forEach(r => {
+      total.TOTAL += r.TOTAL;
+      STATUSES.forEach(s => (total[s] += r[s]));
+    });
+    return total;
+  };
+  
+
+  const toggleStatusFilter = (status) => {
+  setFilters(prev => ({
+    ...prev,
+    statuses:
+      prev.statuses.length === 1 && prev.statuses[0] === status
+        ? []            // toggle OFF
+        : [status]      // toggle ON
+  }));
+};
+
+
+  const resetFilters = () => setFilters({
+    owners: [],
+    teams: [],
+    statuses: [],
+    recurrence_types: [],
+    assigned_from: "",
+    assigned_to: "",
+    deadline_from: "",
+    deadline_to: ""
+  });
+
+  const pageStyle = {
+    padding: 20,
+    background: darkMode ? "#0f0f0f" : "#f5f5f5",
+    color: darkMode ? "#fff" : "#000",
+    minHeight: "100vh"
   };
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: { stacked: true },
-      y: {
-        stacked: true,
-        min: 0,
-        max: 100,
-        ticks: { callback: v => `${v}%` }
-      }
-    },
-    plugins: {
-      legend: { position: "top" },
-      title: {
-        display: true,
-        text: "Task Distribution per Owner (100%)"
-      }
-    }
+  const stickyBar = {
+    position: "sticky",
+    top: 68,
+    zIndex: 1000,
+    background: darkMode ? "#0f0f0f" : "#f5f5f5",
+    paddingBottom: 40,
+    marginBottom: 20
+  };
+
+  /* ===============================
+     TABLE COMPONENT
+  ================================ */
+  const Table = ({ title, rows, percentage }) => {
+    const totals = columnTotals(rows);
+
+    return (
+      <>
+        <h2>{title}</h2>
+
+        {/* WIDTH CONSTRAINER */}
+        <div style={{ maxWidth: 1200, marginLeft: 20 }}>
+          <table width="100%" border="3" style={{ textAlign: "center" }}>
+            <thead>
+              <tr>
+                <th>{title.includes("Team") ? "🏷 Team" : "👤 Owner"}</th>
+                {STATUSES.map(s => (
+                  <th key={s}>
+                    {STATUS_ICONS[s]} {s}
+                  </th>
+                ))}
+                <th>Σ TOTAL</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.label}>
+                  <td><b>{r.label}</b></td>
+
+                  {STATUSES.map(s => (
+                    <td key={s} style={{ color: STATUS_COLORS[s] }}>
+                      {percentage
+                        ? `${r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%`
+                        : r[s]}
+                    </td>
+                  ))}
+
+                  <td><b>{percentage ? "100%" : r.TOTAL}</b></td>
+                </tr>
+              ))}
+
+              {/* COLUMN TOTALS */}
+            <tr>
+  <td><b>Σ TOTAL</b></td>
+
+  {STATUSES.map(s => (
+    <td key={s} style={{ color: STATUS_COLORS[s] }}>
+      <b>
+        {percentage
+          ? `${columnPercentageTotals(rows)[s]}%`
+          : totals[s]}
+      </b>
+    </td>
+  ))}
+
+  <td>
+    <b>{percentage ? "100%" : totals.TOTAL}</b>
+  </td>
+</tr>
+
+            </tbody>
+          </table>
+        </div>
+      </>
+    );
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={pageStyle}>
       <h1>Dashboard</h1>
 
-      <Filters onChange={setFilters} />
+                        {/* STICKY BAR */}
+      <div style={stickyBar}>
 
-      {/* KPI CARDS */}
-      <div style={kpiGrid}>
-        <KpiCard title="TOTAL" value={filteredTasks.length} percent={100} />
-        {kpis.map(k => (
-          <KpiCard
-            key={k.status}
-            title={k.status}
-            value={k.count}
-            percent={k.percent}
+        {/* NAVBAR */}
+        
+
+        {/* FILTER CONTROLS */}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            paddingTop: 10
+          }}
+        >
+          <button
+            onClick={() => {
+              const next = !darkMode;
+              setDarkMode(next);
+              localStorage.setItem("darkMode", next);
+            }}
+          >
+            {darkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
+          </button>
+
+          <button onClick={resetFilters}>🔄 Reset Filters</button>
+
+          <Filters
+            values={filters}
+            onChange={setFilters}
+            darkMode={darkMode}
           />
-        ))}
+        </div>
       </div>
 
-      {/* STACKED BAR */}
-      <div style={{ marginTop: 40, height: 360 }}>
-        <Bar data={chartData} options={chartOptions} />
+      
+  {/* KPI CARDS */}
+<div style={kpiContainer}>
+  {kpiStats.map(kpi => {
+    const active =
+      filters.statuses.length === 1 &&
+      filters.statuses[0] === kpi.status;
+
+    return (
+      <div
+        key={kpi.status}
+        onClick={() => toggleStatusFilter(kpi.status)}
+        style={{
+          ...kpiCard(kpi.status, darkMode),
+          cursor: "pointer",
+          opacity: active ? 1 : 0.75,
+          outline: active
+            ? `2px solid ${STATUS_COLORS[kpi.status]}`
+            : "none"
+        }}
+      >
+        <div style={kpiHeader}>
+          <span>{STATUS_ICONS[kpi.status]}</span>
+          <span>{kpi.status}</span>
+        </div>
+
+        <div style={kpiBody}>
+          <div style={kpiCount}>{kpi.count}</div>
+          <div style={kpiPercent}>{kpi.percent}%</div>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+
+
+
+      {/* TEAM CHART */}
+      <div style={{ height: 500 }}>
+        <Bar
+          data={{
+            labels: TEAMS,
+            datasets: STATUSES.map(s => ({
+              label: s,
+              data: TEAMS.map(team => {
+                const list = filteredTasks.filter(t => t.team === team);
+                const count = list.filter(t => t.status === s).length;
+                return list.length ? Math.round((count / list.length) * 100) : 0;
+              }),
+              backgroundColor: STATUS_COLORS[s]
+            }))
+          }}
+          options={{
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, min: 0, max: 100 }
+            }
+          }}
+        />
+      </div>
+
+      {/* OWNER CHART */}
+      <div style={{ height: 500, marginTop: 150, marginBottom: 100, marginRight: 0 }}>
+        <Bar
+          data={{
+            labels: ownerStats.map(o => o.label),
+            datasets: STATUSES.map(s => ({
+              label: s,
+              data: ownerStats.map(r =>
+                r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0
+              ),
+              backgroundColor: STATUS_COLORS[s]
+            }))
+          }}
+          options={{
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, min: 0, max: 100 }
+            }
+          }}
+        />
       </div>
 
       {/* TABLES */}
-      <h2 style={{ marginTop: 40 }}>Tasks per Owner (Count)</h2>
-      <OwnerCountTable data={ownerStats} />
+      <Table title="Tasks per Team (Count)" rows={teamStats} />
+      <Table title="Task Distribution (%) per Team" rows={teamStats} percentage />
 
-      <h2 style={{ marginTop: 40 }}>Task Distribution (%) per Owner</h2>
-      <OwnerPercentageTable data={ownerStats} />
+      <Table title="Tasks per Owner (Count)" rows={ownerStats} />
+      <Table title="Task Distribution (%) per Owner" rows={ownerStats} percentage />
     </div>
   );
 }
-
-/* ----------------------------------
-   COMPONENTS
----------------------------------- */
-function KpiCard({ title, value, percent }) {
-  return (
-    <div style={kpiCard}>
-      <div style={kpiTitle}>{title}</div>
-      <div style={kpiValueRow}>
-        <span>{value}</span>
-        <span>{percent}%</span>
-      </div>
-    </div>
-  );
-}
-
-function OwnerCountTable({ data }) {
-  return (
-    <table style={dashboardTable}>
-      <thead>
-        <tr>
-          <th style={th}>Owner</th>
-          {STATUSES.map(s => (
-            <th key={s} style={th}>{s}</th>
-          ))}
-          <th style={th}>TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => (
-          <tr key={r.owner}>
-            <td style={ownerTd}>{r.owner}</td>
-            {STATUSES.map(s => (
-              <td key={s} style={td}>{r[s]}</td>
-            ))}
-            <td style={td}><b>{r.TOTAL}</b></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function OwnerPercentageTable({ data }) {
-  return (
-    <table style={dashboardTable}>
-      <thead>
-        <tr>
-          <th style={th}>Owner</th>
-          {STATUSES.map(s => (
-            <th key={s} style={th}>% {s}</th>
-          ))}
-          <th style={th}>TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => (
-          <tr key={r.owner}>
-            <td style={ownerTd}>{r.owner}</td>
-            {STATUSES.map(s => (
-              <td key={s} style={td}>
-                {r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%
-              </td>
-            ))}
-            <td style={td}><b>100%</b></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-/* ----------------------------------
-   STYLES
----------------------------------- */
-const kpiGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: 12,
-  marginTop: 20
-};
-
-const kpiCard = {
-  background: "#111827",
-  color: "white",
-  padding: "10px 12px",
-  borderRadius: 8,
-  textAlign: "center"
-};
-
-const kpiTitle = {
-  fontSize: 13,
-  fontWeight: 700,
-  marginBottom: 6
-};
-
-const kpiValueRow = {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: 20,
-  fontWeight: "bold"
-};
-
-const dashboardTable = {
-  width: "100%",
-  borderCollapse: "collapse",
-  marginTop: 10
-};
-
-const th = {
-  border: "1px solid #D1D5DB",
-  padding: 8,
-  background: "#F3F4F6",
-  textAlign: "center"
-};
-
-const td = {
-  border: "1px solid #D1D5DB",
-  padding: 8,
-  textAlign: "center"
-};
-
-const ownerTd = {
-  ...td,
-  textAlign: "left",
-  fontWeight: 600
-};
