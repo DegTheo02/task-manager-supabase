@@ -32,8 +32,7 @@ const STATUSES = [
 
 
 const STATUS_COLORS = {
-  OPEN: "#3B82F6",
-  ONGOING: "#0EA5A8",
+  "ON TRACK": "#3B82F6",
   OVERDUE: "#DC2626",
   "ON HOLD": "#6B7280",
   "CLOSED ON TIME": "#16A34A",
