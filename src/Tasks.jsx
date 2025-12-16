@@ -497,14 +497,19 @@ return (
           </label>
           <label style={formLabel}>
             Comments
-            <input
-              style={formInput}
-              value={form.comments}
-              onChange={e =>
-                setForm(f => ({ ...f, comments: e.target.value }))
-              }
-            />
-          </label>
+           <textarea
+             style={{
+               ...formInput,
+               minHeight: 60,
+               resize: "vertical"
+             }}
+             value={form.comments}
+             onChange={e =>
+               setForm(f => ({ ...f, comments: e.target.value }))
+             }
+             placeholder="Type your comment here… (Enter for new line)"
+           />
+         </label>
 
         </div>
 
@@ -758,7 +763,7 @@ return (
                 <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
 
-                <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left"}}>{ t.comments }</td>
+                <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
                 <td style={{ ...td(darkMode), fontSize: "5px"}}>
                   <button style={{ fontSize: "10px", padding: "4px 4px" }} onClick={() => editTask(t)}>Edit</button>{" "}
