@@ -500,14 +500,15 @@ return (
            <textarea
              style={{
                ...formInput,
-               minHeight: 60,
-               resize: "vertical"
+               minHeight: 30,
+               resize: "vertical",
+               resize: "horizontal"
              }}
              value={form.comments}
              onChange={e =>
                setForm(f => ({ ...f, comments: e.target.value }))
              }
-             placeholder="Type your comment here… (Enter for new line)"
+             placeholder="Type your comment here…"
            />
          </label>
 
