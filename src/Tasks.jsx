@@ -286,18 +286,51 @@ const [filters, setFilters] = useState(() => {
       initial_deadline: form.initial_deadline,
       new_deadline: form.new_deadline || null,
       closing_date: normalizedClosingDate,
-      comment: form.comments || null 
+      comments: form.comments || null 
     };
 
-    if (isEditing) {
-      await supabase.from("tasks").update(payload).eq("id", form.id);
-    } else {
-      await supabase.from("tasks").insert(payload);
-    }
+if (isEditing) {
+  const { error } = await supabase
+    .from("tasks")
+    .update(payload)
+    .eq("id", form.id);
+
+  if (error) {
+    console.error("Update failed:", error);
+    alert("Update failed. Check console.");
+    return;
+  }
+} else {
+  const { error } = await supabase
+    .from("tasks")
+    .insert(payload);
+
+  if (error) {
+    console.error("Insert failed:", error);
+    alert("Insert failed. Check console.");
+    return;
+  }
+}
+
 
     setForm(emptyTask);
     setIsEditing(false);
     loadTasks();
+
+     setFilters({
+  owners: [],
+  teams: [],
+  statuses: [],
+  recurrence_types: [],
+  assigned_from: "",
+  assigned_to: "",
+  deadline_from: "",
+  deadline_to: "",
+  closing_from: "",
+  closing_to: "",
+  today: false
+});
+
   };
 
   /* DELETE TASK */
@@ -307,11 +340,15 @@ const [filters, setFilters] = useState(() => {
     loadTasks();
   };
 
-  const editTask = task => {
-    setForm(normalizeTaskDates(task));
-    setIsEditing(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+const editTask = task => {
+  setForm({
+    ...normalizeTaskDates(task),
+    comments: task.comments || ""
+  });
+  setIsEditing(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
 
   /* ----------------------------------
      RENDER
@@ -722,7 +759,7 @@ return (
                 <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
 
-                <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left"}}>{ t.comment }</td>
+                <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left"}}>{ t.comments }</td>
 
                 <td style={{ ...td(darkMode), fontSize: "5px"}}>
                   <button style={{ fontSize: "10px", padding: "4px 4px" }} onClick={() => editTask(t)}>Edit</button>{" "}
