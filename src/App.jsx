@@ -49,6 +49,21 @@ function ProtectedRoute({ children }) {
 export default function App() {
   const [session, setSession] = useState(null);
 
+  const [filters, setFilters] = useState({
+  owners: [],
+  teams: [],
+  statuses: [],
+  recurrence_types: [],
+  assigned_from: "",
+  assigned_to: "",
+  deadline_from: "",
+  deadline_to: "",
+  closing_from: "",
+  closing_to: "",
+  today: false
+});
+
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);

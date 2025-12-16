@@ -2,20 +2,30 @@ import React, { useState } from "react";
 
 /* CONSTANTS */
 const OWNERS = [
-  "AURELLE","CHRISTIAN","SERGEA","FABRICE",
-  "FLORIAN","JOSIAS","ESTHER","MARIUS","THEOPHANE"
+  "AURELLE",
+  "CHRISTIAN",
+  "SERGEA",
+  "FABRICE",
+  "FLORIAN",
+  "JOSIAS",
+  "ESTHER",
+  "MARIUS",
+  "THEOPHANE",
+  "FLYTXT",
+  "IT",
+  "OTHER"
 ];
 
 const STATUSES = [
   "CLOSED ON TIME",
   "CLOSED PAST DUE",
-  "ONGOING",
-  "OPEN",
+  "ON TRACK",
   "OVERDUE",
   "ON HOLD"
 ];
 
-const TEAMS = ["BI","CVM","SM"];
+
+const TEAMS = ["BI","CVM","SM", "FLYTXT", "IT", "OTHER"];
 
 const RECURRENCE_TYPES = [
   "Non-Recurring",

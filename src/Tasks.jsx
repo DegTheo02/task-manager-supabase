@@ -15,17 +15,21 @@ const OWNERS = [
   "JOSIAS",
   "ESTHER",
   "MARIUS",
-  "THEOPHANE"
+  "THEOPHANE",
+  "FLYTXT",
+  "IT",
+  "OTHER"
+  
 ];
 
 const STATUSES = [
-  "OPEN",
-  "ONGOING",
-  "OVERDUE",
-  "ON HOLD",
   "CLOSED ON TIME",
-  "CLOSED PAST DUE"
+  "CLOSED PAST DUE",
+  "ON TRACK",
+  "OVERDUE",
+  "ON HOLD"
 ];
+
 
 const STATUS_COLORS = {
   OPEN: "#3B82F6",
@@ -51,8 +55,46 @@ const OWNER_TEAM_MAP = {
   ESTHER: "CVM",
   JOSIAS: "CVM",
   MARIUS: "CVM",
-  THEOPHANE: "SM"
+  THEOPHANE: "SM",
+  FLYTXT: "FLYTXT",
+  IT: "IT",
+  OTHER: "OTHER"
 };
+
+const toISODate = value => {
+  if (!value) return "";
+  return value.slice(0, 10); // works for ISO strings & timestamps
+};
+
+const normalizeTaskDates = task => ({
+  ...task,
+  assigned_date: toISODate(task.assigned_date),
+  initial_deadline: toISODate(task.initial_deadline),
+  new_deadline: toISODate(task.new_deadline),
+  closing_date: toISODate(task.closing_date)
+});
+
+
+const computeStatus = task => {
+  const today = new Date().toISOString().slice(0, 10);
+  const deadline = task.new_deadline || task.initial_deadline;
+
+  // ON HOLD
+  if (deadline >= "2026-12-31") return "ON HOLD";
+
+  // NOT CLOSED
+  if (!task.closing_date) {
+    return deadline >= today ? "ON TRACK" : "OVERDUE";
+  }
+
+  // CLOSED
+  if (task.closing_date > task.initial_deadline)
+    return "CLOSED PAST DUE";
+
+  return "CLOSED ON TIME";
+};
+
+
 
 /* ----------------------------------
    TASKS PAGE
@@ -78,16 +120,25 @@ export default function Tasks() {
     : { background: "white", color: "black" };
 
   /* FILTERS */
-  const [filters, setFilters] = useState({
+const [filters, setFilters] = useState(() => {
+  const saved = sessionStorage.getItem("tasksFilters");
+  return saved ? JSON.parse(saved) : {
     owners: [],
+    teams: [],
     statuses: [],
+    recurrence_types: [],
+    assigned_from: "",
+    assigned_to: "",
     deadline_from: "",
-    deadline_to: "",
-    closing_from: "",     
-    closing_to: "",       
-    today: false
-  });
+    deadline_to: ""
+  };
+});
 
+  useEffect(() => {
+    sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
+  }, [filters]);
+
+  
   const resetTableFilters = () => {
   setFilters({
     owners: [],
@@ -115,7 +166,8 @@ export default function Tasks() {
     assigned_date: "",
     initial_deadline: "",
     new_deadline: "",
-    closing_date: "" 
+    closing_date: "" ,
+    comments: "" 
   };
 
   const [form, setForm] = useState(emptyTask);
@@ -205,24 +257,36 @@ export default function Tasks() {
     if (
       !form.title ||
       !form.owner ||
-      !form.status ||
       !form.assigned_date ||
       !form.initial_deadline
+      
     ) {
       alert("Please fill all required fields");
       return;
     }
 
+    const normalizedClosingDate =
+    form.closing_date === "" ? null : form.closing_date;
+
+    const formForStatus = {
+  ...form,
+  closing_date: normalizedClosingDate
+};
+
+
+
     const payload = {
       title: form.title,
       owner: form.owner,
       team: form.team,
-      status: form.status,
+      status: computeStatus(formForStatus),
+
       recurrence_type: form.recurrence_type,
       assigned_date: form.assigned_date,
       initial_deadline: form.initial_deadline,
       new_deadline: form.new_deadline || null,
-      closing_date: form.closing_date || null 
+      closing_date: normalizedClosingDate,
+      comment: form.comments || null 
     };
 
     if (isEditing) {
@@ -244,7 +308,7 @@ export default function Tasks() {
   };
 
   const editTask = task => {
-    setForm(task);
+    setForm(normalizeTaskDates(task));
     setIsEditing(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -283,11 +347,11 @@ return (
       <div style={{ ...formBox, ...dark }}>
         <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
 
-        {/* 2 ROW LAYOUT */}
+        {/* 1 ROW LAYOUT */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: "repeat(8, 1fr)",
             gap: 20,
             width: "100%"
           }}
@@ -353,45 +417,18 @@ return (
               }
             />
           </label>
-
-          {/* ROW 2 */}
-          <label style={formLabel}>
-            Team
-            <input
-              style={{ ...formInput, background: "#F3F4F6" }}
-              value={form.team}
-              disabled
-            />
-          </label>
+      
 
           <label style={formLabel}>
             New deadline
             <input
               type="date"
               style={formInput}
-              value={form.new_deadline || ""}
+              value={form.new_deadline}
               onChange={e =>
                 setForm(f => ({ ...f, new_deadline: e.target.value }))
               }
             />
-          </label>
-
-          <label style={formLabel}>
-            Status *
-            <select
-              style={formInput}
-              value={form.status}
-              onChange={e =>
-                setForm(f => ({ ...f, status: e.target.value }))
-              }
-            >
-              <option value="">Select status</option>
-              {STATUSES.map(s => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
           </label>
 
           <label style={formLabel}>
@@ -411,8 +448,8 @@ return (
             </select>
           </label>
 
-          <label style={formLabel}>
-            Closing date
+             <label style={formLabel}>
+            Closing Date
             <input
               type="date"
               style={formInput}
@@ -422,16 +459,26 @@ return (
               }
             />
           </label>
+          <label style={formLabel}>
+            Comments
+            <input
+              style={formInput}
+              value={form.comments}
+              onChange={e =>
+                setForm(f => ({ ...f, comments: e.target.value }))
+              }
+            />
+          </label>
 
         </div>
 
-        <button onClick={saveTask} style={{ marginTop: 12 }}>
+        <button onClick={saveTask} style={{ marginTop: 10 }}>
           {isEditing ? "Update Task" : "Create Task"}
         </button>
       </div>
 
       {/* EXISTING TASKS */}
-      <h2 style={{ marginTop: 50 }}>EXISTING TASKS</h2>
+      <h2 style={{ marginTop: 100 }}>EXISTING TASKS</h2>
 
       {/* FILTER BAR */}
       <div style={filterBar} key={filterKey}>
@@ -575,53 +622,86 @@ return (
         <table style={{ ...table(darkMode), ...dark }}>
           <thead>
             <tr>
-              <th style={th(darkMode)} onClick={() => requestSort("title")}>
-                Title{arrow("title")}
-              </th>
-              <th style={th(darkMode)} onClick={() => requestSort("owner")}>
+              <th
+                style={{ ...th(darkMode), textAlign: "left", width: "25%" }}
+                onClick={() => requestSort("title")}
+              >
+                Title{arrow("title")}</th>
+
+
+              <th
+                style={{ ...th(darkMode), width: "9%" }}
+                onClick={() => requestSort("owner")}
+              >
                 Owner{arrow("owner")}
               </th>
-              <th style={th(darkMode)} onClick={() => requestSort("team")}>
+
+
+              <th
+                style={{ ...th(darkMode), width: "5%" }}
+                onClick={() => requestSort("team")}
+              >
                 Team{arrow("team")}
               </th>
-              <th style={th(darkMode)} onClick={() => requestSort("status")}>
+
+
+              <th
+                style={{ ...th(darkMode), width: "10%" }}
+                onClick={() => requestSort("status")}
+              >
                 Status{arrow("status")}
               </th>
+
+
               <th
-                style={th(darkMode)}
+                style={{ ...th(darkMode), width: "10%" }}
                 onClick={() => requestSort("recurrence_type")}
               >
                 Recurrence{arrow("recurrence_type")}
               </th>
+
+
               <th
-                style={th(darkMode)}
+                style={{ ...th(darkMode), width: "8%" }}
                 onClick={() => requestSort("assigned_date")}
               >
                 Assigned{arrow("assigned_date")}
               </th>
+
+
               <th
-                style={th(darkMode)}
+                style={{ ...th(darkMode), width: "8%" }}
                 onClick={() => requestSort("initial_deadline")}
               >
                 Intial Deadline{arrow("initial_deadline")}
               </th>
 
+              <th
+                style={{ ...th(darkMode), width: "8%" }}
+                onClick={() => requestSort("new_deadline")}
+              >
+                New Deadline{arrow("new_deadline")}
+              </th>
+
 
               <th
-                style={th(darkMode)}
+                style={{ ...th(darkMode), width: "8%" }}
                 onClick={() => requestSort("closing_date")}
               >
                 Closing Date{arrow("closing_date")}
               </th>
+              <th style={{ ...th(darkMode), width: "20%" }}>Comments</th>
 
-              <th style={th(darkMode)}>Actions</th>
+              <th style={{ ...th(darkMode), width: "8%" }}>Actions</th>
+
+
             </tr>
           </thead>
 
           <tbody>
             {sortedTasks.map(t => (
               <tr key={t.id}>
-                <td style={td(darkMode)}>{t.title}</td>
+                <td style={{ ...td(darkMode), textAlign: "left" ,fontSize: "14px"}}>{t.title}</td>
                 <td style={td(darkMode)}>{t.owner}</td>
                 <td style={td(darkMode)}>{t.team}</td>
 
@@ -629,23 +709,26 @@ return (
                   style={{
                     ...td(darkMode),
                     color: STATUS_COLORS[t.status],
-                    fontWeight: 700
+                    fontWeight: 700,
+                    fontSize: "13px"
                   }}
                 >
                   {t.status}
                 </td>
 
-                <td style={td(darkMode)}>{t.recurrence_type}</td>
+                <td style={{ ...td(darkMode),fontSize: "12px"}}>{t.recurrence_type}</td>
                 <td style={td(darkMode)}>{t.assigned_date}</td>
-                <td style={td(darkMode)}>{t.new_deadline || t.initial_deadline}</td>
+                <td style={td(darkMode)}>{t.initial_deadline}</td>
+                <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
 
-                
+                <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left"}}>{ t.comment }</td>
 
-                <td style={td(darkMode)}>
-                  <button onClick={() => editTask(t)}>Edit</button>{" "}
-                  <button onClick={() => deleteTask(t.id)}>Delete</button>
+                <td style={{ ...td(darkMode), fontSize: "5px"}}>
+                  <button style={{ fontSize: "10px", padding: "4px 4px" }} onClick={() => editTask(t)}>Edit</button>{" "}
+                  <button style={{ fontSize: "10px", padding: "4px 4px" }} onClick={() => deleteTask(t.id)}>Delete</button>
                 </td>
+
               </tr>
             ))}
           </tbody>
@@ -691,8 +774,10 @@ const filterBar = {
 const table = dark => ({
   width: "100%",
   borderCollapse: "collapse",
+  tableLayout: "fixed",
   background: dark ? "#111" : "white"
 });
+
 
 const th = dark => ({
   border: dark ? "1px solid #333" : "1px solid #D1D5DB",
@@ -707,8 +792,12 @@ const th = dark => ({
 const td = dark => ({
   border: dark ? "1px solid #333" : "1px solid #D1D5DB",
   padding: 8,
-  textAlign: "center"
+  textAlign: "center",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  verticalAlign: "top"
 });
+
 
 const stickyBar = dark => ({
   position: "sticky",

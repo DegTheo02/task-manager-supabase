@@ -67,8 +67,18 @@ ChartJS.register(
    CONSTANTS
 ================================ */
 const OWNERS = [
-  "AURELLE","CHRISTIAN","SERGEA","FABRICE",
-  "FLORIAN","JOSIAS","ESTHER","MARIUS","THEOPHANE"
+  "AURELLE",
+  "CHRISTIAN",
+  "SERGEA",
+  "FABRICE",
+  "FLORIAN",
+  "JOSIAS",
+  "ESTHER",
+  "MARIUS",
+  "THEOPHANE",
+  "FLYTXT",
+  "IT",
+  "OTHER"
 ];
 
 const TEAMS = ["BI","CVM","SM"];
@@ -76,16 +86,14 @@ const TEAMS = ["BI","CVM","SM"];
 const STATUSES = [
   "CLOSED ON TIME",
   "CLOSED PAST DUE",
-  "ONGOING",
-  "OPEN",
+  "ON TRACK",
   "OVERDUE",
   "ON HOLD"
-  
 ];
 
+
 const STATUS_COLORS = {
-  OPEN: "#3B82F6",
-  ONGOING: "#0EA5A8",
+  "ON TRACK": "#3B82F6",
   OVERDUE: "#DC2626",
   "ON HOLD": "#6B7280",
   "CLOSED ON TIME": "#16A34A",
@@ -93,8 +101,8 @@ const STATUS_COLORS = {
 };
 
 const STATUS_ICONS = {
-  OPEN: "🔵",
-  ONGOING: "🔄",
+
+  "ON TRACK": "🔄",
   OVERDUE: "⛔",
   "ON HOLD": "⏸",
   "CLOSED ON TIME": "✅",
@@ -110,7 +118,9 @@ export default function Dashboard() {
     localStorage.getItem("darkMode") === "true"
   );
 
-  const [filters, setFilters] = useState({
+const [filters, setFilters] = useState(() => {
+  const saved = sessionStorage.getItem("dashboardFilters");
+  return saved ? JSON.parse(saved) : {
     owners: [],
     teams: [],
     statuses: [],
@@ -119,7 +129,13 @@ export default function Dashboard() {
     assigned_to: "",
     deadline_from: "",
     deadline_to: ""
-  });
+  };
+});
+
+  useEffect(() => {
+    sessionStorage.setItem("dashboardFilters", JSON.stringify(filters));
+  }, [filters]);
+
 
   useEffect(() => {
     supabase.from("tasks").select("*").then(({ data }) => {
@@ -135,6 +151,36 @@ export default function Dashboard() {
       return true;
     });
   }, [tasks, filters]);
+
+  // STEP 1: completed tasks only
+  const completedTasks = useMemo(() => {
+    return filteredTasks.filter(t => t.closing_date && t.assigned_date);
+  }, [filteredTasks]);
+
+  // STEP 2: compute durations in days
+  const completionDurations = useMemo(() => {
+    return completedTasks
+      .map(t => {
+        const assigned = new Date(t.assigned_date);
+        const closed = new Date(t.closing_date);
+
+        const diffMs = closed - assigned;
+        if (diffMs < 0) return null;
+
+        return diffMs / (1000 * 60 * 60 * 24);
+      })
+      .filter(d => d !== null);
+  }, [completedTasks]);
+
+    // STEP 3: average completion duration
+  const averageCompletionDays = useMemo(() => {
+    if (completionDurations.length === 0) return null;
+
+    const sum = completionDurations.reduce((a, b) => a + b, 0);
+    return Math.round((sum / completionDurations.length) * 10) / 10;
+  }, [completionDurations]);
+
+
 
     const totalTasks = filteredTasks.length;
 
@@ -251,16 +297,12 @@ const kpiPercent = {
 };
 
 
-  const resetFilters = () => setFilters({
-    owners: [],
-    teams: [],
-    statuses: [],
-    recurrence_types: [],
-    assigned_from: "",
-    assigned_to: "",
-    deadline_from: "",
-    deadline_to: ""
-  });
+const resetFilters = () => {
+  const empty = { ...initialFilters };
+  setFilters(empty);
+  sessionStorage.removeItem("dashboardFilters");
+};
+
 
   const pageStyle = {
     padding: 20,
@@ -388,6 +430,31 @@ const kpiPercent = {
       
   {/* KPI CARDS */}
 <div style={kpiContainer}>
+
+  {/* AVERAGE COMPLETION KPI */}
+<div
+  style={{
+    ...kpiCard("ON TRACK", darkMode), // reuse existing style
+    cursor: "default",
+    borderTop: "5px solid #757375ff" // distinct color (indigo)
+  }}
+>
+  <div style={kpiHeader}>
+    <span>⏱</span>
+    <span>Avg Completion</span>
+  </div>
+
+  <div style={kpiBody}>
+    <div style={kpiCount}>Tasks</div>
+    <div style={kpiPercent}>
+      {averageCompletionDays !== null
+        ? `${averageCompletionDays} D`
+        : "–"}
+    </div>
+  </div>
+</div>
+
+
   {kpiStats.map(kpi => {
     const active =
       filters.statuses.length === 1 &&
@@ -477,4 +544,19 @@ const kpiPercent = {
       <Table title="Task Distribution (%) per Owner" rows={ownerStats} percentage />
     </div>
   );
+
+  const closedTasks = filteredTasks.filter(
+  t => t.closing_date && t.assigned_date
+);
+
+const avgCompletionDays = closedTasks.length
+  ? (
+      closedTasks.reduce((sum, t) => {
+        const start = new Date(t.assigned_date);
+        const end = new Date(t.closing_date);
+        return sum + (end - start) / (1000 * 60 * 60 * 24);
+      }, 0) / closedTasks.length
+    ).toFixed(1)
+  : "–";
+
 }
