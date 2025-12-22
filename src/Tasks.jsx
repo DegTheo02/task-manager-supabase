@@ -180,7 +180,14 @@ const [filters, setFilters] = useState(() => {
   const loadTasks = async () => {
     setLoading(true);
     const { data } = await supabase.from("tasks").select("*").order("id");
-    setTasks(data || []);
+    
+     setTasks(
+        (data || []).map(t => ({
+          ...t,
+          _computedStatus: computeStatus(t)
+        }))
+      );
+
     setLoading(false);
   };
 
@@ -202,8 +209,12 @@ const [filters, setFilters] = useState(() => {
       if (filters.teams.length && !filters.teams.includes(t.team))
         return false;
 
-      if (filters.statuses.length && !filters.statuses.includes(t.status))
+      if (
+        filters.statuses.length &&
+        !filters.statuses.includes(t._computedStatus)
+      )
         return false;
+
 
       const deadline = t.new_deadline || t.initial_deadline;
 
@@ -241,8 +252,16 @@ const [filters, setFilters] = useState(() => {
     if (!sortConfig.key) return filteredTasks;
 
     return [...filteredTasks].sort((a, b) => {
-      const aV = a[sortConfig.key] || "";
-      const bV = b[sortConfig.key] || "";
+      const aV =
+  sortConfig.key === "status"
+    ? a._computedStatus
+    : a[sortConfig.key] || "";
+
+const bV =
+  sortConfig.key === "status"
+    ? b._computedStatus
+    : b[sortConfig.key] || "";
+
       if (sortConfig.direction === "asc") return aV > bV ? 1 : -1;
       return aV < bV ? 1 : -1;
     });
@@ -801,12 +820,12 @@ return (
                 <td
                   style={{
                     ...td(darkMode),
-                    color: STATUS_COLORS[t.status],
+                    color: STATUS_COLORS[t._computedStatus],
                     fontWeight: 700,
                     fontSize: "13px"
                   }}
                 >
-                  {t.status}
+                  {t._computedStatus}
                 </td>
 
                 <td style={{ ...td(darkMode),fontSize: "12px"}}>{t.recurrence_type}</td>
