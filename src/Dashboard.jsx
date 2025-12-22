@@ -152,6 +152,50 @@ const [filters, setFilters] = useState(() => {
     });
   }, [tasks, filters]);
 
+  // KPI: closed tasks (on time or past due)
+const deadlineClosedTasks = useMemo(() => {
+  return filteredTasks.filter(
+    t =>
+      t.closing_date &&
+      t.initial_deadline &&
+      (t.status === "CLOSED ON TIME" || t.status === "CLOSED PAST DUE")
+  );
+}, [filteredTasks]);
+
+  
+  const deadlineDurations = useMemo(() => {
+  return deadlineClosedTasks
+    .map(t => {
+      const deadline = new Date(t.initial_deadline);
+      const closed = new Date(t.closing_date);
+
+      const diffMs = closed - deadline;
+      if (isNaN(diffMs)) return null;
+
+      return diffMs / (1000 * 60 * 60 * 24);
+    })
+    .filter(d => d !== null);
+}, [deadlineClosedTasks]);
+
+
+  const averageDeadlineDeviationDays = useMemo(() => {
+  if (deadlineDurations.length === 0) return null;
+
+  const sum = deadlineDurations.reduce((a, b) => a + b, 0);
+  return Math.round((sum / deadlineDurations.length) * 10) / 10;
+}, [deadlineDurations]);
+
+  // STEP 6: color based on deadline deviation
+const deadlineDeviationColor =
+  averageDeadlineDeviationDays === null
+    ? undefined
+    : averageDeadlineDeviationDays > 0
+    ? "#DC2626"   // 🔴 late on average
+    : "#16A34A";  // 🟢 on time / early
+
+
+
+
   // STEP 1: completed tasks only
   const completedTasks = useMemo(() => {
     return filteredTasks.filter(t => t.closing_date && t.assigned_date);
@@ -498,6 +542,31 @@ const kpiPercent = {
   </div>
 </div>
 
+
+  {/* AVG DEADLINE DEVIATION KPI */}
+<div
+  style={{
+    ...kpiCard("CLOSED ON TIME", darkMode),
+    cursor: "default",
+    borderTop: "5px solid #0ea5a8" // teal
+  }}
+>
+  <div style={kpiHeader}>
+    <span>📅</span>
+    <span>Avg Deadline Deviation</span>
+  </div>
+
+  <div style={kpiBody}>
+    <div style={kpiCount}>Days</div>
+    <div style={{ ...kpiPercent, color: deadlineDeviationColor }}>
+      {averageDeadlineDeviationDays !== null
+        ? `${averageDeadlineDeviationDays} D`
+        : "–"}
+    </div>
+  </div>
+</div>
+
+  
 
   {kpiStats.map(kpi => {
     const active =
