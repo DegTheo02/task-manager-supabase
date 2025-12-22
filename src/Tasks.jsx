@@ -209,10 +209,7 @@ const [filters, setFilters] = useState(() => {
       if (filters.teams.length && !filters.teams.includes(t.team))
         return false;
 
-      if (
-        filters.statuses.length &&
-        !filters.statuses.includes(t._computedStatus)
-      )
+      if (filters.statuses.length && !filters.statuses.includes(t._computedStatus))
         return false;
 
 
