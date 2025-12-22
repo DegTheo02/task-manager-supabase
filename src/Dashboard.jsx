@@ -42,7 +42,7 @@ const percentageLabelPlugin = {
         if (!value || value < 5) return;
 
         ctx.save();
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = getTextColor(dataset.backgroundColor);
@@ -203,16 +203,16 @@ const [filters, setFilters] = useState(() => {
   flexWrap: "wrap",
   marginTop: 20,
   marginBottom: 100,
-  marginRight: 100
+  marginRight: 400
 };
 
 const kpiCard = (status, darkMode) => ({
-  minWidth: 150,
-  flex: "1 1 150px",
+  minWidth: 100,
+  flex: "1 1 100px",
   padding: 14,
   borderRadius: 10,
   background: darkMode ? "#111" : "white",
-  borderTop: `5px solid ${STATUS_COLORS[status]}`,
+  borderTop: `8px solid ${STATUS_COLORS[status]}`,
   boxShadow: darkMode
     ? "0 4px 12px rgba(0,0,0,0.6)"
     : "0 4px 12px rgba(0,0,0,0.08)"
@@ -297,12 +297,16 @@ const kpiPercent = {
 };
 
 
-const resetFilters = () => {
-  const empty = { ...initialFilters };
-  setFilters(empty);
-  sessionStorage.removeItem("dashboardFilters");
-};
-
+  const resetFilters = () => setFilters({
+    owners: [],
+    teams: [],
+    statuses: [],
+    recurrence_types: [],
+    assigned_from: "",
+    assigned_to: "",
+    deadline_from: "",
+    deadline_to: ""
+  });
 
   const pageStyle = {
     padding: 20,
@@ -325,6 +329,7 @@ const resetFilters = () => {
   ================================ */
   const Table = ({ title, rows, percentage }) => {
     const totals = columnTotals(rows);
+
 
     return (
       <>
@@ -388,6 +393,36 @@ const resetFilters = () => {
     );
   };
 
+  const smallButton = (darkMode) => ({
+  padding: "4px 10px",
+  fontSize: 12,
+  fontWeight: 600,
+  borderRadius: 6,
+  border: "1px solid #555",
+  background: darkMode ? "#1a1a1a" : "#fff",
+  color: darkMode ? "#fff" : "#000",
+  cursor: "pointer",
+  lineHeight: "1.2"
+});
+
+
+  const compactToolbarButton = (darkMode) => ({
+    height: 32,
+    padding: "0 10px",
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 6,
+    border: darkMode ? "1px solid #444" : "1px solid #ccc",
+    background: darkMode ? "#111" : "#fff",
+    color: darkMode ? "#fff" : "#000",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    lineHeight: "1"
+  });
+
+
   return (
     <div style={pageStyle}>
       <h1>Dashboard</h1>
@@ -404,20 +439,29 @@ const resetFilters = () => {
             display: "flex",
             gap: 12,
             flexWrap: "wrap",
-            paddingTop: 10
+            paddingTop: 10,
+            alignItems: "center"
           }}
-        >
+                  >
           <button
+            style={compactToolbarButton(darkMode)}
             onClick={() => {
               const next = !darkMode;
               setDarkMode(next);
               localStorage.setItem("darkMode", next);
             }}
           >
-            {darkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
+            🌙 Light
           </button>
 
-          <button onClick={resetFilters}>🔄 Reset Filters</button>
+          <button
+            style={compactToolbarButton(darkMode)}
+            onClick={resetFilters}
+          >
+            🔄 Reset
+          </button>
+
+
 
           <Filters
             values={filters}
@@ -467,9 +511,9 @@ const resetFilters = () => {
         style={{
           ...kpiCard(kpi.status, darkMode),
           cursor: "pointer",
-          opacity: active ? 1 : 0.75,
+          opacity: active ? 1.5 : 2.75,
           outline: active
-            ? `2px solid ${STATUS_COLORS[kpi.status]}`
+            ? `5px solid ${STATUS_COLORS[kpi.status]}`
             : "none"
         }}
       >
@@ -505,12 +549,42 @@ const resetFilters = () => {
               backgroundColor: STATUS_COLORS[s]
             }))
           }}
-          options={{
-            scales: {
-              x: { stacked: true },
-              y: { stacked: true, min: 0, max: 100 }
-            }
-          }}
+              options={{
+                responsive: true,
+                scales: {
+                  x: {
+                    stacked: true,
+                    ticks: {
+                      font: {
+                        size: 14,        // ⬅ X-axis label size
+                        weight: "600"
+                      }
+                    }
+                  },
+                  y: {
+                    stacked: true,
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                      font: {
+                        size: 14         // ⬅ Y-axis label size
+                      },
+                      callback: value => `${value}%`
+                    }
+                  }
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      font: {
+                        size: 14,        // ⬅ legend font size
+                        weight: "600"
+                      }
+                    }
+                  }
+                }
+              }}
+
         />
       </div>
 
@@ -527,12 +601,42 @@ const resetFilters = () => {
               backgroundColor: STATUS_COLORS[s]
             }))
           }}
-          options={{
-            scales: {
-              x: { stacked: true },
-              y: { stacked: true, min: 0, max: 100 }
-            }
-          }}
+              options={{
+                responsive: true,
+                scales: {
+                  x: {
+                    stacked: true,
+                    ticks: {
+                      font: {
+                        size: 14,        // ⬅ X-axis label size
+                        weight: "600"
+                      }
+                    }
+                  },
+                  y: {
+                    stacked: true,
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                      font: {
+                        size: 14         // ⬅ Y-axis label size
+                      },
+                      callback: value => `${value}%`
+                    }
+                  }
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      font: {
+                        size: 14,        // ⬅ legend font size
+                        weight: "600"
+                      }
+                    }
+                  }
+                }
+              }}
+
         />
       </div>
 
