@@ -343,12 +343,12 @@ if (isEditing) {
     setForm(emptyTask);
     setIsEditing(false);
     loadTasks();
-
+/*
      if (!isEditing) {
   resetTableFilters(); // only clear filters on Create
 }
 
-     /*
+     
      setFilters({
   owners: [],
   teams: [],
