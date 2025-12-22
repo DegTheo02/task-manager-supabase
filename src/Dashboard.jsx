@@ -247,7 +247,7 @@ const deadlineDeviationColor =
   flexWrap: "wrap",
   marginTop: 20,
   marginBottom: 100,
-  marginRight: 400
+  marginRight: 200
 };
 
 const kpiCard = (status, darkMode) => ({
