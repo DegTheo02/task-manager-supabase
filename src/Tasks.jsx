@@ -6,6 +6,8 @@ import Navbar from "./Navbar";
 /* ----------------------------------
    CONSTANTS
 ---------------------------------- */
+const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT", "OTHER"];
+
 const OWNERS = [
   "AURELLE",
   "CHRISTIAN",
@@ -126,6 +128,7 @@ const [filters, setFilters] = useState(() => {
     teams: [],
     statuses: [],
     recurrence_types: [],
+    search: "",
     assigned_from: "",
     assigned_to: "",
     deadline_from: "",
@@ -141,6 +144,7 @@ const [filters, setFilters] = useState(() => {
   const resetTableFilters = () => {
   setFilters({
     owners: [],
+    teams: [],
     statuses: [],
     deadline_from: "",
     deadline_to: "",
@@ -187,7 +191,15 @@ const [filters, setFilters] = useState(() => {
   /* FILTER + TODAY LOGIC */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
+
+       if (filters.search &&
+        !t.title.toLowerCase().includes(filters.search.toLowerCase()))
+        return false;
+
       if (filters.owners.length && !filters.owners.includes(t.owner))
+        return false;
+       
+      if (filters.teams.length && !filters.teams.includes(t.team))
         return false;
 
       if (filters.statuses.length && !filters.statuses.includes(t.status))
@@ -316,6 +328,11 @@ if (isEditing) {
     setIsEditing(false);
     loadTasks();
 
+     if (!isEditing) {
+  resetTableFilters(); // only clear filters on Create
+}
+
+     /*
      setFilters({
   owners: [],
   teams: [],
@@ -329,7 +346,7 @@ if (isEditing) {
   closing_to: "",
   today: false
 });
-
+*/
   };
 
   /* DELETE TASK */
@@ -525,7 +542,20 @@ return (
       {/* FILTER BAR */}
       <div style={filterBar} key={filterKey}>
 
+         {/* Search */}
+         <div style={filterItem}>
+           <span>🔍 Search</span>
+           <input
+             type="text"
+             placeholder="Search title…"
+             value={filters.search}
+             onChange={e =>
+               setFilters(f => ({ ...f, search: e.target.value }))
+             }
+           />
+         </div>
 
+         
           {/* Owners */}
           <div style={filterItem}>
             <span>👤 Owners</span>
@@ -545,6 +575,27 @@ return (
               ))}
             </select>
           </div>
+
+         {/* Teams */}
+         <div style={filterItem}>
+        <span>🏷 Teams</span>
+        <select
+          multiple
+          size={1}
+          value={filters.teams}
+          onChange={e =>
+            setFilters(f => ({
+              ...f,
+              teams: [...e.target.selectedOptions].map(o => o.value)
+            }))
+          }
+        >
+          {TEAMS.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      </div>
+
 
           {/* Status */}
           <div style={filterItem}>
