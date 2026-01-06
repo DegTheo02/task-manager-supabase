@@ -154,9 +154,15 @@ export default function Filters({ onChange, values = {}, darkMode }) {
       <div style={{ minWidth: 160 }}>
         <label style={{ fontWeight: 600, fontSize: 13 }}>📅 Assigned</label>
         <div style={{ display: "flex", gap: 6 }}>
-          <input type="date" style={{ ...dateInput, ...darkStyle }}
+          <input 
+            type="date" 
+            value={values.assigned_from || ""}
+            style={{ ...dateInput, ...darkStyle }}
             onChange={e => update("assigned_from", e.target.value)} />
-          <input type="date" style={{ ...dateInput, ...darkStyle }}
+          <input 
+            type="date" 
+            value={values.assigned_to || ""}
+            style={{ ...dateInput, ...darkStyle }}
             onChange={e => update("assigned_to", e.target.value)} />
         </div>
       </div>
@@ -164,9 +170,15 @@ export default function Filters({ onChange, values = {}, darkMode }) {
       <div style={{ minWidth: 160 }}>
         <label style={{ fontWeight: 600, fontSize: 13 }}>⏳ Deadline</label>
         <div style={{ display: "flex", gap: 6 }}>
-          <input type="date" style={{ ...dateInput, ...darkStyle }}
+          <input 
+            type="date" 
+            value={values.deadline_from || ""}
+            style={{ ...dateInput, ...darkStyle }}
             onChange={e => update("deadline_from", e.target.value)} />
-          <input type="date" style={{ ...dateInput, ...darkStyle }}
+          <input 
+            type="date" 
+            value={values.deadline_to || ""}
+            style={{ ...dateInput, ...darkStyle }}
             onChange={e => update("deadline_to", e.target.value)} />
         </div>
       </div>
@@ -177,11 +189,13 @@ export default function Filters({ onChange, values = {}, darkMode }) {
         <div style={{ display: "flex", gap: 6 }}>
           <input
             type="date"
+            value={values.closing_from || ""}
             style={{ ...dateInput, ...darkStyle }}
             onChange={e => update("closing_from", e.target.value)}
           />
           <input
             type="date"
+            value={values.closing_to || ""}
             style={{ ...dateInput, ...darkStyle }}
             onChange={e => update("closing_to", e.target.value)}
           />
