@@ -143,14 +143,43 @@ const [filters, setFilters] = useState(() => {
     });
   }, []);
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(t => {
-      if (filters.owners.length && !filters.owners.includes(t.owner)) return false;
-      if (filters.teams.length && !filters.teams.includes(t.team)) return false;
-      if (filters.statuses.length && !filters.statuses.includes(t.status)) return false;
-      return true;
-    });
-  }, [tasks, filters]);
+const filteredTasks = useMemo(() => {
+  return tasks.filter(t => {
+    /* OWNERS */
+    if (filters.owners.length && !filters.owners.includes(t.owner)) return false;
+
+    /* TEAMS */
+    if (filters.teams.length && !filters.teams.includes(t.team)) return false;
+
+    /* STATUSES */
+    if (filters.statuses.length && !filters.statuses.includes(t.status)) return false;
+
+    /* ASSIGNED DATE RANGE */
+    if (filters.assigned_from && (!t.assigned_date || t.assigned_date < filters.assigned_from))
+      return false;
+
+    if (filters.assigned_to && (!t.assigned_date || t.assigned_date > filters.assigned_to))
+      return false;
+
+    /* DEADLINE RANGE (new_deadline OR initial_deadline) */
+    const deadline = t.new_deadline || t.initial_deadline;
+
+    if (filters.deadline_from && (!deadline || deadline < filters.deadline_from))
+      return false;
+
+    if (filters.deadline_to && (!deadline || deadline > filters.deadline_to))
+      return false;
+
+    /* CLOSING DATE RANGE */
+    if (filters.closing_from && (!t.closing_date || t.closing_date < filters.closing_from))
+      return false;
+
+    if (filters.closing_to && (!t.closing_date || t.closing_date > filters.closing_to))
+      return false;
+
+    return true;
+  });
+}, [tasks, filters]);
 
   // KPI: closed tasks (on time or past due)
 const deadlineClosedTasks = useMemo(() => {
@@ -341,16 +370,19 @@ const kpiPercent = {
 };
 
 
-  const resetFilters = () => setFilters({
-    owners: [],
-    teams: [],
-    statuses: [],
-    recurrence_types: [],
-    assigned_from: "",
-    assigned_to: "",
-    deadline_from: "",
-    deadline_to: ""
-  });
+const resetFilters = () => setFilters({
+  owners: [],
+  teams: [],
+  statuses: [],
+  recurrence_types: [],
+  assigned_from: "",
+  assigned_to: "",
+  deadline_from: "",
+  deadline_to: "",
+  closing_from: "",
+  closing_to: ""
+});
+
 
   const pageStyle = {
     padding: 20,
