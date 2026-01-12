@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 
 export default function Navbar() {
@@ -10,7 +10,7 @@ export default function Navbar() {
         <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
         <NavLink to="/tasks" style={link}>Tasks</NavLink>
         <NavLink to="/kanban" style={link}>Kanban</NavLink>
-        <Link to="/daily-volume">📊 Daily Volume</Link>
+        <NavLink to="/daily-volume"style={link}> Daily Volume</NavLink>
 
       </div>
     </nav>
