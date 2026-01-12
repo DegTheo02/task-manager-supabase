@@ -7,6 +7,8 @@ import Dashboard from "./Dashboard";
 import Tasks from "./Tasks";
 import Kanban from "./Kanban";
 import Login from "./Login";
+import DailyTaskVolume from "./DailyTaskVolume";
+
 
 /* ===============================
    PROTECTED ROUTE
