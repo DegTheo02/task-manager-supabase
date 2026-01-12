@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import Filters from "./Filters";
+
 
 import {
   Chart as ChartJS,
@@ -47,13 +47,27 @@ const STATUS_COLORS = {
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
 
-  const [filters, setFilters] = useState({
-    owners: [],
-    teams: [],
-    statuses: [],
-    date_from: "",
-    date_to: ""
-  });
+const [filters, setFilters] = useState(() => {
+  const saved = sessionStorage.getItem("dailyVolumeFilters");
+  return saved
+    ? JSON.parse(saved)
+    : {
+        owners: [],
+        teams: [],
+        statuses: [],
+        date_from: "",
+        date_to: ""
+      };
+});
+
+  useEffect(() => {
+  sessionStorage.setItem(
+    "dailyVolumeFilters",
+    JSON.stringify(filters)
+  );
+}, [filters]);
+
+
 
   /* ===============================
      LOAD DATA FROM SUPABASE
@@ -87,9 +101,16 @@ export default function DailyTaskVolume() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [filters]);
+useEffect(() => {
+  loadData();
+}, [
+  filters.owners,
+  filters.teams,
+  filters.statuses,
+  filters.date_from,
+  filters.date_to
+]);
+
 
   /* ===============================
      BUILD CHART DATA
@@ -99,7 +120,9 @@ export default function DailyTaskVolume() {
       return { labels: [], datasets: [] };
     }
 
-    const days = [...new Set(rows.map(r => r.status_day))].sort();
+    const days = [...new Set(rows.map(r => r.status_day))]
+  .sort((a, b) => new Date(a) - new Date(b));
+
 
     const datasets = STATUSES.map(status => ({
       label: status,
@@ -124,112 +147,153 @@ export default function DailyTaskVolume() {
     <div style={{ padding: 20 }}>
       <h1>📊 Daily Task Volume</h1>
 
-      {/* FILTERS */}
-      <div style={{ marginBottom: 20 }}>
-
-      </div>
-
-  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
-
+  {/* FILTER BAR */}
+<div
+  style={{
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+    alignItems: "flex-end",
+    marginBottom: 20
+  }}
+>
   {/* Owners */}
-  <select
-    multiple
-    value={filters.owners}
-    onChange={e =>
-      setFilters(f => ({
-        ...f,
-        owners: [...e.target.selectedOptions].map(o => o.value)
-      }))
-    }
-  >
-    <option value="AURELLE">AURELLE</option>
-    <option value="CHRISTIAN">CHRISTIAN</option>
-    <option value="SERGEA">SERGEA</option>
-    <option value="FABRICE">FABRICE</option>
-    <option value="FLORIAN">FLORIAN</option>
-    <option value="JOSIAS">JOSIAS</option>
-    <option value="ESTHER">ESTHER</option>
-    <option value="MARIUS">MARIUS</option>
-    <option value="THEOPHANE">THEOPHANE</option>
-  </select>
+  <div>
+    <label style={filterLabel}>👤 Owner(s)</label>
+    <select
+      multiple
+      style={filterSelect}
+      value={filters.owners}
+      onChange={e =>
+        setFilters(f => ({
+          ...f,
+          owners: [...e.target.selectedOptions].map(o => o.value)
+        }))
+      }
+    >
+      {["AURELLE","CHRISTIAN","SERGEA","FABRICE","FLORIAN","JOSIAS","ESTHER","MARIUS","THEOPHANE","FLYTXT","IT","OTHER"]
+        .map(o => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+    </select>
+  </div>
 
   {/* Teams */}
-  <select
-    multiple
-    value={filters.teams}
-    onChange={e =>
-      setFilters(f => ({
-        ...f,
-        teams: [...e.target.selectedOptions].map(o => o.value)
-      }))
-    }
-  >
-    <option value="BI">BI</option>
-    <option value="CVM">CVM</option>
-    <option value="SM">SM</option>
-    <option value="FLYTXT">FLYTXT</option>
-  </select>
+  <div>
+    <label style={filterLabel}>🧩 Team(s)</label>
+    <select
+      multiple
+      style={filterSelect}
+      value={filters.teams}
+      onChange={e =>
+        setFilters(f => ({
+          ...f,
+          teams: [...e.target.selectedOptions].map(o => o.value)
+        }))
+      }
+    >
+      {["BI","CVM","SM","FLYTXT","IT","OTHER"]
+        .map(t => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+    </select>
+  </div>
 
   {/* Status */}
-  <select
-    multiple
-    value={filters.statuses}
-    onChange={e =>
-      setFilters(f => ({
-        ...f,
-        statuses: [...e.target.selectedOptions].map(o => o.value)
-      }))
-    }
-  >
-    {STATUSES.map(s => (
-      <option key={s} value={s}>{s}</option>
-    ))}
-  </select>
+  <div>
+    <label style={filterLabel}>📌 Status(es)</label>
+    <select
+      multiple
+      style={filterSelect}
+      value={filters.statuses}
+      onChange={e =>
+        setFilters(f => ({
+          ...f,
+          statuses: [...e.target.selectedOptions].map(o => o.value)
+        }))
+      }
+    >
+      {STATUSES.map(s => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
+  </div>
 
-  {/* Date Range */}
-  <input
-    type="date"
-    value={filters.date_from}
-    onChange={e =>
-      setFilters(f => ({ ...f, date_from: e.target.value }))
-    }
-  />
-
-  <input
-    type="date"
-    value={filters.date_to}
-    onChange={e =>
-      setFilters(f => ({ ...f, date_to: e.target.value }))
-    }
-  />
-
+  {/* Date range */}
+  <div>
+    <label style={filterLabel}>📅 Date range</label>
+    <div style={{ display: "flex", gap: 6 }}>
+      <input
+        type="date"
+        style={filterDate}
+        value={filters.date_from}
+        onChange={e =>
+          setFilters(f => ({ ...f, date_from: e.target.value }))
+        }
+      />
+      <input
+        type="date"
+        style={filterDate}
+        value={filters.date_to}
+        onChange={e =>
+          setFilters(f => ({ ...f, date_to: e.target.value }))
+        }
+      />
+    </div>
+  </div>
 </div>
+
 
       
       {/* CHART */}
-      <div style={{ height: 200 }}>
+
+      <div
+  style={{
+    height: 380,
+    maxHeight: 380,
+    width: "100%",
+    overflow: "hidden"
+         }}
+      >
+
         <Bar
           data={chartData}
-          options={{
-            responsive: true,
-            scales: {
-              x: { stacked: true },
-              y: {
-                stacked: true,
-                beginAtZero: true,
-                ticks: { precision: 0 }
-              }
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  font: { size: 14, weight: "600" }
-                }
-              }
-            }
-          }}
+    options={{
+      responsive: true,
+      maintainAspectRatio: false,   // 🔴 important
+      scales: {
+        x: { stacked: true },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: {
+            precision: 0   // integers only
+          }
+        }
+      }
+    }}
+
         />
       </div>
     </div>
   );
 }
+
+
+const filterLabel = {
+  fontSize: 13,
+  fontWeight: 600,
+  marginBottom: 4
+};
+
+const filterSelect = {
+  minWidth: 160,
+  height: 32,
+  padding: "4px 6px"
+};
+
+const filterDate = {
+  height: 32,
+  padding: "4px 6px"
+};
+
