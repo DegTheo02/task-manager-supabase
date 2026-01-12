@@ -207,7 +207,7 @@ export default function DailyTaskVolume() {
 
       
       {/* CHART */}
-      <div style={{ height: 500 }}>
+      <div style={{ height: 200 }}>
         <Bar
           data={chartData}
           options={{
