@@ -123,10 +123,19 @@ export default function App() {
           }
         />
 
+       <Route
+          path="/DailyTaskVolume"
+          element={
+            <ProtectedRoute>
+              <DailyVolume />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/daily-volume" element={<DailyTaskVolume />} />
+        <Route path="*" element={<Navigate to="/DailyTaskVolume" replace />} />
 
       </Routes>
     </>
