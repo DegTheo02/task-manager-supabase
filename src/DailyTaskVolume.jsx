@@ -126,27 +126,86 @@ export default function DailyTaskVolume() {
 
       {/* FILTERS */}
       <div style={{ marginBottom: 20 }}>
-        <Filters
-          values={{
-            owners: filters.owners,
-            teams: filters.teams,
-            statuses: filters.statuses,
-            assigned_from: filters.date_from,
-            assigned_to: filters.date_to
-          }}
-          onChange={prev =>
-            setFilters(f => ({
-              ...f,
-              owners: prev.owners,
-              teams: prev.teams,
-              statuses: prev.statuses,
-              date_from: prev.assigned_from,
-              date_to: prev.assigned_to
-            }))
-          }
-        />
+
       </div>
 
+  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
+
+  {/* Owners */}
+  <select
+    multiple
+    value={filters.owners}
+    onChange={e =>
+      setFilters(f => ({
+        ...f,
+        owners: [...e.target.selectedOptions].map(o => o.value)
+      }))
+    }
+  >
+    <option value="AURELLE">AURELLE</option>
+    <option value="CHRISTIAN">CHRISTIAN</option>
+    <option value="SERGEA">SERGEA</option>
+    <option value="FABRICE">FABRICE</option>
+    <option value="FLORIAN">FLORIAN</option>
+    <option value="JOSIAS">JOSIAS</option>
+    <option value="ESTHER">ESTHER</option>
+    <option value="MARIUS">MARIUS</option>
+    <option value="THEOPHANE">THEOPHANE</option>
+  </select>
+
+  {/* Teams */}
+  <select
+    multiple
+    value={filters.teams}
+    onChange={e =>
+      setFilters(f => ({
+        ...f,
+        teams: [...e.target.selectedOptions].map(o => o.value)
+      }))
+    }
+  >
+    <option value="BI">BI</option>
+    <option value="CVM">CVM</option>
+    <option value="SM">SM</option>
+    <option value="FLYTXT">FLYTXT</option>
+  </select>
+
+  {/* Status */}
+  <select
+    multiple
+    value={filters.statuses}
+    onChange={e =>
+      setFilters(f => ({
+        ...f,
+        statuses: [...e.target.selectedOptions].map(o => o.value)
+      }))
+    }
+  >
+    {STATUSES.map(s => (
+      <option key={s} value={s}>{s}</option>
+    ))}
+  </select>
+
+  {/* Date Range */}
+  <input
+    type="date"
+    value={filters.date_from}
+    onChange={e =>
+      setFilters(f => ({ ...f, date_from: e.target.value }))
+    }
+  />
+
+  <input
+    type="date"
+    value={filters.date_to}
+    onChange={e =>
+      setFilters(f => ({ ...f, date_to: e.target.value }))
+    }
+  />
+
+</div>
+
+      
       {/* CHART */}
       <div style={{ height: 500 }}>
         <Bar
