@@ -124,6 +124,8 @@ export default function App() {
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/daily-volume" element={<DailyTaskVolume />} />
+
       </Routes>
     </>
   );
