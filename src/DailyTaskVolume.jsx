@@ -274,6 +274,9 @@ export default function DailyTaskVolume() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
+      percentageLabelPlugin: {
+        disabled: true   // ✅ THIS STOPS %
+      },
       legend: {
         labels: {
           font: { size: 13, weight: "600" }
