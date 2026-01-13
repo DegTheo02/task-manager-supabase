@@ -197,6 +197,9 @@ export default function DailyTaskVolume() {
               y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
             },
             plugins: {
+              percentageLabelPlugin: {
+    disabled: true
+  }
               legend: { labels: { font: { size: 13, weight: "600" } } },
               tooltip: {
                 callbacks: {
