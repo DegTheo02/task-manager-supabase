@@ -47,6 +47,16 @@ const OWNERS = [
 
 const TEAMS = ["BI","CVM","SM","FLYTXT","IT","OTHER"];
 
+const formatDateLabel = (isoDate) => {
+  const d = new Date(isoDate);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit"
+  });
+};
+
+
 /* ===============================
    MULTI DROPDOWN
 ================================ */
@@ -143,7 +153,7 @@ export default function DailyTaskVolume() {
       .sort((a,b) => new Date(a) - new Date(b));
 
     return {
-      labels: days,
+     labels: days.map(formatDateLabel),
       datasets: STATUSES.map(s => ({
         label: s,
         data: days.map(d =>
@@ -183,7 +193,13 @@ export default function DailyTaskVolume() {
           </div>
         </div>
 
-        <button onClick={resetFilters} style={resetButton}>🔄 Reset</button>
+        <div>
+  <label style={filterLabel}>&nbsp;</label>
+  <button onClick={resetFilters} style={resetButton}>
+    🔄 Reset
+  </button>
+</div>
+
       </div>
 
       <div style={chartContainer}>
@@ -200,7 +216,7 @@ export default function DailyTaskVolume() {
               percentageLabelPlugin: {
     disabled: true
   },
-              legend: { labels: { font: { size: 13, weight: "600" } } },
+              legend: { labels: { font: { size: 15, weight: "600" } } },
               tooltip: {
                 callbacks: {
                   label: ctx => `${ctx.dataset.label}: ${ctx.raw}`
