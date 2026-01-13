@@ -48,6 +48,34 @@ const percentageLabelPlugin = {
   }
 };
 
+const valueLabelPlugin = {
+  id: "valueLabelPlugin",
+  afterDatasetsDraw(chart, args, options) {
+    if (options?.disabled) return;
+
+    const { ctx } = chart;
+
+    chart.data.datasets.forEach((dataset, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (!meta || meta.hidden) return;
+
+      meta.data.forEach((bar, index) => {
+        const value = dataset.data[index];
+        if (!value || value < 1) return;
+
+        ctx.save();
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#fff";
+        ctx.fillText(`${value}`, bar.x, bar.y + bar.height / 2);
+        ctx.restore();
+      });
+    });
+  }
+};
+
+
 
 ChartJS.register(
   CategoryScale,
@@ -56,7 +84,8 @@ ChartJS.register(
   Tooltip,
   Legend,
   Title,
-  percentageLabelPlugin
+  percentageLabelPlugin,
+  valueLabelPlugin
 );
 
 /* ===============================
