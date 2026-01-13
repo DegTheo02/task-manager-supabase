@@ -60,7 +60,6 @@ const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT", "OTHER"];
 /* ===============================
    DROPDOWN COMPONENT
 ================================ */
-import { useEffect, useRef, useState } from "react";
 
 function MultiDropdown({ label, items, values, onChange }) {
   const [open, setOpen] = useState(false);
