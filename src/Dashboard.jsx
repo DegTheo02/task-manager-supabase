@@ -21,17 +21,12 @@ import { Bar } from "react-chartjs-2";
 ================================ */
 const percentageLabelPlugin = {
   id: "percentageLabelPlugin",
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart;
+  afterDatasetsDraw(chart, args, options) {
 
-    const getTextColor = (hex) => {
-      const c = hex.replace("#", "");
-      const r = parseInt(c.substring(0, 2), 16);
-      const g = parseInt(c.substring(2, 4), 16);
-      const b = parseInt(c.substring(4, 6), 16);
-      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-      return luminance > 150 ? "#000" : "#fff";
-    };
+    // 🔴 EXIT if explicitly disabled
+    if (options?.disabled) return;
+
+    const { ctx } = chart;
 
     chart.data.datasets.forEach((dataset, i) => {
       const meta = chart.getDatasetMeta(i);
@@ -39,19 +34,20 @@ const percentageLabelPlugin = {
 
       meta.data.forEach((bar, index) => {
         const value = dataset.data[index];
-        if (!value || value < 5) return;
+        if (!value || value < 1) return;
 
         ctx.save();
-        ctx.font = "bold 14px sans-serif";
+        ctx.font = "bold 12px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = getTextColor(dataset.backgroundColor);
+        ctx.fillStyle = "#fff";
         ctx.fillText(`${value}%`, bar.x, bar.y + bar.height / 2);
         ctx.restore();
       });
     });
   }
 };
+
 
 ChartJS.register(
   CategoryScale,
