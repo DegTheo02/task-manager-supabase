@@ -193,12 +193,13 @@ export default function DailyTaskVolume() {
           </div>
         </div>
 
-        <div>
-  <label style={filterLabel}>&nbsp;</label>
+<div>
+  <label style={filterLabel}>Actions</label>
   <button onClick={resetFilters} style={resetButton}>
     🔄 Reset
   </button>
 </div>
+
 
       </div>
 
@@ -233,10 +234,38 @@ export default function DailyTaskVolume() {
 /* ===============================
    STYLES
 ================================ */
-const filterBar = { display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 };
-const filterLabel = { fontSize: 13, fontWeight: 600 };
-const filterDate = { height: 32, padding: "4px 6px" };
-const resetButton = { height: 32, padding: "0 12px", fontWeight: 600 };
+const filterBar = { 
+  display: "flex", 
+  gap: 12, 
+  flexWrap: "wrap", 
+  alignItems: "flex-end",   // ✅ ADD THIS
+  marginBottom: 20 
+};
+
+const filterLabel = { 
+  fontSize: 13, 
+  fontWeight: 600 
+};
+
+const filterDate = { 
+  height: 32, 
+  padding: "4px 6px" 
+};
+
+const resetButton = {
+  height: 32,
+  padding: "0 14px",
+  fontSize: 13,
+  fontWeight: 600,
+  borderRadius: 6,
+  border: "1px solid #ccc",
+  background: "#fff",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 6
+};
+
 const dropdownBox = { height: 32, padding: "6px 8px", border: "1px solid #ccc", borderRadius: 6 };
 const dropdownMenu = { position: "absolute", top: "110%", width: "100%", background: "#fff", border: "1px solid #ccc", borderRadius: 6, padding: 8, zIndex: 100 };
 const dropdownItem = { display: "flex", gap: 6, fontSize: 13 };
