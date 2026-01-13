@@ -199,7 +199,7 @@ export default function DailyTaskVolume() {
             plugins: {
               percentageLabelPlugin: {
     disabled: true
-  }
+  },
               legend: { labels: { font: { size: 13, weight: "600" } } },
               tooltip: {
                 callbacks: {
