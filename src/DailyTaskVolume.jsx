@@ -268,21 +268,37 @@ export default function DailyTaskVolume() {
 
       {/* CHART */}
       <div style={chartContainer}>
-        <Bar
-          data={chartData}
-          options={{
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: { stacked: true },
-              y: {
-                stacked: true,
-                beginAtZero: true,
-                ticks: { precision: 0 }
-              }
-            }
-          }}
-        />
+<Bar
+  data={chartData}
+  options={{
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          font: { size: 13, weight: "600" }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${ctx.raw}`
+        }
+      },
+      datalabels: false   // 🔴 disables percentage labels
+    },
+    scales: {
+      x: { stacked: true },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: {
+          precision: 0
+        }
+      }
+    }
+  }}
+/>
+
       </div>
     </div>
   );
