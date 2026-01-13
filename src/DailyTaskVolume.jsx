@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 
-
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -41,36 +40,113 @@ const STATUS_COLORS = {
   OVERDUE: "#DC2626"
 };
 
+const OWNERS = [
+  "AURELLE",
+  "CHRISTIAN",
+  "SERGEA",
+  "FABRICE",
+  "FLORIAN",
+  "JOSIAS",
+  "ESTHER",
+  "MARIUS",
+  "THEOPHANE",
+  "FLYTXT",
+  "IT",
+  "OTHER"
+];
+
+const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT", "OTHER"];
+
+/* ===============================
+   DROPDOWN COMPONENT
+================================ */
+function MultiDropdown({ label, items, values, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  const toggle = value => {
+    if (values.includes(value)) {
+      onChange(values.filter(v => v !== value));
+    } else {
+      onChange([...values, value]);
+    }
+  };
+
+  return (
+    <div style={{ position: "relative", minWidth: 160 }}>
+      <label style={filterLabel}>{label}</label>
+
+      <div
+        style={dropdownBox}
+        onClick={() => setOpen(o => !o)}
+      >
+        {values.length === 0 ? "Select…" : `${values.length} selected`}
+      </div>
+
+      {open && (
+        <div style={dropdownMenu}>
+          {items.map(item => (
+            <label key={item} style={dropdownItem}>
+              <input
+                type="checkbox"
+                checked={values.includes(item)}
+                onChange={() => toggle(item)}
+              />
+              {item}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ===============================
    PAGE COMPONENT
 ================================ */
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
 
-const [filters, setFilters] = useState(() => {
-  const saved = sessionStorage.getItem("dailyVolumeFilters");
-  return saved
-    ? JSON.parse(saved)
-    : {
-        owners: [],
-        teams: [],
-        statuses: [],
-        date_from: "",
-        date_to: ""
-      };
-});
-
-  useEffect(() => {
-  sessionStorage.setItem(
-    "dailyVolumeFilters",
-    JSON.stringify(filters)
-  );
-}, [filters]);
-
-
+  const [filters, setFilters] = useState(() => {
+    const saved = sessionStorage.getItem("dailyVolumeFilters");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          owners: [],
+          teams: [],
+          statuses: [],
+          date_from: "",
+          date_to: ""
+        };
+  });
 
   /* ===============================
-     LOAD DATA FROM SUPABASE
+     PERSIST FILTERS
+  ================================ */
+  useEffect(() => {
+    sessionStorage.setItem(
+      "dailyVolumeFilters",
+      JSON.stringify(filters)
+    );
+  }, [filters]);
+
+  /* ===============================
+     RESET FILTERS
+  ================================ */
+  const resetFilters = () => {
+    const empty = {
+      owners: [],
+      teams: [],
+      statuses: [],
+      date_from: "",
+      date_to: ""
+    };
+
+    setFilters(empty);
+    sessionStorage.removeItem("dailyVolumeFilters");
+  };
+
+  /* ===============================
+     LOAD DATA
   ================================ */
   const loadData = async () => {
     let query = supabase
@@ -101,28 +177,24 @@ const [filters, setFilters] = useState(() => {
     }
   };
 
-useEffect(() => {
-  loadData();
-}, [
-  filters.owners,
-  filters.teams,
-  filters.statuses,
-  filters.date_from,
-  filters.date_to
-]);
-
+  useEffect(() => {
+    loadData();
+  }, [
+    filters.owners,
+    filters.teams,
+    filters.statuses,
+    filters.date_from,
+    filters.date_to
+  ]);
 
   /* ===============================
      BUILD CHART DATA
   ================================ */
   const chartData = useMemo(() => {
-    if (!rows.length) {
-      return { labels: [], datasets: [] };
-    }
+    if (!rows.length) return { labels: [], datasets: [] };
 
     const days = [...new Set(rows.map(r => r.status_day))]
-  .sort((a, b) => new Date(a) - new Date(b));
-
+      .sort((a, b) => new Date(a) - new Date(b));
 
     const datasets = STATUSES.map(status => ({
       label: status,
@@ -134,10 +206,7 @@ useEffect(() => {
       backgroundColor: STATUS_COLORS[status]
     }));
 
-    return {
-      labels: days,
-      datasets
-    };
+    return { labels: days, datasets };
   }, [rows]);
 
   /* ===============================
@@ -147,138 +216,88 @@ useEffect(() => {
     <div style={{ padding: 20 }}>
       <h1>📊 Daily Task Volume</h1>
 
-  {/* FILTER BAR */}
-<div
-  style={{
-    display: "flex",
-    gap: 12,
-    flexWrap: "wrap",
-    alignItems: "flex-end",
-    marginBottom: 20
-  }}
->
-  {/* Owners */}
-  <div>
-    <label style={filterLabel}>👤 Owner(s)</label>
-    <select
-      multiple
-      style={filterSelect}
-      value={filters.owners}
-      onChange={e =>
-        setFilters(f => ({
-          ...f,
-          owners: [...e.target.selectedOptions].map(o => o.value)
-        }))
-      }
-    >
-      {["AURELLE","CHRISTIAN","SERGEA","FABRICE","FLORIAN","JOSIAS","ESTHER","MARIUS","THEOPHANE","FLYTXT","IT","OTHER"]
-        .map(o => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-    </select>
-  </div>
+      {/* FILTER BAR */}
+      <div style={filterBar}>
+        <MultiDropdown
+          label="👤 Owner(s)"
+          items={OWNERS}
+          values={filters.owners}
+          onChange={vals => setFilters(f => ({ ...f, owners: vals }))}
+        />
 
-  {/* Teams */}
-  <div>
-    <label style={filterLabel}>🧩 Team(s)</label>
-    <select
-      multiple
-      style={filterSelect}
-      value={filters.teams}
-      onChange={e =>
-        setFilters(f => ({
-          ...f,
-          teams: [...e.target.selectedOptions].map(o => o.value)
-        }))
-      }
-    >
-      {["BI","CVM","SM","FLYTXT","IT","OTHER"]
-        .map(t => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-    </select>
-  </div>
+        <MultiDropdown
+          label="🧩 Team(s)"
+          items={TEAMS}
+          values={filters.teams}
+          onChange={vals => setFilters(f => ({ ...f, teams: vals }))}
+        />
 
-  {/* Status */}
-  <div>
-    <label style={filterLabel}>📌 Status(es)</label>
-    <select
-      multiple
-      style={filterSelect}
-      value={filters.statuses}
-      onChange={e =>
-        setFilters(f => ({
-          ...f,
-          statuses: [...e.target.selectedOptions].map(o => o.value)
-        }))
-      }
-    >
-      {STATUSES.map(s => (
-        <option key={s} value={s}>{s}</option>
-      ))}
-    </select>
-  </div>
+        <MultiDropdown
+          label="📌 Status(es)"
+          items={STATUSES}
+          values={filters.statuses}
+          onChange={vals => setFilters(f => ({ ...f, statuses: vals }))}
+        />
 
-  {/* Date range */}
-  <div>
-    <label style={filterLabel}>📅 Date range</label>
-    <div style={{ display: "flex", gap: 6 }}>
-      <input
-        type="date"
-        style={filterDate}
-        value={filters.date_from}
-        onChange={e =>
-          setFilters(f => ({ ...f, date_from: e.target.value }))
-        }
-      />
-      <input
-        type="date"
-        style={filterDate}
-        value={filters.date_to}
-        onChange={e =>
-          setFilters(f => ({ ...f, date_to: e.target.value }))
-        }
-      />
-    </div>
-  </div>
-</div>
+        <div>
+          <label style={filterLabel}>📅 Date range</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              type="date"
+              style={filterDate}
+              value={filters.date_from}
+              onChange={e =>
+                setFilters(f => ({ ...f, date_from: e.target.value }))
+              }
+            />
+            <input
+              type="date"
+              style={filterDate}
+              value={filters.date_to}
+              onChange={e =>
+                setFilters(f => ({ ...f, date_to: e.target.value }))
+              }
+            />
+          </div>
+        </div>
 
+        <button onClick={resetFilters} style={resetButton}>
+          🔄 Reset
+        </button>
+      </div>
 
-      
       {/* CHART */}
-
-      <div
-  style={{
-    height: 380,
-    maxHeight: 380,
-    width: "100%",
-    overflow: "hidden"
-         }}
-      >
-
+      <div style={chartContainer}>
         <Bar
           data={chartData}
-    options={{
-      responsive: true,
-      maintainAspectRatio: false,   // 🔴 important
-      scales: {
-        x: { stacked: true },
-        y: {
-          stacked: true,
-          beginAtZero: true,
-          ticks: {
-            precision: 0   // integers only
-          }
-        }
-      }
-    }}
-
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { stacked: true },
+              y: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: { precision: 0 }
+              }
+            }
+          }}
         />
       </div>
     </div>
   );
 }
 
+/* ===============================
+   STYLES
+================================ */
+const filterBar = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+  alignItems: "flex-end",
+  marginBottom: 20
+};
 
 const filterLabel = {
   fontSize: 13,
@@ -286,14 +305,58 @@ const filterLabel = {
   marginBottom: 4
 };
 
-const filterSelect = {
-  minWidth: 160,
-  height: 32,
-  padding: "4px 6px"
-};
-
 const filterDate = {
   height: 32,
   padding: "4px 6px"
 };
 
+const resetButton = {
+  height: 32,
+  padding: "0 12px",
+  fontSize: 13,
+  fontWeight: 600,
+  borderRadius: 6,
+  border: "1px solid #ccc",
+  background: "#fff",
+  cursor: "pointer"
+};
+
+const dropdownBox = {
+  height: 32,
+  padding: "6px 8px",
+  border: "1px solid #ccc",
+  borderRadius: 6,
+  cursor: "pointer",
+  background: "#fff"
+};
+
+const dropdownMenu = {
+  position: "absolute",
+  top: "110%",
+  left: 0,
+  width: "100%",
+  background: "#fff",
+  border: "1px solid #ccc",
+  borderRadius: 6,
+  padding: 8,
+  zIndex: 100,
+  maxHeight: 180,
+  overflowY: "auto",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.15)"
+};
+
+const dropdownItem = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "4px 0",
+  fontSize: 13,
+  cursor: "pointer"
+};
+
+const chartContainer = {
+  height: 380,
+  maxHeight: 380,
+  width: "100%",
+  overflow: "hidden"
+};
