@@ -193,12 +193,12 @@ export default function DailyTaskVolume() {
           </div>
         </div>
 
-<div>
-  <label style={filterLabel}>Actions</label>
-  <button onClick={resetFilters} style={resetButton}>
-    🔄 Reset
-  </button>
-</div>
+     <div> 
+       <label style={filterLabel}>&nbsp;</label> 
+       <button onClick={resetFilters} style={resetButton}> 
+         🔄 Reset 
+       </button> 
+     </div>
 
 
       </div>
