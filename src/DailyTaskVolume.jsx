@@ -60,8 +60,11 @@ const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT", "OTHER"];
 /* ===============================
    DROPDOWN COMPONENT
 ================================ */
+import { useEffect, useRef, useState } from "react";
+
 function MultiDropdown({ label, items, values, onChange }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
   const toggle = value => {
     if (values.includes(value)) {
@@ -71,8 +74,20 @@ function MultiDropdown({ label, items, values, onChange }) {
     }
   };
 
+  // ✅ CLOSE ON CLICK OUTSIDE
+  useEffect(() => {
+    const handleClickOutside = event => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <div style={{ position: "relative", minWidth: 160 }}>
+    <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
       <label style={filterLabel}>{label}</label>
 
       <div
@@ -99,6 +114,7 @@ function MultiDropdown({ label, items, values, onChange }) {
     </div>
   );
 }
+
 
 /* ===============================
    PAGE COMPONENT
@@ -276,6 +292,9 @@ export default function DailyTaskVolume() {
     plugins: {
       percentageLabelPlugin: {
         disabled: true   // ✅ THIS STOPS %
+      },
+      valueLabelPlugin: {
+    disabled: false
       },
       legend: {
         labels: {
