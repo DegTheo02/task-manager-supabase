@@ -700,6 +700,9 @@ const resetFilters = () => setFilters({
                   }
                 },
                 plugins: {
+                      valueLabelPlugin: {
+                       disabled: true    // ❌ DISABLE absolute
+                                       },
                   legend: {
                     labels: {
                       font: {
@@ -752,6 +755,9 @@ const resetFilters = () => setFilters({
                   }
                 },
                 plugins: {
+                      valueLabelPlugin: {
+                       disabled: true    // ❌ DISABLE absolute
+                                        },
                   legend: {
                     labels: {
                       font: {
