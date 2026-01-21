@@ -181,12 +181,8 @@ const [filters, setFilters] = useState(() => {
     setLoading(true);
     const { data } = await supabase.from("tasks").select("*").order("id");
     
-     setTasks(
-        (data || []).map(t => ({
-          ...t,
-          _computedStatus: computeStatus(t)
-        }))
-      );
+setTasks(data || []);
+
 
     setLoading(false);
   };
@@ -209,7 +205,7 @@ const [filters, setFilters] = useState(() => {
       if (filters.teams.length && !filters.teams.includes(t.team))
         return false;
 
-      if (filters.statuses.length && !filters.statuses.includes(t._computedStatus))
+      if (filters.statuses.length && !filters.statuses.includes(t._status))
         return false;
 
 
@@ -251,7 +247,7 @@ const [filters, setFilters] = useState(() => {
     return [...filteredTasks].sort((a, b) => {
       const aV =
   sortConfig.key === "status"
-    ? a._computedStatus
+    ? a.status
     : a[sortConfig.key] || "";
 
 const bV =
@@ -302,19 +298,18 @@ const bV =
 
 
 
-    const payload = {
-      title: form.title,
-      owner: form.owner,
-      team: form.team,
-      status: computeStatus(formForStatus),
+const payload = {
+  title: form.title,
+  owner: form.owner,
+  team: form.team,
+  recurrence_type: form.recurrence_type,
+  assigned_date: form.assigned_date,
+  initial_deadline: form.initial_deadline,
+  new_deadline: form.new_deadline || null,
+  closing_date: normalizedClosingDate,
+  comments: form.comments || null
+};
 
-      recurrence_type: form.recurrence_type,
-      assigned_date: form.assigned_date,
-      initial_deadline: form.initial_deadline,
-      new_deadline: form.new_deadline || null,
-      closing_date: normalizedClosingDate,
-      comments: form.comments || null 
-    };
 
 if (isEditing) {
   const { error } = await supabase
@@ -817,12 +812,12 @@ return (
                 <td
                   style={{
                     ...td(darkMode),
-                    color: STATUS_COLORS[t._computedStatus],
+                    color: STATUS_COLORS[t.status],
                     fontWeight: 700,
                     fontSize: "13px"
                   }}
                 >
-                  {t._computedStatus}
+                  {t.status}
                 </td>
 
                 <td style={{ ...td(darkMode),fontSize: "12px"}}>{t.recurrence_type}</td>
