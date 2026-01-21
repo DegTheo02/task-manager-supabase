@@ -205,7 +205,7 @@ setTasks(data || []);
       if (filters.teams.length && !filters.teams.includes(t.team))
         return false;
 
-      if (filters.statuses.length && !filters.statuses.includes(t._status))
+      if (filters.statuses.length && !filters.statuses.includes(t.status))
         return false;
 
 
