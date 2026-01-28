@@ -121,6 +121,10 @@ export default function Filters({ onChange, values = {}, darkMode }) {
         filterKey="teams" values={values.teams || []}
         onChange={onChange} darkMode={darkMode} />
 
+      <MultiDropdown label="Requester(s)"  icon="📨"  items={REQUESTERS}
+      filterKey="requesters"  values={values.requesters || []}
+      onChange={onChange}  darkMode={darkMode} />
+
       <MultiDropdown label="Status(es)" icon="📌" items={STATUSES}
         filterKey="statuses" values={values.statuses || []}
         onChange={onChange} darkMode={darkMode} />
