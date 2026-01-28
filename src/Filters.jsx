@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 /* CONSTANTS */
 import {
@@ -14,6 +14,7 @@ import {
 /* MULTI DROPDOWN */
 function MultiDropdown({ label, icon, items, filterKey, values, onChange, darkMode }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
   const updateSelection = (value, checked) => {
     let updated;
@@ -29,8 +30,22 @@ function MultiDropdown({ label, icon, items, filterKey, values, onChange, darkMo
     onChange(prev => ({ ...prev, [filterKey]: updated }));
   };
 
+    useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+  
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+
   return (
-    <div style={{ position: "relative", minWidth: 160 }}>
+    <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
         <span style={{ fontSize: 16 }}>{icon}</span> {label}
       </div>
