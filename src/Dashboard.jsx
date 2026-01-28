@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Filters from "./Filters";
 import Navbar from "./Navbar";
+import {
+  OWNERS,
+  TEAMS,
+  STATUSES,
+  STATUS_COLORS,
+  STATUS_ICONS
+} from "./constants/taskConstants";
+
 
 
 import {
@@ -88,51 +96,6 @@ ChartJS.register(
   valueLabelPlugin
 );
 
-/* ===============================
-   CONSTANTS
-================================ */
-const OWNERS = [
-  "AURELLE",
-  "CHRISTIAN",
-  "SERGEA",
-  "FABRICE",
-  "FLORIAN",
-  "JOSIAS",
-  "ESTHER",
-  "MARIUS",
-  "THEOPHANE",
-  "FLYTXT",
-  "IT",
-  "OTHER"
-];
-
-const TEAMS = ["BI","CVM","SM"];
-
-const STATUSES = [
-  "CLOSED ON TIME",
-  "CLOSED PAST DUE",
-  "ON TRACK",
-  "OVERDUE",
-  "ON HOLD"
-];
-
-
-const STATUS_COLORS = {
-  "ON TRACK": "#3B82F6",
-  OVERDUE: "#DC2626",
-  "ON HOLD": "#6B7280",
-  "CLOSED ON TIME": "#16A34A",
-  "CLOSED PAST DUE": "#F97316"
-};
-
-const STATUS_ICONS = {
-
-  "ON TRACK": "🔄",
-  OVERDUE: "⛔",
-  "ON HOLD": "⏸",
-  "CLOSED ON TIME": "✅",
-  "CLOSED PAST DUE": "⚠️"
-};
 
 /* ===============================
    DASHBOARD
