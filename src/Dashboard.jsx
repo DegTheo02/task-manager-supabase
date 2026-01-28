@@ -317,10 +317,15 @@ const kpiPercent = {
     });
 
   const teamStats = buildStats(TEAMS, "team");
+  
   const ownerStats = buildStats(
     OWNERS.filter(o => filteredTasks.some(t => t.owner === o)),
-    "owner"
-  );
+    "owner"  );
+
+  const requesterStats = buildStats(
+  REQUESTERS.filter(r => filteredTasks.some(t => t.requester === r)),
+  "requester");
+
 
   const columnPercentageTotals = (rows) => {
   const totals = columnTotals(rows); // uses counts
@@ -735,12 +740,72 @@ const resetFilters = () => setFilters({
         />
       </div>
 
+
+      {/* REQUESTER CHART */}
+      <div style={{ height: 500, marginTop: 150, marginBottom: 100, marginRight: 0 }}>
+        <Bar
+          data={{
+            labels: requesterStats.map(r => r.label),
+            datasets: STATUSES.map(s => ({
+              label: s,
+              data: requesterStats.map(r =>
+                r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0
+              ),
+              backgroundColor: STATUS_COLORS[s]
+            }))
+          }}
+              options={{
+                responsive: true,
+                scales: {
+                  x: {
+                    stacked: true,
+                    ticks: {
+                      font: {
+                        size: 14,        // ⬅ X-axis label size
+                        weight: "600"
+                      }
+                    }
+                  },
+                  y: {
+                    stacked: true,
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                      font: {
+                        size: 14         // ⬅ Y-axis label size
+                      },
+                      callback: value => `${value}%`
+                    }
+                  }
+                },
+                plugins: {
+                      valueLabelPlugin: {
+                       disabled: true    // ❌ DISABLE absolute
+                                        },
+                  legend: {
+                    labels: {
+                      font: {
+                        size: 14,        // ⬅ legend font size
+                        weight: "600"
+                      }
+                    }
+                  }
+                }
+              }}
+
+        />
+      </div>
+
       {/* TABLES */}
       <Table title="Tasks per Team (Count)" rows={teamStats} />
       <Table title="Task Distribution (%) per Team" rows={teamStats} percentage />
 
       <Table title="Tasks per Owner (Count)" rows={ownerStats} />
       <Table title="Task Distribution (%) per Owner" rows={ownerStats} percentage />
+
+      <Table title="Tasks per Requester (Count)" rows={requesterStats} />
+      <Table title="Task Distribution (%) per Requester" rows={requesterStats} percentage />
+
     </div>
   );
 
