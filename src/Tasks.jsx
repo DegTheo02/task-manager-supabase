@@ -593,6 +593,26 @@ return (
         </select>
       </div>
 
+        {/* Requesters */}
+        <div style={filterItem}>
+          <span>📨 Requesters</span>
+          <select
+            multiple
+            size={1}
+            value={filters.requesters}
+            onChange={e =>
+              setFilters(f => ({
+                ...f,
+                requesters: [...e.target.selectedOptions].map(o => o.value)
+              }))
+            }
+          >
+            {REQUESTERS.map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+
 
           {/* Status */}
           <div style={filterItem}>
