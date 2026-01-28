@@ -45,9 +45,9 @@ function MultiDropdown({ label, icon, items, filterKey, values, onChange, darkMo
 
 
   return (
-    <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
-        <span style={{ fontSize: 16 }}>{icon}</span> {label}
+    <div ref={ref} style={{ position: "relative", minWidth: 130 }}>
+      <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 3 }}>
+        <span style={{ fontSize: 14 }}>{icon}</span> {label}
       </div>
 
       <div
@@ -128,25 +128,50 @@ export default function Filters({ onChange, values = {}, darkMode }) {
 
   return (
     <div style={container}>
-      <MultiDropdown label="Owner(s)" icon="👤" items={OWNERS}
-        filterKey="owners" values={values.owners || []}
-        onChange={onChange} darkMode={darkMode} />
+      <MultiDropdown 
+        label="Owner(s)" 
+        icon="👤" 
+        items={OWNERS}
+        filterKey="owners" 
+        values={values.owners || []}
+        onChange={onChange} darkMode={darkMode} 
+        />
 
-      <MultiDropdown label="Team(s)" icon="🧩" items={TEAMS}
-        filterKey="teams" values={values.teams || []}
-        onChange={onChange} darkMode={darkMode} />
+      <MultiDropdown 
+        label="Team(s)" 
+        icon="🧩" 
+        items={TEAMS}
+        filterKey="teams" 
+        values={values.teams || []}
+        onChange={onChange} darkMode={darkMode} 
+        />
 
-      <MultiDropdown label="Requester(s)"  icon="📨"  items={REQUESTERS}
-      filterKey="requesters"  values={values.requesters || []}
-      onChange={onChange}  darkMode={darkMode} />
+      <MultiDropdown 
+        label="Requester(s)"  
+        icon="📨"  
+        items={REQUESTERS}
+        filterKey="requesters"  
+        values={values.requesters || []}
+        onChange={onChange}  darkMode={darkMode} 
+        />
 
-      <MultiDropdown label="Status(es)" icon="📌" items={STATUSES}
-        filterKey="statuses" values={values.statuses || []}
-        onChange={onChange} darkMode={darkMode} />
+      <MultiDropdown 
+        label="Status(es)" 
+        icon="📌" 
+        items={STATUSES}
+        filterKey="statuses" 
+        values={values.statuses || []}
+        onChange={onChange} darkMode={darkMode} 
+        />
 
-      <MultiDropdown label="Recurrence" icon="🔄" items={RECURRENCE_TYPES}
-        filterKey="recurrence_types" values={values.recurrence_types || []}
-        onChange={onChange} darkMode={darkMode} />
+      <MultiDropdown 
+        label="Recurrence" 
+        icon="🔄" 
+        items={RECURRENCE_TYPES}
+        filterKey="recurrence_types" 
+        values={values.recurrence_types || []}
+        onChange={onChange} darkMode={darkMode} 
+        />
 
       <div style={{ minWidth: 160 }}>
         <label style={{ fontWeight: 600, fontSize: 13 }}>📅 Assigned</label>
