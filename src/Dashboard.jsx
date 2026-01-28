@@ -7,7 +7,8 @@ import {
   TEAMS,
   STATUSES,
   STATUS_COLORS,
-  STATUS_ICONS
+  STATUS_ICONS,
+  REQUESTERS
 } from "./constants/taskConstants";
 
 
@@ -111,12 +112,15 @@ const [filters, setFilters] = useState(() => {
   return saved ? JSON.parse(saved) : {
     owners: [],
     teams: [],
+    requesters: [],
     statuses: [],
     recurrence_types: [],
     assigned_from: "",
     assigned_to: "",
     deadline_from: "",
-    deadline_to: ""
+    deadline_to: "",
+    closing_from: "",  
+    closing_to: "" 
   };
 });
 
