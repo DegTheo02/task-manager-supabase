@@ -370,6 +370,7 @@ const kpiPercent = {
 const resetFilters = () => setFilters({
   owners: [],
   teams: [],
+  requesters: [],
   statuses: [],
   recurrence_types: [],
   assigned_from: "",
