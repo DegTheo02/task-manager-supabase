@@ -173,22 +173,6 @@ export default function Filters({ onChange, values = {}, darkMode }) {
         onChange={onChange} darkMode={darkMode} 
         />
 
-      <div/* style={{ minWidth: 160 }}>
-        <label style={{ fontWeight: 600, fontSize: 13 }}>📅 Assigned</label>
-        <div style={{ display: "flex", gap: 6 }}>
-          <input 
-            type="date" 
-            value={values.assigned_from || ""}
-            style={{ ...dateInput, ...darkStyle }}
-            onChange={e => update("assigned_from", e.target.value)} />
-          <input 
-            type="date" 
-            value={values.assigned_to || ""}
-            style={{ ...dateInput, ...darkStyle }}
-            onChange={e => update("assigned_to", e.target.value)} />
-        </div>*/
-      </div>
-
       <div style={{ minWidth: 160 }}>
         <label style={{ fontWeight: 600, fontSize: 13 }}>⏳ Deadline</label>
         <div style={{ display: "flex", gap: 6 }}>
