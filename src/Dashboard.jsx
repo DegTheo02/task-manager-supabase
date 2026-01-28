@@ -143,6 +143,9 @@ const filteredTasks = useMemo(() => {
     /* TEAMS */
     if (filters.teams.length && !filters.teams.includes(t.team)) return false;
 
+    /* REQUESTERS */
+    if (filters.requesters.length && !filters.requesters.includes(t.requester))return false;
+
     /* STATUSES */
     if (filters.statuses.length && !filters.statuses.includes(t.status)) return false;
 
