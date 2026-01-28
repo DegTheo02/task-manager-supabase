@@ -1,37 +1,15 @@
 import React, { useState } from "react";
 
 /* CONSTANTS */
-const OWNERS = [
-  "AURELLE",
-  "CHRISTIAN",
-  "SERGEA",
-  "FABRICE",
-  "FLORIAN",
-  "JOSIAS",
-  "ESTHER",
-  "MARIUS",
-  "THEOPHANE",
-  "FLYTXT",
-  "IT",
-  "OTHER"
-];
-
-const STATUSES = [
-  "CLOSED ON TIME",
-  "CLOSED PAST DUE",
-  "ON TRACK",
-  "OVERDUE",
-  "ON HOLD"
-];
+import {
+  OWNERS,
+  TEAMS,
+  STATUSES,
+  RECURRENCE_TYPES,
+  REQUESTERS
+} from "./constants/taskConstants";
 
 
-const TEAMS = ["BI","CVM","SM", "FLYTXT", "IT", "OTHER"];
-
-const RECURRENCE_TYPES = [
-  "Non-Recurring",
-  "Recurring Weekly",
-  "Recurring Monthly"
-];
 
 /* MULTI DROPDOWN */
 function MultiDropdown({ label, icon, items, filterKey, values, onChange, darkMode }) {
