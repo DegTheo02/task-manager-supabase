@@ -81,6 +81,7 @@ const [filters, setFilters] = useState(() => {
   return saved ? JSON.parse(saved) : {
     owners: [],
     teams: [],
+    requesters: [],
     statuses: [],
     recurrence_types: [],
     search: "",
@@ -159,6 +160,9 @@ setTasks(data || []);
         return false;
        
       if (filters.teams.length && !filters.teams.includes(t.team))
+        return false;
+
+      if (  filters.requesters.length &&  !filters.requesters.includes(t.requester)) 
         return false;
 
       if (filters.statuses.length && !filters.statuses.includes(t.status))
