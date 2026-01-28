@@ -12,6 +12,16 @@ import {
 
 import { Bar } from "react-chartjs-2";
 
+import {
+  STATUSES,
+  STATUS_COLORS,
+  OWNERS,
+  TEAMS,
+  REQUESTERS
+} from "./constants/taskConstants";
+
+
+
 /* ===============================
    CHART REGISTRATION
 ================================ */
@@ -23,29 +33,7 @@ ChartJS.register(
   Legend
 );
 
-/* ===============================
-   CONSTANTS
-================================ */
-const STATUSES = [
-  "CLOSED ON TIME",
-  "CLOSED PAST DUE",
-  "ON TRACK",
-  "OVERDUE"
-];
 
-const STATUS_COLORS = {
-  "CLOSED ON TIME": "#16A34A",
-  "CLOSED PAST DUE": "#F97316",
-  "ON TRACK": "#3B82F6",
-  OVERDUE: "#DC2626"
-};
-
-const OWNERS = [
-  "AURELLE","CHRISTIAN","SERGEA","FABRICE","FLORIAN",
-  "JOSIAS","ESTHER","MARIUS","THEOPHANE","FLYTXT","IT","OTHER"
-];
-
-const TEAMS = ["BI","CVM","SM","FLYTXT","IT","OTHER"];
 
 const formatDateLabel = (isoDate) => {
   const d = new Date(isoDate);
