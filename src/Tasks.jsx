@@ -1,66 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Navbar from "./Navbar";
+import {
+  STATUSES,
+  OWNERS,
+  TEAMS,
+  STATUS_COLORS,
+  OWNER_TEAM_MAP,
+  RECURRENCE_TYPES,
+  REQUESTERS
+} from "./constants/taskConstants";
 
 
 /* ----------------------------------
    CONSTANTS
 ---------------------------------- */
-const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT", "OTHER"];
 
-const OWNERS = [
-  "AURELLE",
-  "CHRISTIAN",
-  "SERGEA",
-  "FABRICE",
-  "FLORIAN",
-  "JOSIAS",
-  "ESTHER",
-  "MARIUS",
-  "THEOPHANE",
-  "FLYTXT",
-  "IT",
-  "OTHER"
-  
-];
-
-const STATUSES = [
-  "CLOSED ON TIME",
-  "CLOSED PAST DUE",
-  "ON TRACK",
-  "OVERDUE",
-  "ON HOLD"
-];
-
-
-const STATUS_COLORS = {
-  "ON TRACK": "#3B82F6",
-  OVERDUE: "#DC2626",
-  "ON HOLD": "#6B7280",
-  "CLOSED ON TIME": "#16A34A",
-  "CLOSED PAST DUE": "#F97316"
-};
-
-const RECURRENCE_TYPES = [
-  "Non-Recurring",
-  "Recurring Weekly",
-  "Recurring Monthly"
-];
-
-const OWNER_TEAM_MAP = {
-  AURELLE: "BI",
-  SERGEA: "BI",
-  CHRISTIAN: "BI",
-  FABRICE: "BI",
-  FLORIAN: "CVM",
-  ESTHER: "CVM",
-  JOSIAS: "CVM",
-  MARIUS: "CVM",
-  THEOPHANE: "SM",
-  FLYTXT: "FLYTXT",
-  IT: "IT",
-  OTHER: "OTHER"
-};
 
 const toISODate = value => {
   if (!value) return "";
