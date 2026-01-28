@@ -119,6 +119,7 @@ const [filters, setFilters] = useState(() => {
     title: "",
     owner: "",
     team: "",
+    requester: "",
     status: "",
     recurrence_type: "Non-Recurring",
     assigned_date: "",
@@ -235,6 +236,7 @@ const bV =
     if (
       !form.title ||
       !form.owner ||
+      !form.requester ||
       !form.assigned_date ||
       !form.initial_deadline
       
@@ -257,6 +259,7 @@ const payload = {
   title: form.title,
   owner: form.owner,
   team: form.team,
+  requester: form.requester,
   recurrence_type: form.recurrence_type,
   assigned_date: form.assigned_date,
   initial_deadline: form.initial_deadline,
@@ -421,6 +424,29 @@ return (
               ))}
             </select>
           </label>
+
+          <label style={formLabel}>
+            Requester *
+            <select
+              style={formInput}
+              value={form.requester}
+              required
+              onChange={e =>
+                setForm(f => ({
+                  ...f,
+                  requester: e.target.value,
+                  requester_other:
+                    e.target.value === "OTHER" ? f.requester_other : ""
+                }))
+              }
+            >
+              <option value="">Select requester</option>
+              {REQUESTERS.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            </label>
+
 
           <label style={formLabel}>
             Initial deadline *
@@ -703,6 +729,11 @@ return (
                 Team{arrow("team")}
               </th>
 
+              
+              <th style={{ ...th(darkMode), width: "12%" }}>
+                Requester
+              </th>
+
 
               <th
                 style={{ ...th(darkMode), width: "10%" }}
@@ -763,6 +794,8 @@ return (
                 <td style={{ ...td(darkMode), textAlign: "left" ,fontSize: "14px"}}>{t.title}</td>
                 <td style={td(darkMode)}>{t.owner}</td>
                 <td style={td(darkMode)}>{t.team}</td>
+                <td style={td(darkMode)}>{t.requester }</td>
+
 
                 <td
                   style={{
