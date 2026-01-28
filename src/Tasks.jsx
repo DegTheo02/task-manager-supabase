@@ -101,6 +101,7 @@ const [filters, setFilters] = useState(() => {
   setFilters({
     owners: [],
     teams: [],
+    requesters: [],
     statuses: [],
     deadline_from: "",
     deadline_to: "",
