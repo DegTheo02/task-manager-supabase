@@ -378,7 +378,7 @@ return (
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(8, 1fr)",
+            gridTemplateColumns: "repeat(9, 1fr)",
             gap: 20,
             width: "100%"
           }}
