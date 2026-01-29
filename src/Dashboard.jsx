@@ -444,7 +444,16 @@ const resetFilters = () => setFilters({
                     </td>
                   ))}
 
-                  <td><b>{percentage ? "100%" : r.TOTAL}</b></td>
+                  <td>
+                  <b>
+                    {percentage
+                      ? totals.TOTAL
+                        ? `${Math.round((r.TOTAL / totals.TOTAL) * 100)}%`
+                        : "0%"
+                      : r.TOTAL}
+                  </b>
+                  </td>
+
                 </tr>
               ))}
 
