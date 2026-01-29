@@ -1,10 +1,20 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 
 export default function Navbar() {
   return (
     <nav style={nav}>
-      <h3>BI&CVM - Task Manager</h3>
+      
+      {/* LEFT: Logo + App name */}
+      <Link to="/dashboard" style={brand}>
+        <img
+          src="/logo.png"
+          alt="Task Manager Logo"
+          style={logo}
+        />
+        <span>BI & CVM Task Manager</span>
+      </Link>
 
+      {/* RIGHT: Navigation */}
       <div>
         <NavLink to="/dashboard" style={link}>
           Dashboard
@@ -26,17 +36,39 @@ export default function Navbar() {
   );
 }
 
+/* =====================
+   STYLES
+===================== */
+
 const nav = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  padding: "6px 12px",
+  padding: "8px 16px",
   background: "#111827",
-  color: "white"
+  color: "white",
+  position: "sticky",
+  top: 0,
+  zIndex: 2000
+};
+
+const brand = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  textDecoration: "none",
+  color: "white",
+  fontWeight: 700,
+  fontSize: 16
+};
+
+const logo = {
+  height: 34,
+  width: "auto"
 };
 
 const link = {
-  marginLeft: 15,
+  marginLeft: 18,
   color: "white",
   textDecoration: "none",
   fontWeight: 500
