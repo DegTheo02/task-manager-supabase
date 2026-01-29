@@ -405,6 +405,15 @@ const resetFilters = () => setFilters({
     marginBottom: 20
   };
 
+  const getGradientColor = (pct) => {
+  if (pct <= 20) return "#2563EB"; // blue
+  if (pct <= 40) return "#16A34A"; // green
+  if (pct <= 60) return "#FACC15"; // yellow
+  if (pct <= 80) return "#F97316"; // orange
+  return "#DC2626";               // red
+};
+
+  
   const PercentageCell = ({ value, color }) => {
   const pct = Math.max(0, Math.min(value, 100));
   const barColor = color || getGradientColor(pct);
