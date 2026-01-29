@@ -489,6 +489,13 @@ const resetFilters = () => setFilters({
         {/* WIDTH CONSTRAINER */}
         <div style={{ maxWidth: 1200, marginLeft: 20 }}>
           <table width="100%" border="3" style={{ textAlign: "center" }}>
+            <colgroup>
+              <col style={{ width: "180px" }} />   {/* Label column */}
+              {STATUSES.map(() => (
+                <col style={{ width: "120px" }} />
+              ))}
+              <col style={{ width: "220px" }} />   {/* ✅ Σ TOTAL (wider) */}
+            </colgroup>
             <thead>
               <tr>
                 <th>{title.includes("Team") ? "🏷 Team" : "👤 Owner"}</th>
