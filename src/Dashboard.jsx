@@ -509,27 +509,31 @@ const resetFilters = () => setFilters({
               ))}
 
               {/* COLUMN TOTALS */}
-            <tr>
-  <td><b>Σ TOTAL</b></td>
+               <tr>
+                <td><b>Σ TOTAL</b></td>
+              
+                {STATUSES.map(s => (
+                  <td key={s}>
+                    {percentage ? (
+                      <PercentageCell
+                        value={columnPercentageTotals(rows)[s]}
+                        color={STATUS_COLORS[s]}
+                      />
+                    ) : (
+                      <b>{totals[s]}</b>
+                    )}
+                  </td>
+                ))}
+              
+                <td>
+                  {percentage ? (
+                    <PercentageCell value={100} color="#3B82F6" />
+                  ) : (
+                    <b>{totals.TOTAL}</b>
+                  )}
+                </td>
+              </tr>
 
-  {STATUSES.map(s => (
-    <td>
-      {percentage ? (
-        <PercentageCell
-          value={Math.round((r.TOTAL / totals.TOTAL) * 100)}
-          color="#3B82F6" // neutral blue for contribution
-        />
-      ) : (
-        <b>{r.TOTAL}</b>
-      )}
-    </td>
-
-  ))}
-
-  <td>
-    <b>{percentage ? "100%" : totals.TOTAL}</b>
-  </td>
-</tr>
 
             </tbody>
           </table>
