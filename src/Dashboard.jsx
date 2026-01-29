@@ -359,15 +359,19 @@ const kpiPercent = {
   };
   
 
-  const toggleStatusFilter = (status) => {
-  setFilters(prev => ({
-    ...prev,
-    statuses:
-      prev.statuses.length === 1 && prev.statuses[0] === status
-        ? []            // toggle OFF
-        : [status]      // toggle ON
-  }));
+const toggleStatusFilter = (status) => {
+  setFilters(prev => {
+    const isActive =
+      prev.statuses.length === 1 && prev.statuses[0] === status;
+
+    return {
+      ...prev,
+      statuses: isActive ? [] : [status]
+      // 👇 requester is preserved automatically
+    };
+  });
 };
+
 
 
 const resetFilters = () => setFilters({
@@ -631,6 +635,31 @@ const resetFilters = () => setFilters({
       </div>
     );
   })}
+
+
+  const topRequester = useMemo(() => {
+  if (!filteredTasks.length) return null;
+
+  const counts = {};
+
+  filteredTasks.forEach(t => {
+    if (!t.requester) return;
+    counts[t.requester] = (counts[t.requester] || 0) + 1;
+  });
+
+  let top = null;
+  let max = 0;
+
+  Object.entries(counts).forEach(([requester, count]) => {
+    if (count > max) {
+      max = count;
+      top = requester;
+    }
+  });
+
+  return top ? { requester: top, count: max } : null;
+}, [filteredTasks]);
+  
 </div>
 
 
