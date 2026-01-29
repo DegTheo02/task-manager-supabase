@@ -414,24 +414,24 @@ const resetFilters = () => setFilters({
 };
 
   
-  const PercentageCell = ({ value, color }) => {
-  const pct = Math.max(0, Math.min(value, 100));
-  const barColor = color || getGradientColor(pct);
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        height: 22,
-        borderRadius: 6,
-        background: "#1f2937",
-        overflow: "hidden"
-      }}
-    >
-      {/* BAR */}
-      <div
-          title={tooltip}   // 👈 enables native tooltip (step 2)
+      const PercentageCell = ({ value, color, tooltip }) => {
+      const pct = Math.max(0, Math.min(value, 100));
+      const barColor = color || getGradientColor(pct);
+    
+      return (
+        <div
+          title={tooltip}
           style={{
+            position: "relative",
+            height: 22,
+            borderRadius: 6,
+            background: "#1f2937",
+            overflow: "hidden"
+          }}
+        >
+          {/* BAR */}
+          <div
+            style={{
               position: "absolute",
               left: 0,
               top: 0,
@@ -442,32 +442,31 @@ const resetFilters = () => setFilters({
                 ${barColor},
                 rgba(255,255,255,0.25)
               )`,
-              opacity: 0.75,
-          
-              /* 🔥 ANIMATION */
-              transition: "width 450ms cubic-bezier(0.4, 0, 0.2, 1)" ,
-              transitionDelay: `${index * 30}ms`
-
+              opacity: 0.85,
+    
+              /* ✅ SAFE ANIMATION */
+              transition: "width 450ms cubic-bezier(0.4, 0, 0.2, 1), background-color 450ms ease"
             }}
-      />
+          />
+    
+          {/* TEXT */}
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              fontWeight: 700,
+              fontSize: 12,
+              color: "white",
+              textAlign: "center",
+              lineHeight: "22px"
+            }}
+          >
+            {pct}%
+          </div>
+        </div>
+      );
+    };
 
-      {/* TEXT */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          fontWeight: 700,
-          fontSize: 12,
-          color: "white",
-          textAlign: "center",
-          lineHeight: "22px"
-        }}
-      >
-        {pct}%
-      </div>
-    </div>
-  );
-};
 
 
 
