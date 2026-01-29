@@ -2,13 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>BI&CVM - Task Manager</title>
+
+    <!-- App Title (Browser tab title) -->
+    <title>BI & CVM – Task Manager</title>
+
+    <!-- Favicon (Browser tab icon) -->
+    <link rel="icon" type="image/png" href="/favicon.ico" />
+
+    <!-- Mobile / PWA friendly -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- App Description (SEO / sharing) -->
+    <meta
+      name="description"
+      content="BI & CVM Task Manager – Track, manage and analyze tasks by owner, team, requester and status."
+    />
+
+    <!-- Open Graph (Google / Teams / WhatsApp / Slack preview) -->
+    <meta property="og:title" content="BI & CVM – Task Manager" />
+    <meta
+      property="og:description"
+      content="Centralized task tracking with dashboards and KPIs."
+    />
+    <meta property="og:image" content="/logo.png" />
+    <meta property="og:type" content="website" />
 
     <!-- Chart.js DataLabels CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   </head>
+
   <body>
     <div id="root"></div>
+
+    <!-- React entry point -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
