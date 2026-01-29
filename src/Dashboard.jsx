@@ -430,19 +430,25 @@ const resetFilters = () => setFilters({
     >
       {/* BAR */}
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          height: "100%",
-          width: `${pct}%`,
-          background: `linear-gradient(
-            to right,
-            ${barColor},
-            rgba(255,255,255,0.25)
-          )`,
-          opacity: 0.95
-        }}
+          title={tooltip}   // 👈 enables native tooltip (step 2)
+          style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              height: "100%",
+              width: `${pct}%`,
+              background: `linear-gradient(
+                to right,
+                ${barColor},
+                rgba(255,255,255,0.25)
+              )`,
+              opacity: 0.75,
+          
+              /* 🔥 ANIMATION */
+              transition: "width 450ms cubic-bezier(0.4, 0, 0.2, 1)" ,
+              transitionDelay: `${index * 30}ms`
+
+            }}
       />
 
       {/* TEXT */}
@@ -502,6 +508,7 @@ const resetFilters = () => setFilters({
                         <PercentageCell
                           value={r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}
                           color={STATUS_COLORS[s]}
+                          tooltip={`${r[s]} / ${r.TOTAL} tasks (${r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%)`}
                         />
                       ) : (
                         r[s]
@@ -513,12 +520,9 @@ const resetFilters = () => setFilters({
                     <td>
                       {percentage ? (
                         <PercentageCell
-                          value={
-                            totals.TOTAL
-                              ? Math.round((r.TOTAL / totals.TOTAL) * 100)
-                              : 0
-                          }
+                          value={totals.TOTAL ? Math.round((r.TOTAL / totals.TOTAL) * 100) : 0}
                           color="#6366F1" // indigo for contribution
+                          tooltip={`${r.TOTAL} / ${totals.TOTAL} total tasks`}
                         />
                       ) : (
                         <b>{r.TOTAL}</b>
