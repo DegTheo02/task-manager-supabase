@@ -635,30 +635,6 @@ const resetFilters = () => setFilters({
       </div>
     );
   })}
-
-
-  const topRequester = useMemo(() => {
-  if (!filteredTasks.length) return null;
-
-  const counts = {};
-
-  filteredTasks.forEach(t => {
-    if (!t.requester) return;
-    counts[t.requester] = (counts[t.requester] || 0) + 1;
-  });
-
-  let top = null;
-  let max = 0;
-
-  Object.entries(counts).forEach(([requester, count]) => {
-    if (count > max) {
-      max = count;
-      top = requester;
-    }
-  });
-
-  return top ? { requester: top, count: max } : null;
-}, [filteredTasks]);
   
 </div>
 
