@@ -135,6 +135,16 @@ const [filters, setFilters] = useState(() => {
     });
   }, []);
 
+  
+  const [heatmapMode, setHeatmapMode] = useState(
+  sessionStorage.getItem("heatmapMode") === "true"
+);
+
+useEffect(() => {
+  sessionStorage.setItem("heatmapMode", heatmapMode);
+}, [heatmapMode]);
+
+
 const filteredTasks = useMemo(() => {
   return tasks.filter(t => {
     /* OWNERS */
@@ -411,12 +421,21 @@ const resetFilters = () => setFilters({
   if (pct <= 60) return "#FACC15"; // yellow
   if (pct <= 80) return "#F97316"; // orange
   return "#DC2626";               // red
-};
+  };
+
+  const heatmapColor = (pct) => {
+  if (pct <= 10) return "#1E3A8A"; // deep blue
+  if (pct <= 25) return "#2563EB"; // blue
+  if (pct <= 40) return "#16A34A"; // green
+  if (pct <= 60) return "#FACC15"; // yellow
+  if (pct <= 80) return "#F97316"; // orange
+  return "#DC2626";               // red
+  };
 
   
-      const PercentageCell = ({ value, color, tooltip }) => {
+      const PercentageCell = ({ value, baseColor, tooltip }) => {
       const pct = Math.max(0, Math.min(value, 100));
-      const barColor = color || getGradientColor(pct);
+      const color = heatmapMode ? heatmapColor(pct) : baseColor;
     
       return (
         <div
@@ -437,15 +456,11 @@ const resetFilters = () => setFilters({
               top: 0,
               height: "100%",
               width: `${pct}%`,
-              background: `linear-gradient(
-                to right,
-                ${barColor},
-                rgba(255,255,255,0.25)
-              )`,
-              opacity: 0.85,
-    
-              /* ✅ SAFE ANIMATION */
-              transition: "width 450ms cubic-bezier(0.4, 0, 0.2, 1), background-color 450ms ease"
+              background: heatmapMode
+                ? color
+                : `linear-gradient(to right, ${color}, rgba(255,255,255,0.25))`,
+              transition: "width 450ms ease, background-color 450ms ease",
+              opacity: 0.85
             }}
           />
     
@@ -466,6 +481,7 @@ const resetFilters = () => setFilters({
         </div>
       );
     };
+
 
 
 
@@ -506,9 +522,10 @@ const resetFilters = () => setFilters({
                       {percentage ? (
                         <PercentageCell
                           value={r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}
-                          color={STATUS_COLORS[s]}
-                          tooltip={`${r[s]} / ${r.TOTAL} tasks (${r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%)`}
+                          baseColor={STATUS_COLORS[s]}
+                          tooltip={`${r[s]} / ${r.TOTAL} tasks`}
                         />
+
                       ) : (
                         r[s]
                       )}
@@ -520,9 +537,10 @@ const resetFilters = () => setFilters({
                       {percentage ? (
                         <PercentageCell
                           value={totals.TOTAL ? Math.round((r.TOTAL / totals.TOTAL) * 100) : 0}
-                          color="#6366F1" // indigo for contribution
+                          baseColor="#6366F1"
                           tooltip={`${r.TOTAL} / ${totals.TOTAL} total tasks`}
                         />
+
                       ) : (
                         <b>{r.TOTAL}</b>
                       )}
@@ -632,6 +650,14 @@ const resetFilters = () => setFilters({
             onClick={resetFilters}
           >
             🔄 Reset
+          </button>
+
+
+          <button
+            style={compactToolbarButton(darkMode)}
+            onClick={() => setHeatmapMode(v => !v)}
+              >
+            🔥 Heatmap {heatmapMode ? "ON" : "OFF"}
           </button>
 
 
