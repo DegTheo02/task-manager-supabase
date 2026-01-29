@@ -819,6 +819,8 @@ const resetFilters = () => setFilters({
       <Table title="Tasks per Requester (Count)" rows={requesterStats} />
       <Table title="Task Distribution (%) per Requester" rows={requesterStats} percentage />
       </div>
+
+      </div>
   );
 
   const closedTasks = filteredTasks.filter(
