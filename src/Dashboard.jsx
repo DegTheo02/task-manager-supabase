@@ -805,17 +805,17 @@ const resetFilters = () => setFilters({
       </div>
 
       {/* TABLES */}
-      <div style={{ marginBottom: 60 }}>
+      <div style={{ marginBottom: 120 }}>
       <Table title="Tasks per Team (Count)" rows={teamStats} />
       <Table title="Task Distribution (%) per Team" rows={teamStats} percentage />
       </div>
       
-      <div style={{ marginBottom: 60 }}>
+      <div style={{ marginBottom: 120 }}>
       <Table title="Tasks per Owner (Count)" rows={ownerStats} />
       <Table title="Task Distribution (%) per Owner" rows={ownerStats} percentage />
       </div>
 
-      <div style={{ marginBottom: 60 }}>
+      <div style={{ marginBottom: 120 }}>
       <Table title="Tasks per Requester (Count)" rows={requesterStats} />
       <Table title="Task Distribution (%) per Requester" rows={requesterStats} percentage />
       </div>
