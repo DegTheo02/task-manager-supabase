@@ -7,7 +7,7 @@ export default function Navbar() {
       {/* LEFT: Logo + App name */}
       <Link to="/dashboard" style={brand}>
         <img
-          src="/favicon.png"
+          src="/favicon.ico"
           alt="Task Manager Logo"
           style={logo}
         />
