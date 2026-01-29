@@ -136,13 +136,7 @@ const [filters, setFilters] = useState(() => {
   }, []);
 
   
-  const [heatmapMode, setHeatmapMode] = useState(
-  sessionStorage.getItem("heatmapMode") === "true"
-);
 
-useEffect(() => {
-  sessionStorage.setItem("heatmapMode", heatmapMode);
-}, [heatmapMode]);
 
 
 const filteredTasks = useMemo(() => {
@@ -423,64 +417,59 @@ const resetFilters = () => setFilters({
   return "#DC2626";               // red
   };
 
-  const heatmapColor = (pct) => {
-  if (pct <= 10) return "#1E3A8A"; // deep blue
-  if (pct <= 25) return "#2563EB"; // blue
-  if (pct <= 40) return "#16A34A"; // green
-  if (pct <= 60) return "#FACC15"; // yellow
-  if (pct <= 80) return "#F97316"; // orange
-  return "#DC2626";               // red
-  };
-
   
-      const PercentageCell = ({ value, baseColor, tooltip }) => {
-      const pct = Math.max(0, Math.min(value, 100));
-      const color = heatmapMode ? heatmapColor(pct) : baseColor;
-    
-      return (
-        <div
-          title={tooltip}
-          style={{
-            position: "relative",
-            height: 22,
-            borderRadius: 6,
-            background: "#1f2937",
-            overflow: "hidden"
-          }}
-        >
-          {/* BAR */}
+        const PercentageCell = ({ value, color, tooltip }) => {
+        const pct = Math.max(0, Math.min(value, 100));
+        const barColor = color || getGradientColor(pct);
+      
+        return (
           <div
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              height: "100%",
-              width: `${pct}%`,
-              background: heatmapMode
-                ? color
-                : `linear-gradient(to right, ${color}, rgba(255,255,255,0.25))`,
-              transition: "width 450ms ease, background-color 450ms ease",
-              opacity: 0.85
-            }}
-          />
-    
-          {/* TEXT */}
-          <div
+            title={tooltip}
             style={{
               position: "relative",
-              zIndex: 1,
-              fontWeight: 700,
-              fontSize: 12,
-              color: "white",
-              textAlign: "center",
-              lineHeight: "22px"
+              height: 22,
+              borderRadius: 6,
+              background: "#1f2937",
+              overflow: "hidden"
             }}
           >
-            {pct}%
+            {/* BAR */}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                height: "100%",
+                width: `${pct}%`,
+                background: `linear-gradient(
+                  to right,
+                  ${barColor},
+                  rgba(255,255,255,0.25)
+                )`,
+                opacity: 0.85,
+      
+                /* ✅ SAFE ANIMATION */
+                transition: "width 450ms cubic-bezier(0.4, 0, 0.2, 1), background-color 450ms ease"
+              }}
+            />
+      
+            {/* TEXT */}
+            <div
+              style={{
+                position: "relative",
+                zIndex: 1,
+                fontWeight: 700,
+                fontSize: 12,
+                color: "white",
+                textAlign: "center",
+                lineHeight: "22px"
+              }}
+            >
+              {pct}%
+            </div>
           </div>
-        </div>
-      );
-    };
+        );
+      };
 
 
 
@@ -522,8 +511,8 @@ const resetFilters = () => setFilters({
                       {percentage ? (
                         <PercentageCell
                           value={r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}
-                          baseColor={STATUS_COLORS[s]}
-                          tooltip={`${r[s]} / ${r.TOTAL} tasks`}
+                          color={STATUS_COLORS[s]}
+                          tooltip={`${r[s]} / ${r.TOTAL} tasks (${r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%)`}
                         />
 
                       ) : (
@@ -537,7 +526,7 @@ const resetFilters = () => setFilters({
                       {percentage ? (
                         <PercentageCell
                           value={totals.TOTAL ? Math.round((r.TOTAL / totals.TOTAL) * 100) : 0}
-                          baseColor="#6366F1"
+                          color= "#6366F1"
                           tooltip={`${r.TOTAL} / ${totals.TOTAL} total tasks`}
                         />
 
@@ -650,14 +639,6 @@ const resetFilters = () => setFilters({
             onClick={resetFilters}
           >
             🔄 Reset
-          </button>
-
-
-          <button
-            style={compactToolbarButton(darkMode)}
-            onClick={() => setHeatmapMode(v => !v)}
-              >
-            🔥 Heatmap {heatmapMode ? "ON" : "OFF"}
           </button>
 
 
