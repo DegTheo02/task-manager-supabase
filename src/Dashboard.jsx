@@ -406,7 +406,8 @@ const resetFilters = () => setFilters({
   };
 
   const PercentageCell = ({ value, color }) => {
-  const pct = Math.max(0, Math.min(value, 100)); // safety
+  const pct = Math.max(0, Math.min(value, 100));
+  const barColor = color || getGradientColor(pct);
 
   return (
     <div
@@ -414,7 +415,7 @@ const resetFilters = () => setFilters({
         position: "relative",
         height: 22,
         borderRadius: 6,
-        background: "#1f2937", // dark track
+        background: "#1f2937",
         overflow: "hidden"
       }}
     >
@@ -426,8 +427,12 @@ const resetFilters = () => setFilters({
           top: 0,
           height: "100%",
           width: `${pct}%`,
-          background: color,
-          opacity: 0.85
+          background: `linear-gradient(
+            to right,
+            ${barColor},
+            rgba(255,255,255,0.25)
+          )`,
+          opacity: 0.95
         }}
       />
 
@@ -448,6 +453,7 @@ const resetFilters = () => setFilters({
     </div>
   );
 };
+
 
 
   /* ===============================
