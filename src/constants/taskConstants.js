@@ -39,12 +39,11 @@ export const OWNERS = [
   "MARIUS",
   "THEOPHANE",
   "FLYTXT",
-  "IT",
-  "OTHER"
+  "IT"
 ];
 
 /* TEAMS */
-export const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT", "OTHER"];
+export const TEAMS = ["BI", "CVM", "SM", "FLYTXT", "IT"];
 
 /* OWNER → TEAM */
 export const OWNER_TEAM_MAP = {
@@ -58,8 +57,7 @@ export const OWNER_TEAM_MAP = {
   MARIUS: "CVM",
   THEOPHANE: "SM",
   FLYTXT: "FLYTXT",
-  IT: "IT",
-  OTHER: "OTHER"
+  IT: "IT"
 };
 
 /* RECURRENCE */
@@ -89,6 +87,7 @@ export const REQUESTERS = [
   "PRM",
   "RISK&COMPLIANCE",
   "SD",
+  "TURN_A-26",
   "VP",
   "OTHER"
 ];
