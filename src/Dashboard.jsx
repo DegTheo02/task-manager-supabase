@@ -490,11 +490,11 @@ const resetFilters = () => setFilters({
         <div style={{ maxWidth: 1200, marginLeft: 20 }}>
           <table width="100%" border="3" style={{ textAlign: "center" }}>
             <colgroup>
-              <col style={{ width: "180px" }} />   {/* Label column */}
+              <col style={{ width: "120px" }} />   {/* Label column */}
               {STATUSES.map(() => (
-                <col style={{ width: "120px" }} />
+                <col style={{ width: "200px" }} />
               ))}
-              <col style={{ width: "220px" }} />   {/* ✅ Σ TOTAL (wider) */}
+              <col style={{ width: "200px" }} />   {/* ✅ Σ TOTAL (wider) */}
             </colgroup>
             <thead>
               <tr>
