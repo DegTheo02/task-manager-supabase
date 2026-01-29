@@ -405,6 +405,51 @@ const resetFilters = () => setFilters({
     marginBottom: 20
   };
 
+  const PercentageCell = ({ value, color }) => {
+  const pct = Math.max(0, Math.min(value, 100)); // safety
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 22,
+        borderRadius: 6,
+        background: "#1f2937", // dark track
+        overflow: "hidden"
+      }}
+    >
+      {/* BAR */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          height: "100%",
+          width: `${pct}%`,
+          background: color,
+          opacity: 0.85
+        }}
+      />
+
+      {/* TEXT */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          fontWeight: 700,
+          fontSize: 12,
+          color: "white",
+          textAlign: "center",
+          lineHeight: "22px"
+        }}
+      >
+        {pct}%
+      </div>
+    </div>
+  );
+};
+
+
   /* ===============================
      TABLE COMPONENT
   ================================ */
@@ -437,11 +482,17 @@ const resetFilters = () => setFilters({
                   <td><b>{r.label}</b></td>
 
                   {STATUSES.map(s => (
-                    <td key={s} style={{ color: STATUS_COLORS[s] }}>
-                      {percentage
-                        ? `${r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}%`
-                        : r[s]}
+                    <td key={s}>
+                      {percentage ? (
+                        <PercentageCell
+                          value={r.TOTAL ? Math.round((r[s] / r.TOTAL) * 100) : 0}
+                          color={STATUS_COLORS[s]}
+                        />
+                      ) : (
+                        r[s]
+                      )}
                     </td>
+
                   ))}
 
                   <td>
@@ -462,13 +513,17 @@ const resetFilters = () => setFilters({
   <td><b>Σ TOTAL</b></td>
 
   {STATUSES.map(s => (
-    <td key={s} style={{ color: STATUS_COLORS[s] }}>
-      <b>
-        {percentage
-          ? `${columnPercentageTotals(rows)[s]}%`
-          : totals[s]}
-      </b>
+    <td>
+      {percentage ? (
+        <PercentageCell
+          value={Math.round((r.TOTAL / totals.TOTAL) * 100)}
+          color="#3B82F6" // neutral blue for contribution
+        />
+      ) : (
+        <b>{r.TOTAL}</b>
+      )}
     </td>
+
   ))}
 
   <td>
