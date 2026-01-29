@@ -494,16 +494,22 @@ const resetFilters = () => setFilters({
                     </td>
 
                   ))}
+                    
+                    <td>
+                      {percentage ? (
+                        <PercentageCell
+                          value={
+                            totals.TOTAL
+                              ? Math.round((r.TOTAL / totals.TOTAL) * 100)
+                              : 0
+                          }
+                          color="#6366F1" // indigo for contribution
+                        />
+                      ) : (
+                        <b>{r.TOTAL}</b>
+                      )}
+                    </td>
 
-                  <td>
-                  <b>
-                    {percentage
-                      ? totals.TOTAL
-                        ? `${Math.round((r.TOTAL / totals.TOTAL) * 100)}%`
-                        : "0%"
-                      : r.TOTAL}
-                  </b>
-                  </td>
 
                 </tr>
               ))}
