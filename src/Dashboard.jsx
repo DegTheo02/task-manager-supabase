@@ -748,7 +748,7 @@ const resetFilters = () => setFilters({
 
 
       {/* TEAM CHART */}
-      <div style={{ height: 400 }}>
+      <div style={{ height: 400, width: "100%", maxWidth: 1600 }}>
         <Bar
           data={{
             labels: TEAMS,
@@ -805,7 +805,7 @@ const resetFilters = () => setFilters({
       </div>
 
       {/* OWNER CHART */}
-      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0 }}>
+      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1600 }}>
         <Bar
           data={{
             labels: ownerStats.map(o => o.label),
@@ -861,7 +861,7 @@ const resetFilters = () => setFilters({
 
 
       {/* REQUESTER CHART */}
-      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0 }}>
+      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1600  }}>
         <Bar
           data={{
             labels: requesterStats.map(r => r.label),
