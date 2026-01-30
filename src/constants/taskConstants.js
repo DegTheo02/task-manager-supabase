@@ -69,6 +69,7 @@ export const RECURRENCE_TYPES = [
 
 /* REQUESTERS */
 export const REQUESTERS = [
+  "ARCEP",
   "BI&CVM",
   "BP",
   "BRAND&COM",
