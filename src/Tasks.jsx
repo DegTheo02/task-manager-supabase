@@ -34,25 +34,6 @@ const normalizeTaskDates = task => ({
 });
 
 
-const computeStatus = task => {
-  const today = new Date().toISOString().slice(0, 10);
-  const deadline = task.new_deadline || task.initial_deadline;
-
-  // ON HOLD
-  if (deadline >= "2026-12-31") return "ON HOLD";
-
-  // NOT CLOSED
-  if (!task.closing_date) {
-    return deadline >= today ? "ON TRACK" : "OVERDUE";
-  }
-
-  // CLOSED
-  if (task.closing_date > task.initial_deadline)
-    return "CLOSED PAST DUE";
-
-  return "CLOSED ON TIME";
-};
-
 
 
 /* ----------------------------------
@@ -88,22 +69,36 @@ export default function Tasks() {
 const [filters, setFilters] = useState(() => {
   const saved = sessionStorage.getItem("tasksFilters");
   return saved ? JSON.parse(saved) : {
-    owners: [],
-    teams: [],
-    requesters: [],
-    statuses: [],
-    recurrence_types: [],
-    search: "",
-    assigned_from: "",
-    assigned_to: "",
-    deadline_from: "",
-    deadline_to: ""
+  owners: [],
+  teams: [],
+  requesters: [],
+  statuses: [],
+  recurrence_types: [],
+  search: "",
+  assigned_from: "",
+  assigned_to: "",
+  deadline_from: "",
+  deadline_to: "",
+  closing_from: "",
+  closing_to: "",
+  today: false
   };
 });
 
   useEffect(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
+
+  useEffect(() => {
+  if (status || dateFrom || dateTo) {
+    setFilters(f => ({
+      ...f,
+      statuses: status ? [status] : f.statuses,
+      assigned_from: dateFrom || f.assigned_from,
+      assigned_to: dateTo || f.assigned_to
+    }));
+  }
+}, [status, dateFrom, dateTo]);
 
   
   const resetTableFilters = () => {
@@ -222,7 +217,7 @@ setTasks(data || []);
 
 const bV =
   sortConfig.key === "status"
-    ? b._computedStatus
+    ? b.status
     : b[sortConfig.key] || "";
 
       if (sortConfig.direction === "asc") return aV > bV ? 1 : -1;
@@ -572,10 +567,7 @@ return (
               onChange={e =>
                 setFilters(f => ({
                   ...f,
-                  owners: [...e.target.selectedOptions].map(o => o.value),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
+                  owners: [...e.target.selectedOptions].map(o => o.value)
                 }))
               }
             >
@@ -595,10 +587,7 @@ return (
           onChange={e =>
             setFilters(f => ({
               ...f,
-              teams: [...e.target.selectedOptions].map(o => o.value),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
+              teams: [...e.target.selectedOptions].map(o => o.value)
             }))
           }
         >
@@ -618,10 +607,7 @@ return (
             onChange={e =>
               setFilters(f => ({
                 ...f,
-                requesters: [...e.target.selectedOptions].map(o => o.value),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
+                requesters: [...e.target.selectedOptions].map(o => o.value)
               }))
             }
           >
@@ -642,10 +628,7 @@ return (
               onChange={e =>
                 setFilters(f => ({
                   ...f,
-                  statuses: [...e.target.selectedOptions].map(o => o.value),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
+                  statuses: [...e.target.selectedOptions].map(o => o.value)
                 }))
               }
             >
@@ -662,11 +645,10 @@ return (
               type="date"
               value={filters.deadline_from}
               onChange={e =>
-                setFilters(f => ({ ...f, deadline_from: e.target.value })),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
-              }
+                setFilters(f => ({ 
+                  ...f, 
+                  deadline_from: e.target.value 
+              }))
             />
           </div>
 
@@ -677,11 +659,10 @@ return (
               type="date"
               value={filters.deadline_to}
               onChange={e =>
-                setFilters(f => ({ ...f, deadline_to: e.target.value })),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
-              }
+                setFilters(f => ({ 
+                  ...f, 
+                  deadline_to: e.target.value 
+              }))
             />
           </div>
 
@@ -692,11 +673,10 @@ return (
               type="date"
               value={filters.closing_from}
               onChange={e =>
-                setFilters(f => ({ ...f, closing_from: e.target.value })),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
-              }
+                setFilters(f => ({ 
+                  ...f, 
+                  closing_from: e.target.value 
+              }))
             />
           </div>
 
@@ -707,11 +687,10 @@ return (
               type="date"
               value={filters.closing_to}
               onChange={e =>
-                setFilters(f => ({ ...f, closing_to: e.target.value })),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
-              }
+                setFilters(f => ({ 
+                  ...f, 
+                  closing_to: e.target.value 
+              }))
             />
           </div>
 
@@ -729,11 +708,8 @@ return (
                 fontWeight: 600
               }}
               onClick={() =>
-                setFilters(f => ({ ...f, today: !f.today })),
-                  statuses: status ? [status] : f.statuses,
-                  assigned_from: dateFrom || f.assigned_from,
-                  assigned_to: dateTo || f.assigned_to
-              }
+                setFilters(f => ({ ...f, today: !f.today 
+              }))
             >
               {filters.today ? "Show All" : "Today"}
             </button>
