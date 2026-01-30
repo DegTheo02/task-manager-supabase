@@ -100,6 +100,32 @@ const [filters, setFilters] = useState(() => {
   }
 }, [status, dateFrom, dateTo]);
 
+
+  useEffect(() => {
+  if (status || dateFrom || dateTo) {
+    setFilters({
+      owners: [],
+      teams: [],
+      requesters: [],
+      recurrence_types: [],
+      search: "",
+      deadline_from: "",
+      deadline_to: "",
+      closing_from: "",
+      closing_to: "",
+      today: false,
+      statuses: status ? [status] : [],
+      assigned_from: dateFrom || "",
+      assigned_to: dateTo || ""
+    });
+  }
+}, [{status && (
+  <div style={{ fontSize: 12, opacity: 0.8 }}>
+    📊 Filtered from chart
+  </div>
+)}, dateFrom, dateTo]);
+
+  
   
   const resetTableFilters = () => {
   setFilters({
