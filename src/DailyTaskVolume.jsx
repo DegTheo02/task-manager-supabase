@@ -274,39 +274,60 @@ const chartData = useMemo(() => {
           </div>
         </div>
 
-     <div> 
-       <label style={filterLabel}>&nbsp;</label> 
-       <button onClick={resetFilters} style={resetButton}> 
-         🔄 Reset 
-       </button> 
+               <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 8
+            }}
+          >
+            {/* 🌙 Dark / Light */}
+            <button
+              onClick={() => {
+                const next = !darkMode;
+                setDarkMode(next);
+                localStorage.setItem("darkMode", next);
+              }}
+              style={{
+                height: 32,
+                padding: "0 12px",
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: darkMode ? "1px solid #444" : "1px solid #ccc",
+                background: darkMode ? "#111" : "#fff",
+                color: darkMode ? "#fff" : "#000",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              {darkMode ? "🌙 Dark" : "☀️ Light"}
+            </button>
+          
+            {/* 🔄 Reset (RIGHT of Dark) */}
+            <button
+              onClick={resetFilters}
+              style={{
+                height: 32,
+                padding: "0 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: darkMode ? "1px solid #444" : "1px solid #ccc",
+                background: darkMode ? "#111" : "#fff",
+                color: darkMode ? "#fff" : "#000",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              🔄 Reset
+            </button>
+          </div>
 
-             <button
-        onClick={() => {
-          const next = !darkMode;
-          setDarkMode(next);
-          localStorage.setItem("darkMode", next);
-        }}
-        style={{
-          height: 32,
-          padding: "0 12px",
-          fontSize: 13,
-          fontWeight: 600,
-          borderRadius: 6,
-          border: darkMode ? "1px solid #444" : "1px solid #ccc",
-          background: darkMode ? "#111" : "#fff",
-          color: darkMode ? "#fff" : "#000",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          marginTop : 20
-        }}
-      >
-        {darkMode ? "🌙 Dark" : "☀️ Light"}
-      </button>
-
-       
-     </div>
 
 
       </div>
