@@ -87,7 +87,12 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
       </div>
 
       {open && (
-        <div style={dropdownMenu}>
+        <div style={{
+            ...dropdownMenu,
+            background: darkMode ? "#111" : "#fff",
+            color: darkMode ? "#fff" : "#000",
+            border: darkMode ? "1px solid #444" : "1px solid #ccc"
+          }}>
           {/* ✅ SELECT ALL */}
           <label style={{ ...dropdownItem, fontWeight: 700 }}>
             <input
@@ -139,6 +144,11 @@ export default function DailyTaskVolume() {
     };
   });
 
+  useEffect(() => {
+  localStorage.setItem("darkMode", darkMode);
+   }, [darkMode]);
+
+  
   useEffect(() => {
     sessionStorage.setItem("dailyVolumeFilters", JSON.stringify(filters));
   }, [filters]);
@@ -288,7 +298,8 @@ const chartData = useMemo(() => {
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
-          gap: 6
+          gap: 6,
+          marginTop : 20
         }}
       >
         {darkMode ? "🌙 Dark" : "☀️ Light"}
