@@ -24,13 +24,14 @@ export default function Navbar() {
           Tasks
         </NavLink>
 
-        <NavLink to="/kanban" style={link}>
-          Kanban
-        </NavLink>
-
         <NavLink to="/daily-volume" style={link}>
           Daily Volume
         </NavLink>
+        
+        <NavLink to="/kanban" style={link}>
+          Kanban
+        </NavLink>
+        
       </div>
     </nav>
   );
