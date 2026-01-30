@@ -148,21 +148,31 @@ export default function DailyTaskVolume() {
     load();
   }, [filters]);
 
-  const chartData = useMemo(() => {
-    const days = [...new Set(rows.map(r => r.status_day))]
-      .sort((a,b) => new Date(a) - new Date(b));
+const chartData = useMemo(() => {
+  if (!rows.length) {
+    return { labels: [], datasets: [] };
+  }
 
-    return {
-     labels: days.map(formatDateLabel),
-      datasets: STATUSES.map(s => ({
-        label: s,
-        data: days.map(d =>
-          rows.filter(r => r.status_day === d && r.status === s).length
-        ),
-        backgroundColor: STATUS_COLORS[s]
-      }))
-    };
-  }, [rows]);
+  const days = [
+    ...new Set(rows.map(r => normalizeDay(r.status_day)))
+  ].sort((a, b) => new Date(a) - new Date(b));
+
+  return {
+    labels: days.map(formatDateLabel),
+    datasets: STATUSES.map(s => ({
+      label: s,
+      data: days.map(d =>
+        rows.filter(
+          r =>
+            normalizeDay(r.status_day) === d &&
+            r.status === s
+        ).length
+      ),
+      backgroundColor: STATUS_COLORS[s]
+    }))
+  };
+}, [rows]);
+
 
   return (
     <div style={{ padding: 20 }}>
@@ -281,6 +291,8 @@ const resetButton = {
   alignItems: "center",
   gap: 6
 };
+
+const normalizeDay = (d) => d.split("T")[0];
 
 const dropdownBox = { height: 32, padding: "6px 8px", border: "1px solid #ccc", borderRadius: 6 };
 const dropdownMenu = { position: "absolute", top: "110%", width: "100%", background: "#fff", border: "1px solid #ccc", borderRadius: 6, padding: 8, zIndex: 100 };
