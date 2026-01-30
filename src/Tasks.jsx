@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Navbar from "./Navbar";
+import { useSearchParams } from "react-router-dom";
+
+
 import {
   STATUSES,
   OWNERS,
@@ -59,6 +62,12 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
+  
+  const [searchParams] = useSearchParams();
+  
+  const status = searchParams.get("status");
+  const dateFrom = searchParams.get("date_from");
+  const dateTo = searchParams.get("date_to");
 
   /* DARK MODE */
   const [darkMode, setDarkMode] = useState(
@@ -563,7 +572,10 @@ return (
               onChange={e =>
                 setFilters(f => ({
                   ...f,
-                  owners: [...e.target.selectedOptions].map(o => o.value)
+                  owners: [...e.target.selectedOptions].map(o => o.value),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
                 }))
               }
             >
@@ -583,7 +595,10 @@ return (
           onChange={e =>
             setFilters(f => ({
               ...f,
-              teams: [...e.target.selectedOptions].map(o => o.value)
+              teams: [...e.target.selectedOptions].map(o => o.value),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
             }))
           }
         >
@@ -603,7 +618,10 @@ return (
             onChange={e =>
               setFilters(f => ({
                 ...f,
-                requesters: [...e.target.selectedOptions].map(o => o.value)
+                requesters: [...e.target.selectedOptions].map(o => o.value),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
               }))
             }
           >
@@ -624,7 +642,10 @@ return (
               onChange={e =>
                 setFilters(f => ({
                   ...f,
-                  statuses: [...e.target.selectedOptions].map(o => o.value)
+                  statuses: [...e.target.selectedOptions].map(o => o.value),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
                 }))
               }
             >
@@ -641,7 +662,10 @@ return (
               type="date"
               value={filters.deadline_from}
               onChange={e =>
-                setFilters(f => ({ ...f, deadline_from: e.target.value }))
+                setFilters(f => ({ ...f, deadline_from: e.target.value })),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
               }
             />
           </div>
@@ -653,7 +677,10 @@ return (
               type="date"
               value={filters.deadline_to}
               onChange={e =>
-                setFilters(f => ({ ...f, deadline_to: e.target.value }))
+                setFilters(f => ({ ...f, deadline_to: e.target.value })),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
               }
             />
           </div>
@@ -665,7 +692,10 @@ return (
               type="date"
               value={filters.closing_from}
               onChange={e =>
-                setFilters(f => ({ ...f, closing_from: e.target.value }))
+                setFilters(f => ({ ...f, closing_from: e.target.value })),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
               }
             />
           </div>
@@ -677,7 +707,10 @@ return (
               type="date"
               value={filters.closing_to}
               onChange={e =>
-                setFilters(f => ({ ...f, closing_to: e.target.value }))
+                setFilters(f => ({ ...f, closing_to: e.target.value })),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
               }
             />
           </div>
@@ -696,7 +729,10 @@ return (
                 fontWeight: 600
               }}
               onClick={() =>
-                setFilters(f => ({ ...f, today: !f.today }))
+                setFilters(f => ({ ...f, today: !f.today })),
+                  statuses: status ? [status] : f.statuses,
+                  assigned_from: dateFrom || f.assigned_from,
+                  assigned_to: dateTo || f.assigned_to
               }
             >
               {filters.today ? "Show All" : "Today"}
