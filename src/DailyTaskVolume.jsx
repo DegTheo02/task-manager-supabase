@@ -358,7 +358,17 @@ const chartData = useMemo(() => {
                 const isoDay = chartData.days[element.index];
                 const status = chartData.datasets[element.datasetIndex].label;
               
-                const url = `/tasks?status=${encodeURIComponent(status)}&date_from=${isoDay}&date_to=${isoDay}`;
+                const params = new URLSearchParams({
+                status,
+                date_from: isoDay,
+                date_to: isoDay,
+                owners: filters.owners.join(","),
+                teams: filters.teams.join(","),
+                requesters: filters.requesters.join(",")
+              });
+              
+              const url = `/tasks?${params.toString()}`;
+
               
                 if (evt.native.ctrlKey || evt.native.metaKey) {
                   window.open(url, "_blank");
