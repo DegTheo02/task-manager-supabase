@@ -748,6 +748,7 @@ const resetFilters = () => setFilters({
 
 
       {/* TEAM CHART */}
+      <div style={{ overflowX: "auto" }}>
       <div style={{ height: 400, width: "100%", maxWidth: 1600 }}>
         <Bar
           data={{
@@ -764,14 +765,12 @@ const resetFilters = () => setFilters({
           }}
               options={{
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                   x: {
                     stacked: true,
                     ticks: {
-                      font: {
-                        size: 14,        // ⬅ X-axis label size
-                        weight: "600"
-                      }
+                      font: {size: 14, weight: "600"} // ⬅ X-axis label size
                     }
                   },
                   y: {
@@ -803,8 +802,10 @@ const resetFilters = () => setFilters({
 
         />
       </div>
+      </div>
 
       {/* OWNER CHART */}
+      <div style={{ overflowX: "auto" }}>
       <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1600 }}>
         <Bar
           data={{
@@ -819,6 +820,7 @@ const resetFilters = () => setFilters({
           }}
               options={{
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                   x: {
                     stacked: true,
@@ -858,9 +860,11 @@ const resetFilters = () => setFilters({
 
         />
       </div>
+      </div>
 
 
       {/* REQUESTER CHART */}
+      <div style={{ overflowX: "auto" }}>
       <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1600  }}>
         <Bar
           data={{
@@ -875,6 +879,7 @@ const resetFilters = () => setFilters({
           }}
               options={{
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                   x: {
                     stacked: true,
@@ -913,6 +918,7 @@ const resetFilters = () => setFilters({
               }}
 
         />
+      </div>
       </div>
 
       {/* TABLES */}
