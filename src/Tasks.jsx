@@ -675,7 +675,7 @@ return (
                 setFilters(f => ({ 
                   ...f, 
                   deadline_from: e.target.value 
-              }))
+              }))}
             />
           </div>
 
@@ -689,7 +689,7 @@ return (
                 setFilters(f => ({ 
                   ...f, 
                   deadline_to: e.target.value 
-              }))
+              }))}
             />
           </div>
 
@@ -703,7 +703,7 @@ return (
                 setFilters(f => ({ 
                   ...f, 
                   closing_from: e.target.value 
-              }))
+              }))}
             />
           </div>
 
@@ -717,7 +717,7 @@ return (
                 setFilters(f => ({ 
                   ...f, 
                   closing_to: e.target.value 
-              }))
+              }))}
             />
           </div>
 
@@ -736,7 +736,7 @@ return (
               }}
               onClick={() =>
                 setFilters(f => ({ ...f, today: !f.today 
-              }))
+              }))}
             >
               {filters.today ? "Show All" : "Today"}
             </button>
