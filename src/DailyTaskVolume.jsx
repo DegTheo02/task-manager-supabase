@@ -48,7 +48,7 @@ const formatDateLabel = (isoDate) => {
 /* ===============================
    MULTI DROPDOWN
 ================================ */
-function MultiDropdown({ label, items, values, onChange }) {
+function MultiDropdown({ label, items = [], values, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
