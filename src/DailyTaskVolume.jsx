@@ -169,21 +169,33 @@ export default function DailyTaskVolume() {
       <h1>📊 Daily Task Volume</h1>
 
       <div style={filterBar}>
-        <MultiDropdown label="👤 Owner(s)" items={OWNERS}
+        <MultiDropdown 
+          label="👤 Owner(s)" 
+          items={OWNERS}
           values={filters.owners}
-          onChange={v => setFilters(f => ({ ...f, owners: v }))} />
+          onChange={v => setFilters(f => ({ ...f, owners: v }))} 
+          />
 
-        <MultiDropdown label="🧩 Team(s)" items={TEAMS}
+        <MultiDropdown 
+          label="🧩 Team(s)" 
+          items={TEAMS}
           values={filters.teams}
-          onChange={v => setFilters(f => ({ ...f, teams: v }))} />
+          onChange={v => setFilters(f => ({ ...f, teams: v }))} 
+          />
 
-        <MultiDropdown label="📄 Requester(s)" items={REQUESTERS}
+        <MultiDropdown 
+          label="📄 Requester(s)" 
+          items={REQUESTERS || []}
           values={filters.requesters}
-          onChange={v => setFilters(f => ({ ...f, requesters: v }))}/>        
+          onChange={v => setFilters(f => ({ ...f, requesters: v }))}
+          />        
 
-        <MultiDropdown label="📌 Status(es)" items={STATUSES}
+        <MultiDropdown 
+          label="📌 Status(es)" 
+          items={STATUSES}
           values={filters.statuses}
-          onChange={v => setFilters(f => ({ ...f, statuses: v }))} />
+          onChange={v => setFilters(f => ({ ...f, statuses: v }))} 
+          />
 
         <div>
           <label style={filterLabel}>📅 Date range</label>
