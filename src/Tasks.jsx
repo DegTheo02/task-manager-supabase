@@ -119,11 +119,7 @@ const [filters, setFilters] = useState(() => {
       assigned_to: dateTo || ""
     });
   }
-}, [{status && (
-  <div style={{ fontSize: 12, opacity: 0.8 }}>
-    📊 Filtered from chart
-  </div>
-)}, dateFrom, dateTo]);
+}, [status , dateFrom, dateTo]);
 
   
   
@@ -565,6 +561,11 @@ return (
 
       {/* EXISTING TASKS */}
       <h2 style={{ marginTop: 100 }}>EXISTING TASKS</h2>
+
+      {status && (
+      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
+      📊 Filtered from chart
+      </div>)}
 
       {/* FILTER BAR */}
       <div style={filterBar} key={filterKey}>
