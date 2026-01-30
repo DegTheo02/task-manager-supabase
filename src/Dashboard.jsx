@@ -749,7 +749,7 @@ const resetFilters = () => setFilters({
 
       {/* TEAM CHART */}
       <div style={{ overflowX: "auto" }}>
-      <div style={{ height: 400, width: "100%", maxWidth: 1600 }}>
+      <div style={{ height: 400, width: "100%", maxWidth: 1200 }}>
         <Bar
           data={{
             labels: TEAMS,
@@ -806,7 +806,7 @@ const resetFilters = () => setFilters({
 
       {/* OWNER CHART */}
       <div style={{ overflowX: "auto" }}>
-      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1600 }}>
+      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1400 }}>
         <Bar
           data={{
             labels: ownerStats.map(o => o.label),
@@ -865,7 +865,7 @@ const resetFilters = () => setFilters({
 
       {/* REQUESTER CHART */}
       <div style={{ overflowX: "auto" }}>
-      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1600  }}>
+      <div style={{ height: 400, marginTop: 150, marginBottom: 100, marginRight: 0, width: "100%", maxWidth: 1400  }}>
         <Bar
           data={{
             labels: requesterStats.map(r => r.label),
