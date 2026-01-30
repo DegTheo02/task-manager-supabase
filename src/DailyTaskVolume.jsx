@@ -365,6 +365,16 @@ const chartData = useMemo(() => {
                   navigate(
                     `/tasks?status=${encodeURIComponent(status)}&date_from=${isoDay}&date_to=${isoDay}`
                   );
+
+                const url = `/tasks?status=${status}&date_from=${isoDay}&date_to=${isoDay}`;
+
+                if (evt.native.ctrlKey || evt.native.metaKey) {
+                  // 🧠 Open in new tab
+                  window.open(url, "_blank");
+                } else {
+                  // 🖱 Normal click → same tab
+                  navigate(url);
+                }
                    },
                         
             
