@@ -46,7 +46,7 @@ const percentageLabelPlugin = {
         if (!value || value < 1) return;
 
         ctx.save();
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#fff";
@@ -73,7 +73,7 @@ const valueLabelPlugin = {
         if (!value || value < 1) return;
 
         ctx.save();
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#fff";
