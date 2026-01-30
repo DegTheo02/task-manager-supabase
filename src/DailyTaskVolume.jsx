@@ -143,7 +143,7 @@ export default function DailyTaskVolume() {
       teams: [], 
       requesters: [],
       statuses: [], 
-      ...getLast30DaysRange() // 🧠 AUTO-RANGE
+      ...getLast30DaysRange() // 🧠 AUTO-RANGE(±15 days)
     };
   });
 
@@ -192,12 +192,14 @@ const chartData = useMemo(() => {
     return { labels: [], datasets: [] };
   }
 
+  
   const days = [
     ...new Set(rows.map(r => normalizeDay(r.status_day)))
   ].sort((a, b) => new Date(a) - new Date(b));
 
   return {
-    labels: days.map(formatDateLabel),
+    labels: days.map(formatDateLabel), 
+    days,
     datasets: STATUSES.map(s => ({
       label: s,
       data: days.map(d =>
@@ -348,34 +350,24 @@ const chartData = useMemo(() => {
             maintainAspectRatio: false,
 
             
-            onClick: (evt, elements) => {
-                  if (!elements.length) return;
-            
-                  const element = elements[0];
-            
-                  // 📅 Day clicked
-                  const dayLabel = chartData.labels[element.index];
-                  const isoDay = rows
-                    .map(r => normalizeDay(r.status_day))
-                    .find(d => formatDateLabel(d) === dayLabel);
-            
-                  // 📌 Status clicked
-                  const status = chartData.datasets[element.datasetIndex].label;
-            
-                  navigate(
-                    `/tasks?status=${encodeURIComponent(status)}&date_from=${isoDay}&date_to=${isoDay}`
-                  );
-
-                const url = `/tasks?status=${status}&date_from=${isoDay}&date_to=${isoDay}`;
-
+              onClick: (evt, elements) => {
+                if (!elements.length) return;
+              
+                const element = elements[0];
+              
+                const isoDay = chartData.days[element.index];
+                const status = chartData.datasets[element.datasetIndex].label;
+              
+                const url = `/tasks?status=${encodeURIComponent(status)}&date_from=${isoDay}&date_to=${isoDay}`;
+              
                 if (evt.native.ctrlKey || evt.native.metaKey) {
-                  // 🧠 Open in new tab
                   window.open(url, "_blank");
                 } else {
-                  // 🖱 Normal click → same tab
                   navigate(url);
                 }
-                   },
+              }
+
+,
                         
             
             scales: {
