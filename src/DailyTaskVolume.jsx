@@ -104,7 +104,12 @@ export default function DailyTaskVolume() {
   const [filters, setFilters] = useState(() => {
     const saved = sessionStorage.getItem("dailyVolumeFilters");
     return saved ? JSON.parse(saved) : {
-      owners: [], teams: [], statuses: [], date_from: "", date_to: ""
+      owners: [], 
+      teams: [], 
+      requesters: [],
+      statuses: [], 
+      date_from: "", 
+      date_to: ""
     };
   });
 
@@ -113,7 +118,13 @@ export default function DailyTaskVolume() {
   }, [filters]);
 
   const resetFilters = () => {
-    const empty = { owners: [], teams: [], statuses: [], date_from: "", date_to: "" };
+    const empty = { 
+      owners: [], 
+      teams: [], 
+      requesters: [],
+      statuses: [], 
+      date_from: "", 
+      date_to: "" };
     setFilters(empty);
     sessionStorage.removeItem("dailyVolumeFilters");
   };
@@ -122,10 +133,11 @@ export default function DailyTaskVolume() {
     const load = async () => {
       let q = supabase
         .from("task_daily_status")
-        .select("status_day,status,owner,team");
+        .select("status_day,status,owner,team,requester");
 
       if (filters.owners.length) q = q.in("owner", filters.owners);
       if (filters.teams.length) q = q.in("team", filters.teams);
+      if (filters.requesters.length) q = q.in("requester", filters.requesters);
       if (filters.statuses.length) q = q.in("status", filters.statuses);
       if (filters.date_from) q = q.gte("status_day", filters.date_from);
       if (filters.date_to) q = q.lte("status_day", filters.date_to);
@@ -164,6 +176,10 @@ export default function DailyTaskVolume() {
         <MultiDropdown label="🧩 Team(s)" items={TEAMS}
           values={filters.teams}
           onChange={v => setFilters(f => ({ ...f, teams: v }))} />
+
+        <MultiDropdown label="📄 Requester(s)" items={REQUESTERS}
+          values={filters.requesters}
+          onChange={v => setFilters(f => ({ ...f, requesters: v }))}/>        
 
         <MultiDropdown label="📌 Status(es)" items={STATUSES}
           values={filters.statuses}
