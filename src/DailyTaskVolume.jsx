@@ -404,7 +404,7 @@ const getLast30DaysRange = () => {
   const d0 = new Date();
   const to = new Date();
   const from = new Date();
-  to.setDate(d0.getDate()+15;
+  to.setDate(d0.getDate()+15);
   from.setDate(d0.getDate() - 15);
 
   const format = d => d.toISOString().slice(0, 10);
