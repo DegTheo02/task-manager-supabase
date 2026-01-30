@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { supabase } from "./supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 import {
   Chart as ChartJS,
@@ -132,7 +133,9 @@ export default function DailyTaskVolume() {
   const [darkMode, setDarkMode] = useState(
   localStorage.getItem("darkMode") === "true"
 );
-  
+
+  const navigate = useNavigate();
+
   const [filters, setFilters] = useState(() => {
     const saved = sessionStorage.getItem("dailyVolumeFilters");
     return saved ? JSON.parse(saved) : {
@@ -343,14 +346,37 @@ const chartData = useMemo(() => {
           options={{
             responsive: true,
             maintainAspectRatio: false,
+
+            
+            onClick: (evt, elements) => {
+                  if (!elements.length) return;
+            
+                  const element = elements[0];
+            
+                  // 📅 Day clicked
+                  const dayLabel = chartData.labels[element.index];
+                  const isoDay = rows
+                    .map(r => normalizeDay(r.status_day))
+                    .find(d => formatDateLabel(d) === dayLabel);
+            
+                  // 📌 Status clicked
+                  const status = chartData.datasets[element.datasetIndex].label;
+            
+                  navigate(
+                    `/tasks?status=${encodeURIComponent(status)}&date_from=${isoDay}&date_to=${isoDay}`
+                  );
+                   },
+                        
+            
             scales: {
               x: { stacked: true },
               y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
             },
+            
             plugins: {
               percentageLabelPlugin: {
-    disabled: true
-  },
+              disabled: true},
+              
               legend: { labels: { font: { size: 15, weight: "600" } } },
               tooltip: {
                 callbacks: {
