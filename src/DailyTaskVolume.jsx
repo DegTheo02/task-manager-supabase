@@ -33,6 +33,9 @@ ChartJS.register(
   Legend
 );
 
+const [darkMode, setDarkMode] = useState(
+  localStorage.getItem("darkMode") === "true"
+);
 
 
 const formatDateLabel = (isoDate) => {
@@ -52,12 +55,18 @@ function MultiDropdown({ label, items = [], values, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  const toggle = value => {
+  const allSelected = values.length === items.length && items.length > 0;
+
+  const toggleItem = value => {
     onChange(
       values.includes(value)
         ? values.filter(v => v !== value)
         : [...values, value]
     );
+  };
+
+  const toggleAll = () => {
+    onChange(allSelected ? [] : [...items]);
   };
 
   useEffect(() => {
@@ -73,18 +82,34 @@ function MultiDropdown({ label, items = [], values, onChange }) {
   return (
     <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
       <label style={filterLabel}>{label}</label>
+
       <div style={dropdownBox} onClick={() => setOpen(o => !o)}>
-        {values.length ? `${values.length} selected` : "Select…"}
+        {values.length === 0 && "Select…"}
+        {values.length > 0 && values.length < items.length && `${values.length} selected`}
+        {allSelected && "All selected"}
       </div>
 
       {open && (
         <div style={dropdownMenu}>
+          {/* ✅ SELECT ALL */}
+          <label style={{ ...dropdownItem, fontWeight: 700 }}>
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+            />
+            Select All
+          </label>
+
+          <hr style={{ margin: "6px 0" }} />
+
+          {/* INDIVIDUAL OPTIONS */}
           {items.map(item => (
             <label key={item} style={dropdownItem}>
               <input
                 type="checkbox"
                 checked={values.includes(item)}
-                onChange={() => toggle(item)}
+                onChange={() => toggleItem(item)}
               />
               {item}
             </label>
@@ -94,6 +119,7 @@ function MultiDropdown({ label, items = [], values, onChange }) {
     </div>
   );
 }
+
 
 /* ===============================
    PAGE
@@ -108,8 +134,7 @@ export default function DailyTaskVolume() {
       teams: [], 
       requesters: [],
       statuses: [], 
-      date_from: "", 
-      date_to: ""
+      ...getLast30DaysRange() // 🧠 AUTO-RANGE
     };
   });
 
@@ -123,10 +148,10 @@ export default function DailyTaskVolume() {
       teams: [], 
       requesters: [],
       statuses: [], 
-      date_from: "", 
-      date_to: "" };
+      ...getLast30DaysRange() };
+    
     setFilters(empty);
-    sessionStorage.removeItem("dailyVolumeFilters");
+    sessionStorage.setItem("dailyVolumeFilters", JSON.stringify(defaults));
   };
 
   useEffect(() => {
@@ -175,10 +200,25 @@ const chartData = useMemo(() => {
 
 
   return (
-    <div style={{ padding: 20 }}>
+        <div
+      style={{
+        padding: 20,
+        minHeight: "100vh",
+        background: darkMode ? "#0f0f0f" : "#f5f5f5",
+        color: darkMode ? "#fff" : "#000"
+            }}
+          >
+
+      
       <h1>📊 Daily Task Volume</h1>
 
-      <div style={filterBar}>
+      <div style={{
+            ...dropdownMenu,
+            background: darkMode ? "#111" : "#fff",
+            color: darkMode ? "#fff" : "#000",
+            border: darkMode ? "1px solid #444" : "1px solid #ccc"
+            }}>
+        
         <MultiDropdown 
           label="👤 Owner(s)" 
           items={OWNERS}
@@ -224,12 +264,43 @@ const chartData = useMemo(() => {
        <button onClick={resetFilters} style={resetButton}> 
          🔄 Reset 
        </button> 
+
+             <button
+        onClick={() => {
+          const next = !darkMode;
+          setDarkMode(next);
+          localStorage.setItem("darkMode", next);
+        }}
+        style={{
+          height: 32,
+          padding: "0 12px",
+          fontSize: 13,
+          fontWeight: 600,
+          borderRadius: 6,
+          border: darkMode ? "1px solid #444" : "1px solid #ccc",
+          background: darkMode ? "#111" : "#fff",
+          color: darkMode ? "#fff" : "#000",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6
+        }}
+      >
+        {darkMode ? "🌙 Dark" : "☀️ Light"}
+      </button>
+
+       
      </div>
 
 
       </div>
 
-      <div style={chartContainer}>
+      <div style={{
+    ...chartContainer,
+    background: darkMode ? "#111" : "#fff",
+    borderRadius: 10,
+    padding: 12
+        }}>
         <Bar
           data={chartData}
           options={{
@@ -292,9 +363,35 @@ const resetButton = {
   gap: 6
 };
 
+const getLast30DaysRange = () => {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(to.getDate() - 30);
+
+  const format = d => d.toISOString().slice(0, 10);
+
+  return {
+    date_from: format(from),
+    date_to: format(to)
+  };
+};
+
+
 const normalizeDay = (d) => d.split("T")[0];
 
-const dropdownBox = { height: 32, padding: "6px 8px", border: "1px solid #ccc", borderRadius: 6 };
-const dropdownMenu = { position: "absolute", top: "110%", width: "100%", background: "#fff", border: "1px solid #ccc", borderRadius: 6, padding: 8, zIndex: 100 };
+const dropdownBox = { height: 32, 
+                     padding: "6px 8px", 
+                     border: "1px solid #ccc", 
+                     borderRadius: 6 };
+
+const dropdownMenu = { position: "absolute", 
+                      top: "110%", 
+                      width: "100%", 
+                      background: "#fff", 
+                      border: "1px solid #ccc", 
+                      borderRadius: 6, 
+                      padding: 8, 
+                      zIndex: 100 };
+
 const dropdownItem = { display: "flex", gap: 6, fontSize: 13 };
 const chartContainer = { height: 380 };
