@@ -49,6 +49,10 @@ export default function Tasks() {
   const status = searchParams.get("status");
   const dateFrom = searchParams.get("date_from");
   const dateTo = searchParams.get("date_to");
+  const ownersParam = searchParams.get("owners");
+  const teamsParam = searchParams.get("teams");
+  const requestersParam = searchParams.get("requesters");
+
 
   /* DARK MODE */
   const [darkMode, setDarkMode] = useState(
@@ -90,36 +94,17 @@ const [filters, setFilters] = useState(() => {
   }, [filters]);
 
   useEffect(() => {
-  if (status || dateFrom || dateTo) {
     setFilters(f => ({
       ...f,
-      statuses: status ? [status] : f.statuses,
-      assigned_from: dateFrom || f.assigned_from,
-      assigned_to: dateTo || f.assigned_to
-    }));
-  }
-}, [status, dateFrom, dateTo]);
-
-
-  useEffect(() => {
-  if (status || dateFrom || dateTo) {
-    setFilters({
-      owners: [],
-      teams: [],
-      requesters: [],
-      recurrence_types: [],
-      search: "",
-      deadline_from: "",
-      deadline_to: "",
-      closing_from: "",
-      closing_to: "",
-      today: false,
       statuses: status ? [status] : [],
-      assigned_from: dateFrom || "",
-      assigned_to: dateTo || ""
-    });
-  }
-}, [status , dateFrom, dateTo]);
+      deadline_from: dateFrom || "",
+      deadline_to: dateTo || "",
+      owners: ownersParam ? ownersParam.split(",") : [],
+      teams: teamsParam ? teamsParam.split(",") : [],
+      requesters: requestersParam ? requestersParam.split(",") : []
+    }));
+  }, [status, dateFrom, dateTo, ownersParam, teamsParam, requestersParam]);
+
 
   
   
