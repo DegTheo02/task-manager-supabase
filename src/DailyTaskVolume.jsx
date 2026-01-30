@@ -33,9 +33,6 @@ ChartJS.register(
   Legend
 );
 
-const [darkMode, setDarkMode] = useState(
-  localStorage.getItem("darkMode") === "true"
-);
 
 
 const formatDateLabel = (isoDate) => {
@@ -51,7 +48,7 @@ const formatDateLabel = (isoDate) => {
 /* ===============================
    MULTI DROPDOWN
 ================================ */
-function MultiDropdown({ label, items = [], values, onChange }) {
+function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -127,6 +124,10 @@ function MultiDropdown({ label, items = [], values, onChange }) {
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
 
+  const [darkMode, setDarkMode] = useState(
+  localStorage.getItem("darkMode") === "true"
+);
+  
   const [filters, setFilters] = useState(() => {
     const saved = sessionStorage.getItem("dailyVolumeFilters");
     return saved ? JSON.parse(saved) : {
@@ -151,7 +152,7 @@ export default function DailyTaskVolume() {
       ...getLast30DaysRange() };
     
     setFilters(empty);
-    sessionStorage.setItem("dailyVolumeFilters", JSON.stringify(defaults));
+    sessionStorage.setItem("dailyVolumeFilters", JSON.stringify(empty));
   };
 
   useEffect(() => {
@@ -213,7 +214,7 @@ const chartData = useMemo(() => {
       <h1>📊 Daily Task Volume</h1>
 
       <div style={{
-            ...dropdownMenu,
+            ...filterBar,
             background: darkMode ? "#111" : "#fff",
             color: darkMode ? "#fff" : "#000",
             border: darkMode ? "1px solid #444" : "1px solid #ccc"
@@ -224,6 +225,7 @@ const chartData = useMemo(() => {
           items={OWNERS}
           values={filters.owners}
           onChange={v => setFilters(f => ({ ...f, owners: v }))} 
+          darkMode={darkMode}
           />
 
         <MultiDropdown 
@@ -231,6 +233,7 @@ const chartData = useMemo(() => {
           items={TEAMS}
           values={filters.teams}
           onChange={v => setFilters(f => ({ ...f, teams: v }))} 
+          darkMode={darkMode}
           />
 
         <MultiDropdown 
@@ -238,6 +241,7 @@ const chartData = useMemo(() => {
           items={REQUESTERS || []}
           values={filters.requesters}
           onChange={v => setFilters(f => ({ ...f, requesters: v }))}
+          darkMode={darkMode}
           />        
 
         <MultiDropdown 
@@ -245,6 +249,7 @@ const chartData = useMemo(() => {
           items={STATUSES}
           values={filters.statuses}
           onChange={v => setFilters(f => ({ ...f, statuses: v }))} 
+          darkMode={darkMode}
           />
 
         <div>
@@ -377,7 +382,7 @@ const getLast30DaysRange = () => {
 };
 
 
-const normalizeDay = (d) => d.split("T")[0];
+const normalizeDay = d => d?.split("T")?.[0];
 
 const dropdownBox = { height: 32, 
                      padding: "6px 8px", 
