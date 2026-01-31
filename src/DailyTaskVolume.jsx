@@ -401,17 +401,22 @@ const chartData = useMemo(() => {
         />
 
         
-                <div style={{ marginTop: 32 }}>
+                <div style={{ marginTop: 80 }}>
                 <TaskCalendar
                   rows={rows}
                   darkMode={darkMode}
+                  statuses={filters.statuses}   // 👈 ADD THIS
                   onDayClick={(day, evt) => {
-                    const url =
-                      `/tasks?date_from=${day}&date_to=${day}` +
-                      `&owners=${filters.owners.join(",")}` +
-                      `&teams=${filters.teams.join(",")}` +
-                      `&requesters=${filters.requesters.join(",")}` +
-                      `&statuses=${filters.statuses.join(",")}`;
+                    const params = new URLSearchParams({
+                      date_from: day,
+                      date_to: day,
+                      owners: filters.owners.join(","),
+                      teams: filters.teams.join(","),
+                      requesters: filters.requesters.join(","),
+                      statuses: filters.statuses.join(",")
+                    });
+                
+                    const url = `/tasks?${params.toString()}`;
                 
                     if (evt.ctrlKey || evt.metaKey) {
                       window.open(url, "_blank");
@@ -420,6 +425,7 @@ const chartData = useMemo(() => {
                     }
                   }}
                 />
+
                </div>
         
       </div>
