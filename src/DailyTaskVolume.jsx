@@ -22,8 +22,6 @@ import {
   REQUESTERS
 } from "./constants/taskConstants";
 
-
-
 /* ===============================
    CHART REGISTRATION
 ================================ */
@@ -35,9 +33,7 @@ ChartJS.register(
   Legend
 );
 
-
-
-const formatDateLabel = (isoDate) => {
+const formatDateLabel = isoDate => {
   const d = new Date(isoDate);
   return d.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -45,7 +41,6 @@ const formatDateLabel = (isoDate) => {
     year: "2-digit"
   });
 };
-
 
 /* ===============================
    MULTI DROPDOWN
@@ -84,18 +79,21 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
 
       <div style={dropdownBox} onClick={() => setOpen(o => !o)}>
         {values.length === 0 && "Select…"}
-        {values.length > 0 && values.length < items.length && `${values.length} selected`}
+        {values.length > 0 &&
+          values.length < items.length &&
+          `${values.length} selected`}
         {allSelected && "All selected"}
       </div>
 
       {open && (
-        <div style={{
+        <div
+          style={{
             ...dropdownMenu,
             background: darkMode ? "#111" : "#fff",
             color: darkMode ? "#fff" : "#000",
             border: darkMode ? "1px solid #444" : "1px solid #ccc"
-          }}>
-          {/* ✅ SELECT ALL */}
+          }}
+        >
           <label style={{ ...dropdownItem, fontWeight: 700 }}>
             <input
               type="checkbox"
@@ -107,7 +105,6 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
 
           <hr style={{ margin: "6px 0" }} />
 
-          {/* INDIVIDUAL OPTIONS */}
           {items.map(item => (
             <label key={item} style={dropdownItem}>
               <input
@@ -124,51 +121,55 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
   );
 }
 
-
 /* ===============================
    PAGE
 ================================ */
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
-
   const [darkMode, setDarkMode] = useState(
-  localStorage.getItem("darkMode") === "true"
-);
+    localStorage.getItem("darkMode") === "true"
+  );
 
   const navigate = useNavigate();
 
   const [filters, setFilters] = useState(() => {
     const saved = sessionStorage.getItem("dailyVolumeFilters");
-    return saved ? JSON.parse(saved) : {
-      owners: [], 
-      teams: [], 
-      requesters: [],
-      statuses: [], 
-      ...getLast30DaysRange() // 🧠 AUTO-RANGE(±15 days)
-    };
+    return saved
+      ? JSON.parse(saved)
+      : {
+          owners: [],
+          teams: [],
+          requesters: [],
+          statuses: [],
+          ...getLast30DaysRange()
+        };
   });
 
   useEffect(() => {
-  localStorage.setItem("darkMode", darkMode);
-   }, [darkMode]);
+    localStorage.setItem("darkMode", darkMode);
+  }, [darkMode]);
 
-  
   useEffect(() => {
-    sessionStorage.setItem("dailyVolumeFilters", JSON.stringify(filters));
+    sessionStorage.setItem(
+      "dailyVolumeFilters",
+      JSON.stringify(filters)
+    );
   }, [filters]);
 
   const resetFilters = () => {
-    const empty = { 
-      owners: [], 
-      teams: [], 
+    const empty = {
+      owners: [],
+      teams: [],
       requesters: [],
-      statuses: [], 
-      ...getLast30DaysRange() };
-    
+      statuses: [],
+      ...getLast30DaysRange()
+    };
     setFilters(empty);
-    sessionStorage.setItem("dailyVolumeFilters", JSON.stringify(empty));
   };
 
+  /* ===============================
+     DATA LOAD
+  ================================ */
   useEffect(() => {
     const load = async () => {
       let q = supabase
@@ -177,10 +178,14 @@ export default function DailyTaskVolume() {
 
       if (filters.owners.length) q = q.in("owner", filters.owners);
       if (filters.teams.length) q = q.in("team", filters.teams);
-      if (filters.requesters.length) q = q.in("requester", filters.requesters);
-      if (filters.statuses.length) q = q.in("status", filters.statuses);
-      if (filters.date_from) q = q.gte("status_day", filters.date_from);
-      if (filters.date_to) q = q.lte("status_day", filters.date_to);
+      if (filters.requesters.length)
+        q = q.in("requester", filters.requesters);
+      if (filters.statuses.length)
+        q = q.in("status", filters.statuses);
+      if (filters.date_from)
+        q = q.gte("status_day", filters.date_from);
+      if (filters.date_to)
+        q = q.lte("status_day", filters.date_to);
 
       const { data } = await q;
       setRows(data || []);
@@ -188,262 +193,220 @@ export default function DailyTaskVolume() {
     load();
   }, [filters]);
 
-const chartData = useMemo(() => {
-  if (!rows.length) {
-    return { labels: [], datasets: [] };
-  }
+  /* ===============================
+     CHART DATA
+  ================================ */
+  const chartData = useMemo(() => {
+    if (!rows.length) return { labels: [], datasets: [] };
 
-  
-  const days = [
-    ...new Set(rows.map(r => normalizeDay(r.status_day)))
-  ].sort((a, b) => new Date(a) - new Date(b));
+    const days = [
+      ...new Set(rows.map(r => r.status_day.split("T")[0]))
+    ].sort((a, b) => new Date(a) - new Date(b));
 
-  return {
-    labels: days.map(formatDateLabel), 
-    days,
-    datasets: STATUSES.map(s => ({
-      label: s,
-      data: days.map(d =>
-        rows.filter(
-          r =>
-            normalizeDay(r.status_day) === d &&
-            r.status === s
-        ).length
-      ),
-      backgroundColor: STATUS_COLORS[s]
-    }))
-  };
-}, [rows]);
+    return {
+      labels: days.map(formatDateLabel),
+      days,
+      datasets: STATUSES.map(s => ({
+        label: s,
+        data: days.map(
+          d =>
+            rows.filter(
+              r =>
+                r.status_day.startsWith(d) &&
+                r.status === s
+            ).length
+        ),
+        backgroundColor: STATUS_COLORS[s]
+      }))
+    };
+  }, [rows]);
 
-
+  /* ===============================
+     RENDER
+  ================================ */
   return (
-        <div
+    <div
       style={{
         padding: 20,
         minHeight: "100vh",
         background: darkMode ? "#0f0f0f" : "#f5f5f5",
         color: darkMode ? "#fff" : "#000"
-            }}
-          >
-
-      
+      }}
+    >
       <h1>📊 Daily Task Volume</h1>
 
-      <div 
-        
-  style={{
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-    background: darkMode ? "#0f0f0f" : "#f5f5f5",
-    paddingBottom: 12,
-    marginBottom: 16
-  }}
->
-  <div
-    style={{
-      ...filterBar,
-      background: darkMode ? "#111" : "#fff",
-      border: darkMode ? "1px solid #444" : "1px solid #ccc",
-      borderRadius: 10,
-      padding: 12
-    }}
-        
+      {/* STICKY FILTER BAR */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          background: darkMode ? "#0f0f0f" : "#f5f5f5",
+          paddingBottom: 12,
+          marginBottom: 20
+        }}
+      >
+        <div
+          style={{
+            ...filterBar,
+            background: darkMode ? "#111" : "#fff",
+            border: darkMode ? "1px solid #444" : "1px solid #ccc",
+            borderRadius: 10,
+            padding: 12,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.12)"
+          }}
         >
-        
-        <MultiDropdown 
-          label="👤 Owner(s)" 
-          items={OWNERS}
-          values={filters.owners}
-          onChange={v => setFilters(f => ({ ...f, owners: v }))} 
-          darkMode={darkMode}
+          <MultiDropdown
+            label="👤 Owner(s)"
+            items={OWNERS}
+            values={filters.owners}
+            onChange={v =>
+              setFilters(f => ({ ...f, owners: v }))
+            }
+            darkMode={darkMode}
           />
 
-        <MultiDropdown 
-          label="🧩 Team(s)" 
-          items={TEAMS}
-          values={filters.teams}
-          onChange={v => setFilters(f => ({ ...f, teams: v }))} 
-          darkMode={darkMode}
+          <MultiDropdown
+            label="🧩 Team(s)"
+            items={TEAMS}
+            values={filters.teams}
+            onChange={v =>
+              setFilters(f => ({ ...f, teams: v }))
+            }
+            darkMode={darkMode}
           />
 
-        <MultiDropdown 
-          label="📄 Requester(s)" 
-          items={REQUESTERS || []}
-          values={filters.requesters}
-          onChange={v => setFilters(f => ({ ...f, requesters: v }))}
-          darkMode={darkMode}
-          />        
-
-        <MultiDropdown 
-          label="📌 Status(es)" 
-          items={STATUSES}
-          values={filters.statuses}
-          onChange={v => setFilters(f => ({ ...f, statuses: v }))} 
-          darkMode={darkMode}
+          <MultiDropdown
+            label="📄 Requester(s)"
+            items={REQUESTERS}
+            values={filters.requesters}
+            onChange={v =>
+              setFilters(f => ({ ...f, requesters: v }))
+            }
+            darkMode={darkMode}
           />
 
-        <div>
-          <label style={filterLabel}>📅 Date range</label>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input type="date" style={filterDate}
-              value={filters.date_from}
-              onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))} />
-            <input type="date" style={filterDate}
-              value={filters.date_to}
-              onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))} />
+          <MultiDropdown
+            label="📌 Status(es)"
+            items={STATUSES}
+            values={filters.statuses}
+            onChange={v =>
+              setFilters(f => ({ ...f, statuses: v }))
+            }
+            darkMode={darkMode}
+          />
+
+          <div>
+            <label style={filterLabel}>📅 Date range</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                type="date"
+                style={filterDate}
+                value={filters.date_from}
+                onChange={e =>
+                  setFilters(f => ({
+                    ...f,
+                    date_from: e.target.value
+                  }))
+                }
+              />
+              <input
+                type="date"
+                style={filterDate}
+                value={filters.date_to}
+                onChange={e =>
+                  setFilters(f => ({
+                    ...f,
+                    date_to: e.target.value
+                  }))
+                }
+              />
+            </div>
           </div>
-        </div>
 
-               <div
-            style={{
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 8
-            }}
-          >
-            {/* 🌙 Dark / Light */}
+          <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={() => {
-                const next = !darkMode;
-                setDarkMode(next);
-                localStorage.setItem("darkMode", next);
-              }}
-              style={{
-                height: 32,
-                padding: "0 12px",
-                fontSize: 13,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: darkMode ? "1px solid #444" : "1px solid #ccc",
-                background: darkMode ? "#111" : "#fff",
-                color: darkMode ? "#fff" : "#000",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6
-              }}
+              onClick={() => setDarkMode(d => !d)}
+              style={actionButton}
             >
               {darkMode ? "🌙 Dark" : "☀️ Light"}
             </button>
-          
-            {/* 🔄 Reset (RIGHT of Dark) */}
-            <button
-              onClick={resetFilters}
-              style={{
-                height: 32,
-                padding: "0 14px",
-                fontSize: 13,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: darkMode ? "1px solid #444" : "1px solid #ccc",
-                background: darkMode ? "#111" : "#fff",
-                color: darkMode ? "#fff" : "#000",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6
-              }}
-            >
+
+            <button onClick={resetFilters} style={actionButton}>
               🔄 Reset
             </button>
           </div>
-
-
-
+        </div>
       </div>
 
-      <div style={{
-    ...chartContainer,
-    background: darkMode ? "#111" : "#fff",
-    borderRadius: 10,
-    padding: 12
-        }}>
+      {/* CHART */}
+      <div
+        style={{
+          ...chartContainer,
+          background: darkMode ? "#111" : "#fff",
+          borderRadius: 10,
+          padding: 12,
+          marginBottom: 40
+        }}
+      >
         <Bar
           data={chartData}
           options={{
             responsive: true,
             maintainAspectRatio: false,
+            onClick: (evt, elements) => {
+              if (!elements.length) return;
 
-            
-              onClick: (evt, elements) => {
-                if (!elements.length) return;
-              
-                const element = elements[0];
-              
-                const isoDay = chartData.days[element.index];
-                const status = chartData.datasets[element.datasetIndex].label;
-              
-                const params = new URLSearchParams({
+              const el = elements[0];
+              const day = chartData.days[el.index];
+              const status =
+                chartData.datasets[el.datasetIndex].label;
+
+              const params = new URLSearchParams({
                 status,
-                date_from: isoDay,
-                date_to: isoDay,
+                date_from: day,
+                date_to: day,
                 owners: filters.owners.join(","),
                 teams: filters.teams.join(","),
                 requesters: filters.requesters.join(",")
               });
-              
+
               const url = `/tasks?${params.toString()}`;
 
-              
-                if (evt.native.ctrlKey || evt.native.metaKey) {
-                  window.open(url, "_blank");
-                } else {
-                  navigate(url);
-                }
-              }
-
-,
-                        
-            
+              evt.native.ctrlKey || evt.native.metaKey
+                ? window.open(url, "_blank")
+                : navigate(url);
+            },
             scales: {
               x: { stacked: true },
-              y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
-            },
-            
-            plugins: {
-              percentageLabelPlugin: {
-              disabled: true},
-              
-              legend: { labels: { font: { size: 15, weight: "600" } } },
-              tooltip: {
-                callbacks: {
-                  label: ctx => `${ctx.dataset.label}: ${ctx.raw}`
-                }
-              }
+              y: { stacked: true, beginAtZero: true }
             }
           }}
         />
-
-        
-                <div style={{ marginTop: 80 }}>
-                <TaskCalendar
-                  rows={rows}
-                  darkMode={darkMode}
-                  statuses={filters.statuses}   // 👈 ADD THIS
-                  onDayClick={(day, evt) => {
-                    const params = new URLSearchParams({
-                      date_from: day,
-                      date_to: day,
-                      owners: filters.owners.join(","),
-                      teams: filters.teams.join(","),
-                      requesters: filters.requesters.join(","),
-                      statuses: filters.statuses.join(",")
-                    });
-                
-                    const url = `/tasks?${params.toString()}`;
-                
-                    if (evt.ctrlKey || evt.metaKey) {
-                      window.open(url, "_blank");
-                    } else {
-                      navigate(url);
-                    }
-                  }}
-                />
-
-               </div>
-        
       </div>
+
+      {/* CALENDAR */}
+      <TaskCalendar
+        rows={rows}
+        darkMode={darkMode}
+        statuses={filters.statuses}
+        onDayClick={(day, evt) => {
+          const params = new URLSearchParams({
+            date_from: day,
+            date_to: day,
+            owners: filters.owners.join(","),
+            teams: filters.teams.join(","),
+            requesters: filters.requesters.join(","),
+            statuses: filters.statuses.join(",")
+          });
+
+          const url = `/tasks?${params.toString()}`;
+
+          evt.ctrlKey || evt.metaKey
+            ? window.open(url, "_blank")
+            : navigate(url);
+        }}
+      />
     </div>
   );
 }
@@ -451,25 +414,37 @@ const chartData = useMemo(() => {
 /* ===============================
    STYLES
 ================================ */
-const filterBar = { 
-  display: "flex", 
-  gap: 12, 
-  flexWrap: "wrap", 
-  alignItems: "flex-end",   // ✅ ADD THIS
-  marginBottom: 20 
+const filterBar = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+  alignItems: "flex-end"
 };
 
-const filterLabel = { 
-  fontSize: 13, 
-  fontWeight: 600 
+const filterLabel = { fontSize: 13, fontWeight: 600 };
+const filterDate = { height: 32, padding: "4px 6px" };
+
+const dropdownBox = {
+  height: 32,
+  padding: "6px 8px",
+  border: "1px solid #ccc",
+  borderRadius: 6
 };
 
-const filterDate = { 
-  height: 32, 
-  padding: "4px 6px" 
+const dropdownMenu = {
+  position: "absolute",
+  top: "110%",
+  width: "100%",
+  borderRadius: 6,
+  padding: 8,
+  zIndex: 100
 };
 
-const resetButton = {
+const dropdownItem = { display: "flex", gap: 6, fontSize: 13 };
+
+const chartContainer = { height: 380 };
+
+const actionButton = {
   height: 32,
   padding: "0 14px",
   fontSize: 13,
@@ -477,43 +452,16 @@ const resetButton = {
   borderRadius: 6,
   border: "1px solid #ccc",
   background: "#fff",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: 6
+  cursor: "pointer"
 };
 
 const getLast30DaysRange = () => {
-  const d0 = new Date();
-  const to = new Date();
-  const from = new Date();
-  to.setDate(d0.getDate()+15);
-  from.setDate(d0.getDate() -7);
+  const now = new Date();
+  const from = new Date(now);
+  const to = new Date(now);
+  from.setDate(now.getDate() - 7);
+  to.setDate(now.getDate() + 15);
 
-  const format = d => d.toISOString().slice(0, 10);
-
-  return {
-    date_from: format(from),
-    date_to: format(to)
-  };
+  const fmt = d => d.toISOString().slice(0, 10);
+  return { date_from: fmt(from), date_to: fmt(to) };
 };
-
-
-const normalizeDay = d => d?.split("T")?.[0];
-
-const dropdownBox = { height: 32, 
-                     padding: "6px 8px", 
-                     border: "1px solid #ccc", 
-                     borderRadius: 6 };
-
-const dropdownMenu = { position: "absolute", 
-                      top: "110%", 
-                      width: "100%", 
-                      background: "#fff", 
-                      border: "1px solid #ccc", 
-                      borderRadius: 6, 
-                      padding: 8, 
-                      zIndex: 100 };
-
-const dropdownItem = { display: "flex", gap: 6, fontSize: 13 };
-const chartContainer = { height: 380 };
