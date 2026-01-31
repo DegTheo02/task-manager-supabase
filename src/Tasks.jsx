@@ -3,6 +3,12 @@ import { supabase } from "./supabaseClient";
 import Navbar from "./Navbar";
 import { useSearchParams } from "react-router-dom";
 
+import { generateRecurringDates } from "./hooks/useRecurrenceEngine";
+import { useRecurrenceEngine } from "./hooks/useRecurrenceEngine";
+
+import MonthlyRuleSelector from "./components/MonthlyRuleSelector";
+
+
 
 
 
@@ -47,60 +53,6 @@ const WEEKDAYS = [
 
 
 
-    const getLastWeekdayOfMonth = (year, month, weekday) => {
-      const d = new Date(year, month + 1, 0); // last day
-      while (d.getDay() !== weekday) {
-        d.setDate(d.getDate() - 1);
-      }
-      return d;
-    };
-    
-    const getNthWeekdayOfMonth = (year, month, weekday, nth) => {
-      const d = new Date(year, month, 1);
-      let count = 0;
-    
-      while (d.getMonth() === month) {
-        if (d.getDay() === weekday) {
-          count++;
-          if (count === nth) return new Date(d);
-        }
-        d.setDate(d.getDate() + 1);
-      }
-      return null;
-    };
-
-const addDays = (date, days) => {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-};
-
-const addMonths = (date, months) => {
-  const d = new Date(date);
-  const day = d.getDate();
-  d.setMonth(d.getMonth() + months);
-
-  // handle month overflow (e.g. Jan 31 → Feb)
-  if (d.getDate() < day) {
-    d.setDate(0);
-  }
-  return d;
-};
-
-  const nextDate = (date, type) => {
-    switch (type) {
-      case "Weekly":
-        return addDays(date, 7);
-      case "Bi-Weekly":
-        return addDays(date, 14);
-      case "Monthly":
-        return addMonths(date, 1);
-      default:
-        return null;
-    }
-  };
-
-
 /* ----------------------------------
    TASKS PAGE
 ---------------------------------- */
@@ -111,9 +63,7 @@ export default function Tasks() {
 
   // 🔁 RECURRENCE STATE
   const [isRecurring, setIsRecurring] = useState(false);
-  const [repeatDays, setRepeatDays] = useState([]); // 0=Sun ... 6=Sat
-  const [repeatFrom, setRepeatFrom] = useState("");
-  const [repeatTo, setRepeatTo] = useState("");
+
   
   const [editSeries, setEditSeries] = useState(false);
   
@@ -126,6 +76,16 @@ export default function Tasks() {
   const ownersParam = searchParams.get("owners");
   const teamsParam = searchParams.get("teams");
   const requestersParam = searchParams.get("requesters");
+
+  /*RECURRENCE ENGINE*/
+      const {
+      recurrence,
+      setRecurrence,
+      occurrences,
+      isValid
+    } = useRecurrenceEngine({
+      startDate: form.initial_deadline
+    });
 
 
   /* DARK MODE */
@@ -334,18 +294,6 @@ const bV =
   const arrow = key =>
     sortConfig.key === key ? (sortConfig.direction === "asc" ? " ↑" : " ↓") : "";
 
-  function generateRecurringDates(from, to, weekdays) {
-  const dates = [];
-  const start = new Date(from);
-  const end = new Date(to);
-
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    if (weekdays.includes(d.getDay())) {
-      dates.push(d.toISOString().slice(0, 10));
-    }
-  }
-  return dates;
-}
 
   
   /* SAVE TASK */
@@ -386,77 +334,6 @@ const payload = {
 };
 
     
-    if (isRecurring && form.recurrence_type === "Monthly") {
-      if (!repeatTo) {
-        alert("Please select an end date");
-        return;
-      }
-    
-      const groupId = crypto.randomUUID();
-      const tasksToInsert = [];
-    
-      let cursor = new Date(form.initial_deadline);
-      const end = new Date(repeatTo);
-    
-      while (cursor <= end) {
-        let occurrenceDate = null;
-    
-        if (form.recurrence_rule === "DAY_OF_MONTH") {
-          occurrenceDate = new Date(cursor);
-        }
-    
-        if (form.recurrence_rule === "LAST_WEEKDAY") {
-          occurrenceDate = getLastWeekdayOfMonth(
-            cursor.getFullYear(),
-            cursor.getMonth(),
-            form.recurrence_weekday
-          );
-        }
-    
-        if (form.recurrence_rule === "NTH_WEEKDAY") {
-          occurrenceDate = getNthWeekdayOfMonth(
-            cursor.getFullYear(),
-            cursor.getMonth(),
-            form.recurrence_weekday,
-            form.recurrence_nth
-          );
-        }
-    
-        if (occurrenceDate && occurrenceDate <= end) {
-          tasksToInsert.push({
-            title: form.title,
-            owner: form.owner,
-            team: form.team,
-            requester: form.requester,
-            status: form.status,
-            recurrence_type: "Monthly",
-            recurrence_rule: form.recurrence_rule,
-            recurrence_weekday: form.recurrence_weekday,
-            recurrence_nth: form.recurrence_nth,
-            recurrence_group_id: groupId,
-            assigned_date: form.assigned_date,
-            initial_deadline: occurrenceDate.toISOString().slice(0, 10),
-            new_deadline: null,
-            closing_date: null,
-            comments: form.comments || null
-          });
-        }
-    
-        cursor = addMonths(cursor, 1);
-      }
-    
-      const { error } = await supabase.from("tasks").insert(tasksToInsert);
-      if (error) {
-        alert("Failed to create monthly recurring tasks");
-        return;
-      }
-    
-      loadTasks();
-      setForm(emptyTask);
-      return;
-    }
-
-
 
 if (isEditing) {
   if (editSeries && form.recurrence_group_id) {
@@ -499,28 +376,7 @@ if (isEditing) {
           const end = new Date(repeatTo);
         
           const tasksToInsert = [];
-        
-          while (cursor <= end) {
-            tasksToInsert.push({
-              title: form.title,
-              owner: form.owner,
-              team: form.team,
-              requester: form.requester,
-              status: form.status,
-              recurrence_type: form.recurrence_type, // Weekly / Bi-Weekly / Monthly
-              recurrence_group_id: groupId,
-              assigned_date: form.assigned_date,
-              initial_deadline: cursor.toISOString().slice(0, 10),
-              new_deadline: null,
-              closing_date: null,
-              comments: form.comments || null
-            });
-        
-            const next = nextDate(cursor, form.recurrence_type);
-            if (!next) break;
-        
-            cursor = next;
-          }
+      
         
           const { error } = await supabase
             .from("tasks")
@@ -761,85 +617,36 @@ return (
               }
             />
           </label>
-          {/*
-          <label style={formLabel}>
-            Recurrence Type
-            <select
-              style={formInput}
-              value={form.recurrence_type}
-              onChange={e =>
-                setForm(f => ({ ...f, recurrence_type: e.target.value }))
-              }
-            >
-              {RECURRENCE_TYPES.map(r => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </label> */}
 
 
-          {isRecurring && form.recurrence_type === "Monthly" && (
-                <div
-                  style={{
-                    gridColumn: "span 9",
-                    padding: 12,
-                    border: "1px dashed #999",
-                    borderRadius: 6
-                  }}
-                >
-                  <strong>Monthly rule</strong>
-              
-                  <label>
-                    <input
-                      type="radio"
-                      checked={form.recurrence_rule === "DAY_OF_MONTH"}
-                      onChange={() =>
-                        setForm(f => ({ ...f, recurrence_rule: "DAY_OF_MONTH" }))
+
+              {isRecurring && recurrence.frequency === "monthly" && (
+              <MonthlyRuleSelector
+                value={recurrence.monthlyRule}
+                onChange={rule =>
+                  setRecurrence(r => ({ ...r, monthlyRule: rule }))
+                    }
+                  />
+                )}
+
+
+                      if (isRecurring) {
+                        if (!isValid) {
+                          alert("Invalid recurrence configuration");
+                          return;
+                        }
+                      
+                        const groupId = crypto.randomUUID();
+                      
+                        const tasksToInsert = occurrences.map(date => ({
+                          ...payload,
+                          recurrence_group_id: groupId,
+                          initial_deadline: date
+                        }));
+                      
+                        await supabase.from("tasks").insert(tasksToInsert);
                       }
-                    />
-                    Same day each month
-                  </label>
-              
-                  <label>
-                    <input
-                      type="radio"
-                      checked={form.recurrence_rule === "LAST_WEEKDAY"}
-                      onChange={() =>
-                        setForm(f => ({
-                          ...f,
-                          recurrence_rule: "LAST_WEEKDAY",
-                          recurrence_weekday: new Date(
-                            form.initial_deadline
-                          ).getDay()
-                        }))
-                      }
-                    />
-                    Last weekday of month
-                  </label>
-              
-                  <label>
-                    <input
-                      type="radio"
-                      checked={form.recurrence_rule === "NTH_WEEKDAY"}
-                      onChange={() =>
-                        setForm(f => ({
-                          ...f,
-                          recurrence_rule: "NTH_WEEKDAY",
-                          recurrence_weekday: new Date(
-                            form.initial_deadline
-                          ).getDay(),
-                          recurrence_nth: Math.ceil(
-                            new Date(form.initial_deadline).getDate() / 7
-                          )
-                        }))
-                      }
-                    />
-                    Nth weekday of month
-                  </label>
-                </div>
-              )}
+
               
 
 
