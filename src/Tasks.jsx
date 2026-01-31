@@ -357,15 +357,16 @@ const bV =
           recurrence_type: recurrence.enabled
             ? recurrence.frequency
             : "Non-Recurring",
-          recurrence_rule: recurrence.enabled
-            ? {
-                frequency: recurrence.frequency,
-                ...(recurrence.frequency === "weekly" ||
-                recurrence.frequency === "biweekly"
-                  ? { weekdays: recurrence.weekly.weekdays }
-                  : recurrence.monthly)
-              }
-            : null,
+        recurrence_rule: recurrence.enabled
+          ? JSON.stringify({
+              frequency: recurrence.frequency,
+              ...(recurrence.frequency === "weekly" ||
+              recurrence.frequency === "biweekly"
+                ? { weekdays: recurrence.weekly.weekdays }
+                : recurrence.monthly)
+            })
+          : null,
+
 
           assigned_date: form.assigned_date,
           initial_deadline: form.initial_deadline,
@@ -446,7 +447,7 @@ if (isEditing) {
             }
           
             const firstDate = occurrences[0];
-            const nextDate = occurrences[1] || null;
+            const nextDate = occurrences.length > 1 ? occurrences[1] : null;
           
             const { error } = await supabase.from("tasks").insert({
               ...payload,
