@@ -381,34 +381,33 @@ if (isEditing) {
         }
 
 
-   
-          // 🔁 RECURRING TASK
+             
+          // 🔁 RECURRING TASK — DATE-BASED
           if (recurrence.enabled) {
             if (!isValid) {
-              alert("Please complete recurrence settings (days and end date).");
+              alert("Please complete recurrence settings");
               return;
             }
           
             if (occurrences.length === 0) {
-              alert("No occurrences generated. Check recurrence configuration.");
+              alert("No occurrences generated");
               return;
             }
           
-            const groupId = crypto.randomUUID();
+            const firstDate = occurrences[0];
+            const nextDate = occurrences[1] || null;
           
-            const tasksToInsert = occurrences.map(date => ({
+            const { error } = await supabase.from("tasks").insert({
               ...payload,
-              recurrence_group_id: groupId,
-              initial_deadline: date
-            }));
-          
-            const { error } = await supabase
-              .from("tasks")
-              .insert(tasksToInsert);
+              initial_deadline: firstDate,
+              recurrence_rule: recurrence,
+              next_occurrence_date: nextDate,
+              recurrence_group_id: crypto.randomUUID()
+            });
           
             if (error) {
               console.error(error);
-              alert("Failed to create recurring tasks");
+              alert("Failed to create recurring task");
               return;
             }
           
@@ -416,6 +415,8 @@ if (isEditing) {
             setForm(emptyTask);
             return;
           }
+
+
 
 
      
