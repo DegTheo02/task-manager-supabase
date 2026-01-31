@@ -414,10 +414,6 @@ if (isEditing) {
 
     setForm(emptyTask);
     setIsEditing(false);
-    setIsRecurring(false);
-    setRepeatDays([]);
-    setRepeatFrom("");
-    setRepeatTo("");
     loadTasks();
 
 /*
@@ -621,13 +617,17 @@ return (
 
 
 
-              {isRecurring && recurrence.frequency === "monthly" && (
-              <MonthlyRuleSelector
-                value={recurrence.monthlyRule}
-                onChange={rule =>
-                  setRecurrence(r => ({ ...r, monthlyRule: rule }))
-                    }
-                  />
+              {recurrence.enabled && recurrence.frequency === "monthly" && (
+                <MonthlyRuleSelector
+                  value={recurrence.monthly}
+                  onChange={rule =>
+                    setRecurrence(r => ({
+                      ...r,
+                      monthly: rule
+                    }))
+                  }
+                />
+
                 )}
 
               
@@ -651,7 +651,7 @@ return (
           Recurring task
         </label>
         
-        {isRecurring && (
+        {recurrence.enabled && (
           <div
             style={{
               gridColumn: "span 9",
@@ -695,8 +695,14 @@ return (
                 From
                 <input
                   type="date"
-                  value={repeatFrom}
-                  onChange={e => setRepeatFrom(e.target.value)}
+                    value={recurrence.startDate}
+                    onChange={e =>
+                      setRecurrence(r => ({
+                        ...r,
+                        startDate: e.target.value
+                      }))
+                    }
+
                 />
               </label>
         
@@ -704,8 +710,14 @@ return (
                 To
                 <input
                   type="date"
-                  value={repeatTo}
-                  onChange={e => setRepeatTo(e.target.value)}
+                    value={recurrence.endDate}
+                    onChange={e =>
+                      setRecurrence(r => ({
+                        ...r,
+                        endDate: e.target.value
+                      }))
+                    }
+
                 />
               </label>
             </div>
