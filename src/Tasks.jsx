@@ -728,15 +728,21 @@ return (
                   <select
                     style={formInput}
                     value={recurrence.frequency}
-                    onChange={e =>
-                      setRecurrence(r => ({
-                        ...r,
-                        frequency: e.target.value,
-                        // reset rules when switching
-                        weekly: { weekdays: [] },
-                        monthly: null
-                      }))
-                    }
+                      onChange={e =>
+                        setRecurrence(r => ({
+                          ...r,
+                          frequency: e.target.value,
+                          weekly: { weekdays: [] },
+                          monthly:
+                            e.target.value === "monthly"
+                              ? {
+                                  type: "day_of_month",
+                                  day: new Date(form.initial_deadline).getDate()
+                                }
+                              : null
+                        }))
+                      }
+
                   >
                     <option value="weekly">Weekly</option>
                     <option value="biweekly">Bi-weekly</option>
