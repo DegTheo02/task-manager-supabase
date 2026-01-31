@@ -1181,7 +1181,7 @@ return (
               </th>
               <th style={{ ...th(darkMode), width: "20%" }}>Comments</th>
 
-              <th style={{ ...th(darkMode), width: "8%" }}>Actions</th>
+              <th style={{ ...th(darkMode), width: "12%" }}>Actions</th>
 
 
             </tr>
