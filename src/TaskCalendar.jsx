@@ -5,19 +5,10 @@ const normalizeDay = d => d?.split("T")?.[0];
 
 const isToday = iso => {
   const today = new Date().toISOString().slice(0, 10);
-  return iso === today; 
+  return iso === today;
 };
 
-const getWeekday = iso => {
-  return new Date(iso).getDay(); // 0=Sun ... 6=Sat
-};
-
-
-export default function TaskCalendar({
-  rows,
-  darkMode,
-  onDayClick
-}) {
+export default function TaskCalendar({ rows, darkMode, onDayClick }) {
   /* ===============================
      MONTH STATE
   ================================ */
@@ -27,24 +18,17 @@ export default function TaskCalendar({
     return d;
   });
 
-  const startOfMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth(),
-    1
-  );
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
 
-  const endOfMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth() + 1,
-    0
-  );
+  const startOfMonth = new Date(year, month, 1);
+  const endOfMonth = new Date(year, month + 1, 0);
 
   const isFutureMonth = () => {
     const now = new Date();
     return (
-      currentMonth.getFullYear() > now.getFullYear() ||
-      (currentMonth.getFullYear() === now.getFullYear() &&
-        currentMonth.getMonth() > now.getMonth())
+      year > now.getFullYear() ||
+      (year === now.getFullYear() && month > now.getMonth())
     );
   };
 
@@ -67,27 +51,21 @@ export default function TaskCalendar({
   const maxCount = Math.max(0, ...Object.values(tasksByDay));
 
   /* ===============================
-     BUILD CALENDAR GRID
+     BUILD FULL CALENDAR GRID (REAL DATES)
   ================================ */
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
+  const first = new Date(startOfMonth);
+  const firstWeekday = first.getDay() === 0 ? 6 : first.getDay() - 1;
+  first.setDate(first.getDate() - firstWeekday);
 
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  const startOffset = firstDay.getDay() === 0
-  ? 6   // Sunday → last column
-  : firstDay.getDay() - 1;
-
-  const daysInMonth = lastDay.getDate();
+  const last = new Date(endOfMonth);
+  const lastWeekday = last.getDay() === 0 ? 6 : last.getDay() - 1;
+  last.setDate(last.getDate() + (6 - lastWeekday));
 
   const cells = [];
-
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = new Date(year, month, d).toISOString().slice(0, 10);
-    cells.push(iso);
+  const cursor = new Date(first);
+  while (cursor <= last) {
+    cells.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   /* ===============================
@@ -172,87 +150,87 @@ export default function TaskCalendar({
           gap: 6
         }}
       >
+        {cells.map(date => {
+          const iso = date.toISOString().slice(0, 10);
+          const isOutsideMonth = date.getMonth() !== month;
+          const count = tasksByDay[iso] || 0;
 
+          const weekday = date.getDay(); // 0=Sun … 6=Sat
+          const isSunday = weekday === 0;
+          const isSaturday = weekday === 6;
+          const todayFlag = isToday(iso);
 
-        {cells.map((day, i) => {
-                if (!day) return <div key={i} />;
-              
-                const count = tasksByDay[day] || 0;
-              
-                const weekday = getWeekday(day); // 0=Sun ... 6=Sat
-                const isSunday = weekday === 0;
-                const isSaturday = weekday === 6;
-                const todayFlag = isToday(day);
-              
-                return (
-                  <div
-                    key={day}
-                    onClick={e => count && onDayClick(day, e)}
+          return (
+            <div
+              key={iso}
+              onClick={e => !isOutsideMonth && count && onDayClick(iso, e)}
+              style={{
+                height: 70,
+                borderRadius: 8,
+                cursor:
+                  !isOutsideMonth && count ? "pointer" : "default",
+                opacity: isOutsideMonth ? 0.35 : 1,
+                background: todayFlag
+                  ? darkMode
+                    ? "#2563eb"
+                    : "#dbeafe"
+                  : isSunday || isSaturday
+                  ? darkMode
+                    ? "rgba(245,158,11,0.15)"
+                    : "rgba(245,158,11,0.12)"
+                  : getHeatColor(count),
+                border: todayFlag
+                  ? "2px solid #2563eb"
+                  : darkMode
+                  ? "1px solid #222"
+                  : "1px solid #ddd",
+                padding: 6,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between"
+              }}
+            >
+              {/* Day number + TODAY badge */}
+              <div
+                style={{
+                  fontSize: 12,
+                  opacity: 0.6,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
+              >
+                <span>{iso.slice(-2)}</span>
+
+                {todayFlag && (
+                  <span
                     style={{
-                      height: 70,
-                      borderRadius: 8,
-                      cursor: count ? "pointer" : "default",
-                      background: todayFlag
-                        ? darkMode
-                          ? "#2563eb"     // today dark
-                          : "#dbeafe"     // today light
-                        : isSunday || isSaturday
-                        ? darkMode
-                          ? "rgba(245,158,11,0.15)" // weekend dark
-                          : "rgba(245,158,11,0.12)" // weekend light
-                        : getHeatColor(count),
-                      border: todayFlag
-                        ? "2px solid #2563eb"
-                        : darkMode
-                        ? "1px solid #222"
-                        : "1px solid #ddd",
-                      padding: 6,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between"
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: darkMode ? "#bbf7d0" : "#166534"
                     }}
                   >
-                    {/* Day number + TODAY badge */}
-                    <div
-                      style={{
-                        fontSize: 12,
-                        opacity: 0.6,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center"
-                      }}
-                    >
-                      <span>{day.slice(-2)}</span>
-              
-                      {todayFlag && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: darkMode ? "#bbf7d0" : "#166534"
-                          }}
-                        >
-                          TODAY
-                        </span>
-                      )}
-                    </div>
-              
-                    {/* Count */}
-                    {count > 0 && (
-                      <div
-                        style={{
-                          fontSize: 20,
-                          fontWeight: 800,
-                          textAlign: "right"
-                        }}
-                      >
-                        {count}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-        </div>   
-    </div>  
+                    TODAY
+                  </span>
+                )}
+              </div>
+
+              {/* Count */}
+              {count > 0 && !isOutsideMonth && (
+                <div
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    textAlign: "right"
+                  }}
+                >
+                  {count}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
