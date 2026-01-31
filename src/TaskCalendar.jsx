@@ -252,7 +252,7 @@ export default function TaskCalendar({
                   </div>
                 );
               })}
-        </div>   {/* END calendar grid */}
-    </div>     {/* END main container */}
+        </div>   
+    </div>  
   );
 }
