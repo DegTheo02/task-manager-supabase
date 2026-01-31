@@ -16,7 +16,11 @@ export default function MonthlyRuleSelector({ value, onChange, baseDate }) {
           name="monthlyRule"
           checked={rule.type === "same_day"}
           onChange={() =>
-            onChange({ type: "same_day" })
+            onChange({
+              type: "day_of_month",
+              day: base.getDate()
+            })
+
           }
         />
         Same day each month
