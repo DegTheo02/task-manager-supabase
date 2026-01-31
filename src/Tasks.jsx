@@ -730,15 +730,17 @@ return (
                     }}
                   >
                     {/* Monthly rule selector (nth weekday / last weekday / day of month) */}
-                    <MonthlyRuleSelector
-                      value={recurrence.monthly}
-                      onChange={rule =>
-                        setRecurrence(r => ({
-                          ...r,
-                          monthly: rule
-                        }))
-                      }
-                    />
+                      <MonthlyRuleSelector
+                        value={recurrence.monthly}
+                        baseDate={form.initial_deadline}
+                        onChange={rule =>
+                          setRecurrence(r => ({
+                            ...r,
+                            monthly: rule
+                          }))
+                        }
+                      />
+
                 
                     {/* Date range for monthly recurrence */}
                     <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
