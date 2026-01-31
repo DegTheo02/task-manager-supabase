@@ -1,4 +1,6 @@
 // src/hooks/useRecurrenceEngine.js
+import { useMemo, useState, useEffect } from "react";
+
 
 /* -------------------------------
    DATE HELPERS (NO DEPENDENCIES)
@@ -44,64 +46,119 @@ const getNthWeekdayOfMonth = (year, month, weekday, nth) => {
   return null;
 };
 
-/* -------------------------------
-   MAIN ENGINE
--------------------------------- */
+const toISO = d => d.toISOString().slice(0, 10);
 
-export function generateRecurringDates({
-  type,               // Weekly | Bi-Weekly | Monthly
-  startDate,
-  endDate,
-  weekdays = [],      // for weekly
-  monthlyRule,        // DAY_OF_MONTH | LAST_WEEKDAY | NTH_WEEKDAY
-  monthlyWeekday,
-  monthlyNth
-}) {
-  const dates = [];
-  let cursor = new Date(startDate);
-  const end = new Date(endDate);
+
+const generateOccurrences = recurrence => {
+  if (!recurrence.enabled) return [];
+
+  const start = new Date(recurrence.startDate);
+  const end = new Date(recurrence.endDate);
+  const results = [];
+
+
+
+   if (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") {
+  let cursor = new Date(start);
 
   while (cursor <= end) {
-    let occurrence = null;
-
-    if (type === "Weekly" || type === "Bi-Weekly") {
-      if (weekdays.includes(cursor.getDay())) {
-        occurrence = new Date(cursor);
-      }
+    if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
+      results.push(toISO(cursor));
     }
-
-    if (type === "Monthly") {
-      if (monthlyRule === "DAY_OF_MONTH") {
-        occurrence = new Date(cursor);
-      }
-
-      if (monthlyRule === "LAST_WEEKDAY") {
-        occurrence = getLastWeekdayOfMonth(
-          cursor.getFullYear(),
-          cursor.getMonth(),
-          monthlyWeekday
-        );
-      }
-
-      if (monthlyRule === "NTH_WEEKDAY") {
-        occurrence = getNthWeekdayOfMonth(
-          cursor.getFullYear(),
-          cursor.getMonth(),
-          monthlyWeekday,
-          monthlyNth
-        );
-      }
-    }
-
-    if (occurrence && occurrence <= end) {
-      dates.push(occurrence.toISOString().slice(0, 10));
-    }
-
-    if (type === "Weekly") cursor = addDays(cursor, 7);
-    else if (type === "Bi-Weekly") cursor = addDays(cursor, 14);
-    else if (type === "Monthly") cursor = addMonths(cursor, 1);
-    else break;
+    cursor = addDays(
+      cursor,
+      recurrence.frequency === "biweekly" ? 14 : 7
+    );
   }
-
-  return dates;
 }
+
+
+      
+         if (recurrence.frequency === "monthly") {
+           let cursor = new Date(start);
+         
+           while (cursor <= end) {
+             let date = null;
+             const rule = recurrence.monthly;
+         
+             if (!rule) {
+               cursor = addMonths(cursor, 1);
+               continue;
+             }
+         
+             if (rule.type === "dayOfMonth") {
+               date = new Date(cursor);
+             }
+         
+             if (rule.type === "lastWeekday") {
+               date = getLastWeekdayOfMonth(
+                 cursor.getFullYear(),
+                 cursor.getMonth(),
+                 rule.weekday
+               );
+             }
+         
+             if (rule.type === "nthWeekday") {
+               date = getNthWeekdayOfMonth(
+                 cursor.getFullYear(),
+                 cursor.getMonth(),
+                 rule.weekday,
+                 rule.nth
+               );
+             }
+         
+             if (date && date >= start && date <= end) {
+               results.push(toISO(date));
+             }
+         
+             cursor = addMonths(cursor, 1);
+           }
+         }
+
+   
+
+  return results;
+};
+
+
+export function useRecurrenceEngine({ startDate }) {
+  const [recurrence, setRecurrence] = useState({
+    enabled: false,
+    frequency: "weekly", // weekly | biweekly | monthly
+    startDate,
+    endDate: "",
+    weekly: {
+      weekdays: []
+    },
+    monthly: null
+  });
+
+  // keep startDate in sync with form
+  useEffect(() => {
+    setRecurrence(r => ({ ...r, startDate }));
+  }, [startDate]);
+
+  const occurrences = useMemo(
+    () => generateOccurrences(recurrence),
+    [recurrence]
+  );
+
+  const isValid =
+    !recurrence.enabled ||
+    (recurrence.startDate &&
+      recurrence.endDate &&
+      (
+        (recurrence.frequency !== "weekly" &&
+         recurrence.frequency !== "biweekly") ||
+        recurrence.weekly.weekdays.length > 0
+      ));
+
+  return {
+    recurrence,
+    setRecurrence,
+    occurrences,
+    isValid
+  };
+}
+
+
