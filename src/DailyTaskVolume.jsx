@@ -364,9 +364,7 @@ export default function DailyTaskVolume() {
                 : navigate(url);
             }}
           />
-        </div>
-      );
-    }
+
 
 
       {/* CHART */}
@@ -414,7 +412,9 @@ export default function DailyTaskVolume() {
           }}
         />
       </div>
-
+        </div>
+      );
+    }
      
 
 /* ===============================
