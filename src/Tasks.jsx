@@ -111,16 +111,6 @@ const [filters, setFilters] = useState(() => {
   };
 });
 
-  const generateOccurrences = recurrence => {
-  if (!recurrence.enabled) return [];
-
-  if (!recurrence.startDate || !recurrence.endDate) return [];
-
-  const start = new Date(recurrence.startDate);
-  const end = new Date(recurrence.endDate);
-
-  if (isNaN(start) || isNaN(end) || start > end) return [];
-
 
   useEffect(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
