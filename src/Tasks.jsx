@@ -430,7 +430,14 @@ if (isEditing) {
                 return;
               }
             }
-          
+
+            console.log("RECURRENCE DEBUG", {
+                    recurrence,
+                    occurrences
+                  });
+
+
+            
             if (occurrences.length === 0) {
               alert("No occurrences generated");
               return;
