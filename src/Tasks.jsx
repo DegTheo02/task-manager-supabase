@@ -3,7 +3,6 @@ import { supabase } from "./supabaseClient";
 import Navbar from "./Navbar";
 import { useSearchParams } from "react-router-dom";
 
-import { generateRecurringDates } from "./hooks/useRecurrenceEngine";
 import { useRecurrenceEngine } from "./hooks/useRecurrenceEngine";
 
 import MonthlyRuleSelector from "./components/MonthlyRuleSelector";
@@ -61,9 +60,6 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
 
-  // 🔁 RECURRENCE STATE
-  const [isRecurring, setIsRecurring] = useState(false);
-
   
   const [editSeries, setEditSeries] = useState(false);
   
@@ -77,15 +73,7 @@ export default function Tasks() {
   const teamsParam = searchParams.get("teams");
   const requestersParam = searchParams.get("requesters");
 
-  /*RECURRENCE ENGINE*/
-      const {
-      recurrence,
-      setRecurrence,
-      occurrences,
-      isValid
-    } = useRecurrenceEngine({
-      startDate: form.initial_deadline
-    });
+
 
 
   /* DARK MODE */
@@ -191,6 +179,16 @@ useEffect(() => {
 
   const [form, setForm] = useState(emptyTask);
   const [isEditing, setIsEditing] = useState(false);
+
+    /*RECURRENCE ENGINE*/
+      const {
+      recurrence,
+      setRecurrence,
+      occurrences,
+      isValid
+    } = useRecurrenceEngine({
+      startDate: form.initial_deadline
+    });
 
   /* LOAD DATA */
   const loadTasks = async () => {
@@ -364,19 +362,20 @@ if (isEditing) {
       // --------------------------------
       // SAVE TASK (single or recurring)
       // --------------------------------
-        if (isRecurring) {
-                  if (!repeatTo) {
-          alert("Please select a recurrence end date");
-          return;
-                }
 
+         if (recurrence.enabled) {
+          if (!isValid) {
+            alert("Invalid recurrence configuration");
+            return;
+          }
+        
           const groupId = crypto.randomUUID();
         
-          let cursor = new Date(form.initial_deadline);
-          const end = new Date(repeatTo);
-        
-          const tasksToInsert = [];
-      
+          const tasksToInsert = occurrences.map(date => ({
+            ...payload,
+            recurrence_group_id: groupId,
+            initial_deadline: date
+          }));
         
           const { error } = await supabase
             .from("tasks")
@@ -391,6 +390,8 @@ if (isEditing) {
           setForm(emptyTask);
           return;
         }
+
+     
  else {
         const { error } = await supabase
           .from("tasks")
@@ -629,34 +630,24 @@ return (
                   />
                 )}
 
-
-                      if (isRecurring) {
-                        if (!isValid) {
-                          alert("Invalid recurrence configuration");
-                          return;
-                        }
-                      
-                        const groupId = crypto.randomUUID();
-                      
-                        const tasksToInsert = occurrences.map(date => ({
-                          ...payload,
-                          recurrence_group_id: groupId,
-                          initial_deadline: date
-                        }));
-                      
-                        await supabase.from("tasks").insert(tasksToInsert);
-                      }
-
               
 
 
           
           <label style={formLabel}>
+
           <input
             type="checkbox"
-            checked={isRecurring}
-            onChange={e => setIsRecurring(e.target.checked)}
+            checked={recurrence.enabled}
+            onChange={e =>
+              setRecurrence(r => ({
+                ...r,
+                enabled: e.target.checked
+              }))
+            }
           />
+
+            
           Recurring task
         </label>
         
@@ -678,14 +669,21 @@ return (
                 <label key={d.value}>
                   <input
                     type="checkbox"
-                    checked={repeatDays.includes(d.value)}
+                    checked={recurrence.weekly.weekdays.includes(d.value)}
+
                     onChange={() =>
-                      setRepeatDays(prev =>
-                        prev.includes(d.value)
-                          ? prev.filter(x => x !== d.value)
-                          : [...prev, d.value]
-                      )
+                      setRecurrence(r => ({
+                        ...r,
+                        weekly: {
+                          ...r.weekly,
+                          weekdays: r.weekly.weekdays.includes(d.value)
+                            ? r.weekly.weekdays.filter(x => x !== d.value)
+                            : [...r.weekly.weekdays, d.value]
+                        }
+                      }))
                     }
+
+                    
                   />
                   {d.label}
                 </label>
