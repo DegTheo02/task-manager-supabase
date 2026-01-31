@@ -59,18 +59,26 @@ const generateOccurrences = recurrence => {
 
 
    if (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") {
-  let cursor = new Date(start);
+     let cursor = new Date(start);
+     const step = recurrence.frequency === "biweekly" ? 14 : 7;
+   
+     // find first valid weekday occurrence
+     while (cursor <= end) {
+       if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
+         break;
+       }
+       cursor = addDays(cursor, 1);
+     }
+   
+     // generate occurrences
+     while (cursor <= end) {
+       if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
+         results.push(toISO(cursor));
+       }
+       cursor = addDays(cursor, step);
+     }
+   }
 
-  while (cursor <= end) {
-    if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
-      results.push(toISO(cursor));
-    }
-    cursor = addDays(
-      cursor,
-      recurrence.frequency === "biweekly" ? 14 : 7
-    );
-  }
-}
 
 
       
