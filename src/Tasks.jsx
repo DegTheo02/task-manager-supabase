@@ -338,18 +338,30 @@ const bV =
     };
 
 
-const payload = {
-  title: form.title,
-  owner: form.owner,
-  team: form.team,
-  requester: form.requester,
-  recurrence_type: form.recurrence_type,
-  assigned_date: form.assigned_date,
-  initial_deadline: form.initial_deadline,
-  new_deadline: form.new_deadline || null,
-  closing_date: normalizedClosingDate,
-  comments: form.comments || null
-};
+        const payload = {
+          title: form.title,
+          owner: form.owner,
+          team: form.team,
+          requester: form.requester,
+          recurrence_type: recurrence.enabled
+            ? recurrence.frequency
+            : "Non-Recurring",
+          recurrence_rule: recurrence.enabled
+            ? JSON.stringify({
+                frequency: recurrence.frequency,
+                ...(recurrence.frequency === "weekly" ||
+                recurrence.frequency === "biweekly"
+                  ? { weekdays: recurrence.weekly.weekdays }
+                  : recurrence.monthly)
+              })
+            : null,
+          assigned_date: form.assigned_date,
+          initial_deadline: form.initial_deadline,
+          new_deadline: form.new_deadline || null,
+          closing_date: normalizedClosingDate,
+          comments: form.comments || null
+        };
+
 
     
 
@@ -420,7 +432,14 @@ if (isEditing) {
             const { error } = await supabase.from("tasks").insert({
               ...payload,
               initial_deadline: firstDate,
-              recurrence_rule: recurrence,
+              recurrence_rule: {
+                frequency: recurrence.frequency,
+                ...(recurrence.frequency === "weekly" ||
+                recurrence.frequency === "biweekly"
+                  ? { weekdays: recurrence.weekly.weekdays }
+                  : recurrence.monthly)
+                                  },
+
               next_occurrence_date: nextDate,
               recurrence_group_id: crypto.randomUUID()
             });
@@ -657,27 +676,11 @@ return (
             />
           </label>
 
-
-
-              {recurrence.enabled && recurrence.frequency === "monthly" && (
-                <MonthlyRuleSelector
-                  value={recurrence.monthly}
-                  onChange={rule =>
-                    setRecurrence(r => ({
-                      ...r,
-                      monthly: rule
-                    }))
-                  }
-                />
-
-                )}
-
               
 
 
           
           <label style={formLabel}>
-
           <input
             type="checkbox"
             checked={recurrence.enabled}
@@ -687,13 +690,95 @@ return (
                 enabled: e.target.checked
               }))
             }
-          />
-
-            
+          />  
           Recurring task
         </label>
-        
-        {recurrence.enabled && (
+
+             {/* RECURRENCE FREQUENCY */}
+              {recurrence.enabled && (
+                <label style={formLabel}>
+                  Recurrence frequency
+                  <select
+                    style={formInput}
+                    value={recurrence.frequency}
+                    onChange={e =>
+                      setRecurrence(r => ({
+                        ...r,
+                        frequency: e.target.value,
+                        // reset rules when switching
+                        weekly: { weekdays: [] },
+                        monthly: null
+                      }))
+                    }
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </label>
+              )}
+
+          
+          {/* ================= MONTHLY RECURRENCE BLOCK ================= */}
+                {recurrence.enabled && recurrence.frequency === "monthly" && (
+                  <div
+                    style={{
+                      gridColumn: "span 9",
+                      padding: 12,
+                      border: "1px dashed #999",
+                      borderRadius: 6
+                    }}
+                  >
+                    {/* Monthly rule selector (nth weekday / last weekday / day of month) */}
+                    <MonthlyRuleSelector
+                      value={recurrence.monthly}
+                      onChange={rule =>
+                        setRecurrence(r => ({
+                          ...r,
+                          monthly: rule
+                        }))
+                      }
+                    />
+                
+                    {/* Date range for monthly recurrence */}
+                    <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+                      <label>
+                        From
+                        <input
+                          type="date"
+                          value={recurrence.startDate}
+                          onChange={e =>
+                            setRecurrence(r => ({
+                              ...r,
+                              startDate: e.target.value
+                            }))
+                          }
+                        />
+                      </label>
+                
+                      <label>
+                        To
+                        <input
+                          type="date"
+                          value={recurrence.endDate}
+                          onChange={e =>
+                            setRecurrence(r => ({
+                              ...r,
+                              endDate: e.target.value
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+  {/* ================= END MONTHLY RECURRENCE BLOCK ================= */}
+
+
+
+          { /*  START WEEKLY/BIWEEKLY FREQUENCY SELECTOR BLOCK   */}
+        {recurrence.enabled && (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") && (
+
           <div
             style={{
               gridColumn: "span 9",
@@ -702,7 +787,8 @@ return (
               borderRadius: 6
             }}
           >
-            <div style={{ marginBottom: 10, fontWeight: 700 }}>
+            <div style={{ marginBottom: 10, fontWeight: 700 }}>             
+                            
               Repeat on
             </div>
         
