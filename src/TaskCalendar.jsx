@@ -5,7 +5,7 @@ const normalizeDay = d => d?.split("T")?.[0];
 
 const isToday = iso => {
   const today = new Date().toISOString().slice(0, 10);
-  return iso === today;
+  return iso === today; 
 };
 
 const getWeekday = iso => {
