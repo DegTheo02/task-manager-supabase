@@ -317,6 +317,26 @@ const bV =
 };
 
 
+    const buildRecurrenceRule = (recurrence) => {
+      if (!recurrence.enabled) return null;
+    
+      if (recurrence.frequency === "weekly") {
+        return {
+          frequency: "weekly",
+          weekdays: recurrence.weekly.weekdays
+        };
+      }
+    
+      if (recurrence.frequency === "monthly") {
+        return {
+          frequency: "monthly",
+          ...recurrence.monthly
+        };
+      }
+    
+      return null;
+    };
+
 
 const payload = {
   title: form.title,
@@ -1033,14 +1053,6 @@ return (
 
 
               <th
-                style={{ ...th(darkMode), width: "10%" }}
-                onClick={() => requestSort("recurrence_type")}
-              >
-                Recurrence{arrow("recurrence_type")}
-              </th>
-
-
-              <th
                 style={{ ...th(darkMode), width: "8%" }}
                 onClick={() => requestSort("assigned_date")}
               >
@@ -1097,7 +1109,6 @@ return (
                   {t.status}
                 </td>
 
-                <td style={{ ...td(darkMode),fontSize: "12px"}}>{t.recurrence_type}</td>
                 <td style={td(darkMode)}>{t.assigned_date}</td>
                 <td style={td(darkMode)}>{t.initial_deadline}</td>
                 <td style={td(darkMode)}>{t.new_deadline}</td>
