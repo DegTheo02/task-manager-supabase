@@ -1,7 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 const normalizeDay = d => d?.split("T")?.[0];
 
 export default function TaskCalendar({
@@ -9,20 +8,59 @@ export default function TaskCalendar({
   darkMode,
   onDayClick
 }) {
-  const today = new Date();
+  /* ===============================
+     MONTH STATE
+  ================================ */
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
 
-  /* 🔢 Group tasks by day */
+  const startOfMonth = new Date(
+    currentMonth.getFullYear(),
+    currentMonth.getMonth(),
+    1
+  );
+
+  const endOfMonth = new Date(
+    currentMonth.getFullYear(),
+    currentMonth.getMonth() + 1,
+    0
+  );
+
+  const isFutureMonth = () => {
+    const now = new Date();
+    return (
+      currentMonth.getFullYear() > now.getFullYear() ||
+      (currentMonth.getFullYear() === now.getFullYear() &&
+        currentMonth.getMonth() > now.getMonth())
+    );
+  };
+
+  /* ===============================
+     GROUP TASKS BY DAY (MONTH ONLY)
+  ================================ */
   const tasksByDay = useMemo(() => {
     return rows.reduce((acc, r) => {
       const day = normalizeDay(r.status_day);
+      if (!day) return acc;
+
+      const d = new Date(day);
+      if (d < startOfMonth || d > endOfMonth) return acc;
+
       acc[day] = (acc[day] || 0) + 1;
       return acc;
     }, {});
-  }, [rows]);
+  }, [rows, startOfMonth, endOfMonth]);
 
-  /* 📅 Build current month grid */
-  const year = today.getFullYear();
-  const month = today.getMonth();
+  const maxCount = Math.max(0, ...Object.values(tasksByDay));
+
+  /* ===============================
+     BUILD CALENDAR GRID
+  ================================ */
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -32,15 +70,25 @@ export default function TaskCalendar({
 
   const cells = [];
 
-  // Empty cells before month starts
   for (let i = 0; i < startOffset; i++) cells.push(null);
 
-  // Month days
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = new Date(year, month, d).toISOString().slice(0, 10);
     cells.push(iso);
   }
 
+  /* ===============================
+     HEATMAP COLOR
+  ================================ */
+  const getHeatColor = count => {
+    if (!count) return darkMode ? "#0b0b0b" : "#fafafa";
+    const intensity = maxCount === 0 ? 0 : count / maxCount;
+    return `rgba(14,165,168,${0.2 + intensity * 0.6})`;
+  };
+
+  /* ===============================
+     RENDER
+  ================================ */
   return (
     <div
       style={{
@@ -51,9 +99,42 @@ export default function TaskCalendar({
         border: darkMode ? "1px solid #333" : "1px solid #ddd"
       }}
     >
-      <h2 style={{ marginBottom: 12 }}>📅 Task Calendar</h2>
+      {/* HEADER */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12
+        }}
+      >
+        <button
+          onClick={() =>
+            setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+          }
+        >
+          ⬅️
+        </button>
 
-      {/* Week header */}
+        <h2 style={{ margin: 0 }}>
+          📅{" "}
+          {currentMonth.toLocaleDateString("en-GB", {
+            month: "long",
+            year: "numeric"
+          })}
+        </h2>
+
+        <button
+          disabled={isFutureMonth()}
+          onClick={() =>
+            setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+          }
+        >
+          ➡️
+        </button>
+      </div>
+
+      {/* WEEK HEADER */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
         {daysOfWeek.map(d => (
           <div
@@ -70,7 +151,7 @@ export default function TaskCalendar({
         ))}
       </div>
 
-      {/* Calendar grid */}
+      {/* CALENDAR GRID */}
       <div
         style={{
           display: "grid",
@@ -86,16 +167,12 @@ export default function TaskCalendar({
           return (
             <div
               key={day}
-              onClick={e => onDayClick(day, e)}
+              onClick={e => count && onDayClick(day, e)}
               style={{
                 height: 70,
                 borderRadius: 8,
                 cursor: count ? "pointer" : "default",
-                background: count
-                  ? `rgba(14,165,168,${Math.min(0.15 + count / 20, 0.6)})`
-                  : darkMode
-                  ? "#0b0b0b"
-                  : "#fafafa",
+                background: getHeatColor(count),
                 border: darkMode ? "1px solid #222" : "1px solid #ddd",
                 padding: 6,
                 display: "flex",
