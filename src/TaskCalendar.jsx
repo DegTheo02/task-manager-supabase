@@ -172,24 +172,30 @@ export default function TaskCalendar({
           gap: 6
         }}
       >
+
+
         {cells.map((day, i) => {
-          if (!day) return <div key={i} />;
-
-          const count = tasksByDay[day] || 0;
-
-          return (
-            <div
-              key={day}
-              onClick={e => count && onDayClick(day, e)}
-
-              style={{
+                if (!day) return <div key={i} />;
+              
+                const count = tasksByDay[day] || 0;
+              
+                const weekday = getWeekday(day); // 0=Sun ... 6=Sat
+                const isSunday = weekday === 0;
+                const isSaturday = weekday === 6;
+                const todayFlag = isToday(day);
+              
+                return (
+                  <div
+                    key={day}
+                    onClick={e => count && onDayClick(day, e)}
+                    style={{
                       height: 70,
                       borderRadius: 8,
                       cursor: count ? "pointer" : "default",
                       background: todayFlag
                         ? darkMode
-                          ? "#2563eb"   // blue (today, dark)
-                          : "#dbeafe"   // blue (today, light)
+                          ? "#2563eb"     // today dark
+                          : "#dbeafe"     // today light
                         : isSunday || isSaturday
                         ? darkMode
                           ? "rgba(245,158,11,0.15)" // weekend dark
@@ -205,59 +211,45 @@ export default function TaskCalendar({
                       flexDirection: "column",
                       justifyContent: "space-between"
                     }}
-
-            >
-                        
-                        <div
+                  >
+                    {/* Day number + TODAY badge */}
+                    <div
+                      style={{
+                        fontSize: 12,
+                        opacity: 0.6,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
+                      }}
+                    >
+                      <span>{day.slice(-2)}</span>
+              
+                      {todayFlag && (
+                        <span
                           style={{
-                            fontSize: 12,
-                            opacity: 0.6,
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center"
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: darkMode ? "#bbf7d0" : "#166534"
                           }}
                         >
-                          <span>{day.slice(-2)}</span>
-                        
-                          {todayFlag && (
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: "#22c55e"
-                              }}
-                            >
-                              TODAY
-                            </span>
-                          )}
-                        </div>
+                          TODAY
+                        </span>
+                      )}
+                    </div>
+              
+                    {/* Count */}
+                    {count > 0 && (
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 800,
+                          textAlign: "right"
+                        }}
+                      >
+                        {count}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
-
-                {day.slice(-2)}
-              </div>
-
-              {count > 0 && (
-                <div
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 800,
-                    textAlign: "right"
-                  }}
-                >
-                  {count}
-                </div>
-              )}
-            </div>
-          );
-
-        const weekday = getWeekday(day);
-        const isSunday = weekday === 0;
-        const isSaturday = weekday === 6;
-        const todayFlag = isToday(day);
-
-        
-        })}
-      </div>
-    </div>
-  );
-}
