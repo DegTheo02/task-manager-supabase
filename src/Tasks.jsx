@@ -371,20 +371,6 @@ const bV =
           comments: form.comments || null
         };
 
-  const { data, error } = await supabase.from("tasks").insert([payload]);
-
-if (error) {
-  console.group("🚨 Supabase Insert Error");
-  console.error("Message:", error.message);
-  console.error("Details:", error.details);
-  console.error("Hint:", error.hint);
-  console.error("Code:", error.code);
-  console.groupEnd();
-
-  alert("Failed to create recurring task. Check console for details.");
-  return;
-}
-
     
 
 if (isEditing) {
@@ -419,44 +405,44 @@ if (isEditing) {
 
    // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
         if (!recurrence.enabled) {
+
+          console.log("🚀 INSERT PAYLOAD (Non-Recurring)", payload);
+          
           const { error } = await supabase
             .from("tasks")
             .insert(payload);
         
           if (error) {
-            console.error(error);
-            alert("Insert failed");
+            console.group("🚨 Supabase Insert Error (Non-Recurring)");
+            console.error("Message:", error.message);
+            console.error("Details:", error.details);
+            console.error("Hint:", error.hint);
+            console.error("Code:", error.code);
+            console.groupEnd();
+            alert("Insert failed. Check console for details.");
             return;
           }
         
           loadTasks();
           setForm(emptyTask);
-          return; // ⛔️ STOP HERE — do NOT fall into recurring logic
+          return;
         }
 
 
-             
+
+                       
           // 🔁 RECURRING TASK — DATE-BASED
           if (recurrence.enabled) {
             if (!isValid) {
               alert("Please complete recurrence settings");
               return;
             }
-
-            if (recurrence.enabled) {
-              if (!recurrence.startDate || !recurrence.endDate) {
-                alert("Please select a recurrence date range (From / To)");
-                return;
-              }
+          
+            if (!recurrence.startDate || !recurrence.endDate) {
+              alert("Please select a recurrence date range (From / To)");
+              return;
             }
-
-            console.log("RECURRENCE DEBUG", {
-                    recurrence,
-                    occurrences
-                  });
-
-
-            
+          
             if (occurrences.length === 0) {
               alert("No occurrences generated");
               return;
@@ -464,18 +450,29 @@ if (isEditing) {
           
             const firstDate = occurrences[0];
             const nextDate = occurrences.length > 1 ? occurrences[1] : null;
-          console.log(payload)
-            const { error } = await supabase.from("tasks").insert({
+          
+            const recurringPayload = {
               ...payload,
               initial_deadline: firstDate,
               next_occurrence_date: nextDate,
               recurrence_group_id: crypto.randomUUID()
-            });
-
+            };
+          
+            // ✅ CORRECT PLACE FOR LOG
+            console.log("🚀 INSERT PAYLOAD (Recurring)", recurringPayload);
+          
+            const { error } = await supabase
+              .from("tasks")
+              .insert(recurringPayload);
           
             if (error) {
-              console.error(error);
-              alert("Failed to create recurring task");
+              console.group("🚨 Supabase Insert Error (Recurring)");
+              console.error("Message:", error.message);
+              console.error("Details:", error.details);
+              console.error("Hint:", error.hint);
+              console.error("Code:", error.code);
+              console.groupEnd();
+              alert("Failed to create recurring task. Check console for details.");
               return;
             }
           
