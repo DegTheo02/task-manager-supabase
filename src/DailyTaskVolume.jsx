@@ -229,12 +229,27 @@ const chartData = useMemo(() => {
       
       <h1>📊 Daily Task Volume</h1>
 
-      <div style={{
-            ...filterBar,
-            background: darkMode ? "#111" : "#fff",
-            color: darkMode ? "#fff" : "#000",
-            border: darkMode ? "1px solid #444" : "1px solid #ccc"
-            }}>
+      <div 
+        
+  style={{
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    background: darkMode ? "#0f0f0f" : "#f5f5f5",
+    paddingBottom: 12,
+    marginBottom: 16
+  }}
+>
+  <div
+    style={{
+      ...filterBar,
+      background: darkMode ? "#111" : "#fff",
+      border: darkMode ? "1px solid #444" : "1px solid #ccc",
+      borderRadius: 10,
+      padding: 12
+    }}
+        
+        >
         
         <MultiDropdown 
           label="👤 Owner(s)" 
