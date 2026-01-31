@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
+import TaskCalendar from "./TaskCalendar";
 
 import {
   Chart as ChartJS,
@@ -398,6 +399,27 @@ const chartData = useMemo(() => {
             }
           }}
         />
+
+        <TaskCalendar
+          rows={rows}
+          darkMode={darkMode}
+          onDayClick={(day, evt) => {
+            const url =
+              `/tasks?date_from=${day}&date_to=${day}` +
+              `&owners=${filters.owners.join(",")}` +
+              `&teams=${filters.teams.join(",")}` +
+              `&requesters=${filters.requesters.join(",")}` +
+              `&statuses=${filters.statuses.join(",")}`;
+        
+            if (evt.ctrlKey || evt.metaKey) {
+              window.open(url, "_blank");
+            } else {
+              navigate(url);
+            }
+          }}
+        />
+
+        
       </div>
     </div>
   );
