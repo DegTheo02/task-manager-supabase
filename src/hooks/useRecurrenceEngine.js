@@ -57,31 +57,22 @@ const generateOccurrences = recurrence => {
   const results = [];
 
 
-
-   if (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") {
-     let cursor = new Date(start);
-     const step = recurrence.frequency === "biweekly" ? 14 : 7;
-   
-     // find first valid weekday occurrence
-     while (cursor <= end) {
-       if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
-         break;
-       }
-       cursor = addDays(cursor, 1);
-     }
-   
-     // generate occurrences
-     while (cursor <= end) {
-       if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
-         results.push(toISO(cursor));
-       }
-       cursor = addDays(cursor, step);
-     }
-   }
+//WEEKLY SECTION
+         if (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") {
+           let cursor = new Date(start);
+         
+           while (cursor <= end) {
+             if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
+               results.push(toISO(cursor));
+             }
+             cursor = addDays(cursor, 1);
+           }
+         }
 
 
 
-      
+
+      //MONTHLY SECTION
          if (recurrence.frequency === "monthly") {
            let cursor = new Date(start);
          
@@ -94,26 +85,31 @@ const generateOccurrences = recurrence => {
                continue;
              }
          
-             if (rule.type === "dayOfMonth") {
-               date = new Date(cursor);
-             }
-         
-             if (rule.type === "lastWeekday") {
-               date = getLastWeekdayOfMonth(
-                 cursor.getFullYear(),
-                 cursor.getMonth(),
-                 rule.weekday
-               );
-             }
-         
-             if (rule.type === "nthWeekday") {
-               date = getNthWeekdayOfMonth(
-                 cursor.getFullYear(),
-                 cursor.getMonth(),
-                 rule.weekday,
-                 rule.nth
-               );
-             }
+               if (rule.type === "same_day") {
+                 date = new Date(
+                   cursor.getFullYear(),
+                   cursor.getMonth(),
+                   start.getDate()
+                 );
+               }
+               
+               if (rule.type === "last_weekday") {
+                 date = getLastWeekdayOfMonth(
+                   cursor.getFullYear(),
+                   cursor.getMonth(),
+                   rule.weekday
+                 );
+               }
+               
+               if (rule.type === "nth_weekday") {
+                 date = getNthWeekdayOfMonth(
+                   cursor.getFullYear(),
+                   cursor.getMonth(),
+                   rule.weekday,
+                   rule.nth
+                 );
+               }
+
          
              if (date && date >= start && date <= end) {
                results.push(toISO(date));
@@ -151,15 +147,21 @@ export function useRecurrenceEngine({ startDate }) {
     [recurrence]
   );
 
-  const isValid =
-    !recurrence.enabled ||
-    (recurrence.startDate &&
-      recurrence.endDate &&
-      (
-        (recurrence.frequency !== "weekly" &&
-         recurrence.frequency !== "biweekly") ||
-        recurrence.weekly.weekdays.length > 0
-      ));
+const isValid =
+  !recurrence.enabled ||
+  (
+    recurrence.startDate &&
+    recurrence.endDate &&
+    (
+      (recurrence.frequency === "weekly" ||
+       recurrence.frequency === "biweekly")
+        ? recurrence.weekly.weekdays.length > 0
+        : recurrence.frequency === "monthly"
+          ? !!recurrence.monthly
+          : true
+    )
+  );
+
 
   return {
     recurrence,
