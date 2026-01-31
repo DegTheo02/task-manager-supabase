@@ -400,25 +400,27 @@ const chartData = useMemo(() => {
           }}
         />
 
-        <TaskCalendar
-          rows={rows}
-          darkMode={darkMode}
-          onDayClick={(day, evt) => {
-            const url =
-              `/tasks?date_from=${day}&date_to=${day}` +
-              `&owners=${filters.owners.join(",")}` +
-              `&teams=${filters.teams.join(",")}` +
-              `&requesters=${filters.requesters.join(",")}` +
-              `&statuses=${filters.statuses.join(",")}`;
         
-            if (evt.ctrlKey || evt.metaKey) {
-              window.open(url, "_blank");
-            } else {
-              navigate(url);
-            }
-          }}
-        />
-
+                <div style={{ marginTop: 32 }}>
+                <TaskCalendar
+                  rows={rows}
+                  darkMode={darkMode}
+                  onDayClick={(day, evt) => {
+                    const url =
+                      `/tasks?date_from=${day}&date_to=${day}` +
+                      `&owners=${filters.owners.join(",")}` +
+                      `&teams=${filters.teams.join(",")}` +
+                      `&requesters=${filters.requesters.join(",")}` +
+                      `&statuses=${filters.statuses.join(",")}`;
+                
+                    if (evt.ctrlKey || evt.metaKey) {
+                      window.open(url, "_blank");
+                    } else {
+                      navigate(url);
+                    }
+                  }}
+                />
+               </div>
         
       </div>
     </div>
