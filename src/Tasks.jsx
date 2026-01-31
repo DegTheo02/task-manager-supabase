@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { useSearchParams } from "react-router-dom";
-import { addDays, addMonths } from "date-fns";
+
 
 import {
   STATUSES,
@@ -28,6 +28,25 @@ const nextDate = (date, type) => {
       return null;
   }
 };
+
+const addDays = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+const addMonths = (date, months) => {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+
+  // handle month overflow (e.g. Jan 31 → Feb)
+  if (d.getDate() < day) {
+    d.setDate(0);
+  }
+  return d;
+};
+
 
 const getLastWeekdayOfMonth = (year, month, weekday) => {
   const d = new Date(year, month + 1, 0);
