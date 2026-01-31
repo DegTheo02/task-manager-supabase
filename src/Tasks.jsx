@@ -347,14 +347,15 @@ const bV =
             ? recurrence.frequency
             : "Non-Recurring",
           recurrence_rule: recurrence.enabled
-            ? JSON.stringify({
+            ? {
                 frequency: recurrence.frequency,
                 ...(recurrence.frequency === "weekly" ||
                 recurrence.frequency === "biweekly"
                   ? { weekdays: recurrence.weekly.weekdays }
                   : recurrence.monthly)
-              })
+              }
             : null,
+
           assigned_date: form.assigned_date,
           initial_deadline: form.initial_deadline,
           new_deadline: form.new_deadline || null,
@@ -432,17 +433,10 @@ if (isEditing) {
             const { error } = await supabase.from("tasks").insert({
               ...payload,
               initial_deadline: firstDate,
-              recurrence_rule: {
-                frequency: recurrence.frequency,
-                ...(recurrence.frequency === "weekly" ||
-                recurrence.frequency === "biweekly"
-                  ? { weekdays: recurrence.weekly.weekdays }
-                  : recurrence.monthly)
-                                  },
-
               next_occurrence_date: nextDate,
               recurrence_group_id: crypto.randomUUID()
             });
+
           
             if (error) {
               console.error(error);
