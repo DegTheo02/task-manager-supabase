@@ -57,17 +57,70 @@ export default function CalendarHeatmap() {
     end: endOfMonth(currentMonth)
   }), [currentMonth])
 
-  const calendarDays = useMemo(() => {
-  const gridStart = startOfWeek(range.start, { weekStartsOn: 1 }) // Monday
+const calendarDays = useMemo(() => {
+  const gridStart = startOfWeek(range.start, { weekStartsOn: 1 })
   const gridEnd = endOfWeek(range.end, { weekStartsOn: 1 })
 
-  return eachDayOfInterval({ start: gridStart, end: gridEnd }).map(date => ({
-    date: format(date, 'yyyy-MM-dd'),
-    taskCount: 0,           // 🔜 replaced by real data
-    intensity: 0,           // 🔜 replaced later
-    isCurrentMonth: isSameMonth(date, currentMonth)
-  }))
-}, [range, currentMonth])
+  return eachDayOfInterval({ start: gridStart, end: gridEnd }).map(date => {
+    const key = format(date, 'yyyy-MM-dd')
+    const count = countsByDate[key] ?? 0
+
+    return {
+      date: key,
+      taskCount: count,
+      intensity: maxCount === 0 ? 0 : count / maxCount,
+      isCurrentMonth: isSameMonth(date, currentMonth)
+    }
+  })
+}, [range, currentMonth, countsByDate, maxCount])
+
+
+  const maxCount = useMemo(() => {
+  return Math.max(
+    0,
+    ...Object.values(countsByDate)
+  )
+}, [countsByDate])
+
+  
+  const getHeatColor = (intensity: number) => {
+  if (intensity === 0) return '#f5f5f5'
+
+  // green scale (tweak later if needed)
+  return `rgba(34, 197, 94, ${0.2 + intensity * 0.8})`
+}
+
+
+  
+  const buildTasksUrl = (date: string) => {
+  const params = new URLSearchParams()
+
+  // exact day filter
+  params.set('new_deadline', date)
+
+  // reuse existing filters (examples)
+  owners.forEach(o => params.append('owners', o))
+  teams.forEach(t => params.append('teams', t))
+  requesters.forEach(r => params.append('requesters', r))
+  statuses.forEach(s => params.append('statuses', s))
+
+  return `/tasks?${params.toString()}`
+}
+
+
+  const onDayClick = (
+  e: React.MouseEvent,
+  date: string
+) => {
+  const url = buildTasksUrl(date)
+
+  if (e.metaKey || e.ctrlKey) {
+    window.open(url, '_blank')
+  } else {
+    window.location.href = url
+  }
+}
+
 
 
   // 🔜 Data fetching will plug in here
@@ -88,11 +141,25 @@ export default function CalendarHeatmap() {
     <div key={d} className="calendar-weekday">{d}</div>
   ))}
 
-  {calendarDays.map(day => (
-    <div
+  {.map(day => (
+
+
+      <div
       key={day.date}
       className={`calendar-cell ${day.isCurrentMonth ? '' : 'is-muted'}`}
-    >
+      style={
+        day.isCurrentMonth
+          ? { backgroundColor: getHeatColor(day.intensity), cursor: 'pointer' }
+          : undefined
+      }
+      onClick={
+        day.isCurrentMonth
+          ? (e) => onDayClick(e, day.date)
+          : undefined
+         }
+         >
+
+
       <div className="day-number">
         {day.isCurrentMonth ? day.date.slice(-2) : ''}
       </div>
