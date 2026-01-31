@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { useSearchParams } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
 import { addDays, addMonths } from "date-fns";
 
 import {
@@ -181,7 +180,7 @@ export default function Tasks() {
       }
     } else {
       if (isRecurring && repeatTo && form.recurrence_type !== "Non-Recurring") {
-        const groupId = uuidv4();
+        const groupId = crypto.randomUUID();
         let cursor = new Date(form.initial_deadline);
         const end = new Date(repeatTo);
         const rows = [];
