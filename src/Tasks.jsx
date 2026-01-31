@@ -4,6 +4,8 @@ import Navbar from "./Navbar";
 import { useSearchParams } from "react-router-dom";
 
 
+
+
 import {
   STATUSES,
   OWNERS,
@@ -33,7 +35,68 @@ const normalizeTaskDates = task => ({
   closing_date: toISODate(task.closing_date)
 });
 
+const WEEKDAYS = [
+  { label: "Sun", value: 0 },
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 }
+];
 
+  const nextDate = (date, type) => {
+    switch (type) {
+      case "Weekly":
+        return addDays(date, 7);
+      case "Bi-Weekly":
+        return addDays(date, 14);
+      case "Monthly":
+        return addMonths(date, 1);
+      default:
+        return null;
+    }
+  };
+
+    const getLastWeekdayOfMonth = (year, month, weekday) => {
+      const d = new Date(year, month + 1, 0); // last day
+      while (d.getDay() !== weekday) {
+        d.setDate(d.getDate() - 1);
+      }
+      return d;
+    };
+    
+    const getNthWeekdayOfMonth = (year, month, weekday, nth) => {
+      const d = new Date(year, month, 1);
+      let count = 0;
+    
+      while (d.getMonth() === month) {
+        if (d.getDay() === weekday) {
+          count++;
+          if (count === nth) return new Date(d);
+        }
+        d.setDate(d.getDate() + 1);
+      }
+      return null;
+    };
+
+const addDays = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+const addMonths = (date, months) => {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+
+  // handle month overflow (e.g. Jan 31 → Feb)
+  if (d.getDate() < day) {
+    d.setDate(0);
+  }
+  return d;
+};
 
 
 /* ----------------------------------
@@ -43,6 +106,14 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
+
+  // 🔁 RECURRENCE STATE
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [repeatDays, setRepeatDays] = useState([]); // 0=Sun ... 6=Sat
+  const [repeatFrom, setRepeatFrom] = useState("");
+  const [repeatTo, setRepeatTo] = useState("");
+  
+  const [editSeries, setEditSeries] = useState(false);
   
   const [searchParams] = useSearchParams();
 
@@ -261,6 +332,20 @@ const bV =
   const arrow = key =>
     sortConfig.key === key ? (sortConfig.direction === "asc" ? " ↑" : " ↓") : "";
 
+  function generateRecurringDates(from, to, weekdays) {
+  const dates = [];
+  const start = new Date(from);
+  const end = new Date(to);
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (weekdays.includes(d.getDay())) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+  }
+  return dates;
+}
+
+  
   /* SAVE TASK */
   const saveTask = async () => {
     if (
@@ -299,21 +384,138 @@ const payload = {
 };
 
 
-if (isEditing) {
-  const { error } = await supabase
-    .from("tasks")
-    .update(payload)
-    .eq("id", form.id);
+    if (form.recurrence_type === "Monthly") {
+  let cursor = new Date(form.initial_deadline);
+  const end = new Date(repeatTo);
 
-  if (error) {
-    console.error("Update failed:", error);
-    alert("Update failed. Check console.");
-    return;
+  while (cursor <= end) {
+    let occurrenceDate;
+
+    if (form.recurrence_rule === "DAY_OF_MONTH") {
+      occurrenceDate = cursor;
+    }
+
+    if (form.recurrence_rule === "LAST_WEEKDAY") {
+      occurrenceDate = getLastWeekdayOfMonth(
+        cursor.getFullYear(),
+        cursor.getMonth(),
+        form.recurrence_weekday
+      );
+    }
+
+    if (form.recurrence_rule === "NTH_WEEKDAY") {
+      occurrenceDate = getNthWeekdayOfMonth(
+        cursor.getFullYear(),
+        cursor.getMonth(),
+        form.recurrence_weekday,
+        form.recurrence_nth
+      );
+    }
+
+    if (occurrenceDate && occurrenceDate <= end) {
+      rows.push({
+        ...basePayload,
+        recurrence_group_id: groupId,
+        recurrence_rule: form.recurrence_rule,
+        recurrence_weekday: form.recurrence_weekday,
+        recurrence_nth: form.recurrence_nth,
+        initial_deadline: occurrenceDate.toISOString().slice(0, 10)
+      });
+    }
+
+    cursor = addMonths(cursor, 1);
   }
-} else {
-  const { error } = await supabase
-    .from("tasks")
-    .insert(payload);
+}
+
+
+if (isEditing) {
+  if (editSeries && form.recurrence_group_id) {
+    // 🔁 UPDATE ALL IN SERIES
+    const { error } = await supabase
+      .from("tasks")
+      .update(payload)
+      .eq("recurrence_group_id", form.recurrence_group_id);
+
+    if (error) {
+      alert("Failed to update series");
+      return;
+    }
+  } else {
+    // ✏️ UPDATE SINGLE TASK
+    const { error } = await supabase
+      .from("tasks")
+      .update(payload)
+      .eq("id", form.id);
+
+    if (error) {
+      alert("Update failed");
+      return;
+    }
+  }
+}
+ else {
+      // --------------------------------
+      // SAVE TASK (single or recurring)
+      // --------------------------------
+        if (isRecurring) {
+                  if (!repeatTo) {
+          alert("Please select a recurrence end date");
+          return;
+                }
+
+          const groupId = crypto.randomUUID();
+        
+          let cursor = new Date(form.initial_deadline);
+          const end = new Date(repeatTo);
+        
+          const tasksToInsert = [];
+        
+          while (cursor <= end) {
+            tasksToInsert.push({
+              title: form.title,
+              owner: form.owner,
+              team: form.team,
+              requester: form.requester,
+              status: form.status,
+              recurrence_type: form.recurrence_type, // Weekly / Bi-Weekly / Monthly
+              recurrence_group_id: groupId,
+              assigned_date: form.assigned_date,
+              initial_deadline: cursor.toISOString().slice(0, 10),
+              new_deadline: null,
+              closing_date: null,
+              comments: form.comments || null
+            });
+        
+            const next = nextDate(cursor, form.recurrence_type);
+            if (!next) break;
+        
+            cursor = next;
+          }
+        
+          const { error } = await supabase
+            .from("tasks")
+            .insert(tasksToInsert);
+        
+          if (error) {
+            alert("Failed to create recurring tasks");
+            return;
+          }
+        
+          loadTasks();
+          setForm(emptyTask);
+          return;
+        }
+ else {
+        const { error } = await supabase
+          .from("tasks")
+          .insert(payload);
+      
+        if (error) {
+          console.error(error);
+          alert("Insert failed");
+          return;
+        }
+      }
 
   if (error) {
     console.error("Insert failed:", error);
@@ -325,7 +527,12 @@ if (isEditing) {
 
     setForm(emptyTask);
     setIsEditing(false);
+    setIsRecurring(false);
+    setRepeatDays([]);
+    setRepeatFrom("");
+    setRepeatTo("");
     loadTasks();
+
 /*
      if (!isEditing) {
   resetTableFilters(); // only clear filters on Create
@@ -349,18 +556,37 @@ if (isEditing) {
   };
 
   /* DELETE TASK */
-  const deleteTask = async id => {
-    if (!window.confirm("Delete this task?")) return;
-    await supabase.from("tasks").delete().eq("id", id);
-    loadTasks();
-  };
+    const deleteTask = async (task, deleteFuture = false) => {
+      if (!window.confirm("Confirm delete?")) return;
+    
+      if (deleteFuture && task.recurrence_group_id) {
+        const cutoff = task.new_deadline || task.initial_deadline;
+    
+        const { error } = await supabase
+          .from("tasks")
+          .delete()
+          .eq("recurrence_group_id", task.recurrence_group_id)
+          .gte("initial_deadline", cutoff);
+    
+        if (error) {
+          alert("Failed to delete future occurrences");
+          return;
+        }
+      } else {
+        await supabase.from("tasks").delete().eq("id", task.id);
+      }
+    
+      loadTasks();
+    };
 
-const editTask = task => {
+
+const editTask = (task, editSeries = false) => {
   setForm({
     ...normalizeTaskDates(task),
     comments: task.comments || ""
   });
   setIsEditing(true);
+  setEditSeries(editSeries);
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
@@ -523,6 +749,137 @@ return (
             </select>
           </label>
 
+
+          {isRecurring && form.recurrence_type === "Monthly" && (
+                <div
+                  style={{
+                    gridColumn: "span 9",
+                    padding: 12,
+                    border: "1px dashed #999",
+                    borderRadius: 6
+                  }}
+                >
+                  <strong>Monthly rule</strong>
+              
+                  <label>
+                    <input
+                      type="radio"
+                      checked={form.recurrence_rule === "DAY_OF_MONTH"}
+                      onChange={() =>
+                        setForm(f => ({ ...f, recurrence_rule: "DAY_OF_MONTH" }))
+                      }
+                    />
+                    Same day each month
+                  </label>
+              
+                  <label>
+                    <input
+                      type="radio"
+                      checked={form.recurrence_rule === "LAST_WEEKDAY"}
+                      onChange={() =>
+                        setForm(f => ({
+                          ...f,
+                          recurrence_rule: "LAST_WEEKDAY",
+                          recurrence_weekday: new Date(
+                            form.initial_deadline
+                          ).getDay()
+                        }))
+                      }
+                    />
+                    Last weekday of month
+                  </label>
+              
+                  <label>
+                    <input
+                      type="radio"
+                      checked={form.recurrence_rule === "NTH_WEEKDAY"}
+                      onChange={() =>
+                        setForm(f => ({
+                          ...f,
+                          recurrence_rule: "NTH_WEEKDAY",
+                          recurrence_weekday: new Date(
+                            form.initial_deadline
+                          ).getDay(),
+                          recurrence_nth: Math.ceil(
+                            new Date(form.initial_deadline).getDate() / 7
+                          )
+                        }))
+                      }
+                    />
+                    Nth weekday of month
+                  </label>
+                </div>
+              )}
+              
+
+
+          
+          <label style={formLabel}>
+          <input
+            type="checkbox"
+            checked={isRecurring}
+            onChange={e => setIsRecurring(e.target.checked)}
+          />
+          Recurring task
+        </label>
+        
+        {isRecurring && (
+          <div
+            style={{
+              gridColumn: "span 9",
+              padding: 12,
+              border: "1px dashed #999",
+              borderRadius: 6
+            }}
+          >
+            <div style={{ marginBottom: 10, fontWeight: 700 }}>
+              Repeat on
+            </div>
+        
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              {WEEKDAYS.map(d => (
+                <label key={d.value}>
+                  <input
+                    type="checkbox"
+                    checked={repeatDays.includes(d.value)}
+                    onChange={() =>
+                      setRepeatDays(prev =>
+                        prev.includes(d.value)
+                          ? prev.filter(x => x !== d.value)
+                          : [...prev, d.value]
+                      )
+                    }
+                  />
+                  {d.label}
+                </label>
+              ))}
+            </div>
+        
+            <div style={{ display: "flex", gap: 12 }}>
+              <label>
+                From
+                <input
+                  type="date"
+                  value={repeatFrom}
+                  onChange={e => setRepeatFrom(e.target.value)}
+                />
+              </label>
+        
+              <label>
+                To
+                <input
+                  type="date"
+                  value={repeatTo}
+                  onChange={e => setRepeatTo(e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+        )}
+        
+        
+                  
+          
              <label style={formLabel}>
             Closing Date
             <input
@@ -880,8 +1237,40 @@ return (
                 <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
                 <td style={{ ...td(darkMode), fontSize: "5px"}}>
-                  <button style={{ fontSize: "10px", padding: "4px 4px" }} onClick={() => editTask(t)}>Edit</button>{" "}
-                  <button style={{ fontSize: "10px", padding: "4px 4px" }} onClick={() => deleteTask(t.id)}>Delete</button>
+                  <button 
+                    style={{ fontSize: "10px", padding: "4px 4px" }} 
+                   
+                      onClick={() => {
+                        if (t.recurrence_group_id) {
+                          const applyToSeries = window.confirm(
+                            "This is a recurring task.\n\nOK = Edit entire series\nCancel = Edit only this task"
+                          );
+                    
+                          editTask(t, applyToSeries);
+                        } else {
+                          editTask(t, false);
+                        }
+                      }}
+                    >
+                      Edit
+                  </button>{" "}
+                  
+                  <button 
+                    style={{ fontSize: "10px", padding: "4px 4px" }} 
+                      onClick={() => {
+                        if (t.recurrence_group_id) {
+                          const choice = window.confirm(
+                            "OK = Delete this and all future occurrences\nCancel = Delete only this task"
+                          );
+                    
+                          deleteTask(t, choice);
+                        } else {
+                          deleteTask(t, false);
+                        }
+                      }}
+                    >
+                      Delete
+                  </button>
                 </td>
 
               </tr>
