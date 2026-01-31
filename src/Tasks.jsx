@@ -45,7 +45,8 @@ export default function Tasks() {
   const [filterKey, setFilterKey] = useState(0);
   
   const [searchParams] = useSearchParams();
-  
+
+  const statusesParam = searchParams.get("statuses");
   const status = searchParams.get("status");
   const dateFrom = searchParams.get("date_from");
   const dateTo = searchParams.get("date_to");
@@ -93,17 +94,30 @@ const [filters, setFilters] = useState(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
 
-  useEffect(() => {
-    setFilters(f => ({
-      ...f,
-      statuses: status ? [status] : [],
-      deadline_from: dateFrom || "",
-      deadline_to: dateTo || "",
-      owners: ownersParam ? ownersParam.split(",") : [],
-      teams: teamsParam ? teamsParam.split(",") : [],
-      requesters: requestersParam ? requestersParam.split(",") : []
-    }));
-  }, [status, dateFrom, dateTo, ownersParam, teamsParam, requestersParam]);
+useEffect(() => {
+  setFilters(f => ({
+    ...f,
+    statuses: statusesParam
+      ? statusesParam.split(",")
+      : status
+      ? [status]
+      : [],
+    deadline_from: dateFrom || "",
+    deadline_to: dateTo || "",
+    owners: ownersParam ? ownersParam.split(",") : [],
+    teams: teamsParam ? teamsParam.split(",") : [],
+    requesters: requestersParam ? requestersParam.split(",") : []
+  }));
+}, [
+  status,
+  statusesParam,
+  dateFrom,
+  dateTo,
+  ownersParam,
+  teamsParam,
+  requestersParam
+]);
+
 
 
   
