@@ -13,7 +13,7 @@ const isToday = iso => {
   return iso === toLocalISO(new Date());
 };
 
-export default function TaskCalendar({ rows, darkMode, onDayClick }) {
+export default function TaskCalendar({ rows, darkMode,statuses, onDayClick }) {
   /* ===============================
      MONTH STATE
   ================================ */
