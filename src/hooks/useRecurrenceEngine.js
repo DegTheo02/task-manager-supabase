@@ -1,10 +1,8 @@
-// src/hooks/useRecurrenceEngine.js
 import { useMemo, useState, useEffect } from "react";
 
-
-/* -------------------------------
-   DATE HELPERS (NO DEPENDENCIES)
--------------------------------- */
+/* ================================
+   DATE HELPERS (PRIVATE)
+================================ */
 
 const addDays = (date, days) => {
   const d = new Date(date);
@@ -17,10 +15,8 @@ const addMonths = (date, months) => {
   const day = d.getDate();
   d.setMonth(d.getMonth() + months);
 
-  // handle month overflow (Jan 31 → Feb)
-  if (d.getDate() < day) {
-    d.setDate(0);
-  }
+  // Handle month overflow (e.g. Jan 31 → Feb)
+  if (d.getDate() < day) d.setDate(0);
   return d;
 };
 
@@ -48,97 +44,101 @@ const getNthWeekdayOfMonth = (year, month, weekday, nth) => {
 
 const toISO = d => d.toISOString().slice(0, 10);
 
+/* ================================
+   CORE ENGINE (PRIVATE)
+================================ */
 
 const generateOccurrences = recurrence => {
   if (!recurrence.enabled) return [];
 
+  if (!recurrence.startDate || !recurrence.endDate) return [];
+
   const start = new Date(recurrence.startDate);
   const end = new Date(recurrence.endDate);
+
+  if (isNaN(start) || isNaN(end) || start > end) return [];
+
   const results = [];
 
+  /* WEEKLY / BIWEEKLY */
+  if (
+    recurrence.frequency === "weekly" ||
+    recurrence.frequency === "biweekly"
+  ) {
+    let cursor = new Date(start);
 
-//WEEKLY SECTION
-         if (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") {
-           let cursor = new Date(start);
-         
-           while (cursor <= end) {
-             if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
-               results.push(toISO(cursor));
-             }
-             cursor = addDays(cursor, 1);
-           }
-         }
+    while (cursor <= end) {
+      if (recurrence.weekly.weekdays.includes(cursor.getDay())) {
+        results.push(toISO(cursor));
+      }
+      cursor = addDays(cursor, 1);
+    }
+  }
 
+  /* MONTHLY */
+  if (recurrence.frequency === "monthly") {
+    let cursor = new Date(start);
+    const rule = recurrence.monthly;
 
+    while (cursor <= end) {
+      let date = null;
 
+      if (!rule) {
+        cursor = addMonths(cursor, 1);
+        continue;
+      }
 
-      //MONTHLY SECTION
-         if (recurrence.frequency === "monthly") {
-           let cursor = new Date(start);
-         
-           while (cursor <= end) {
-             let date = null;
-             const rule = recurrence.monthly;
-         
-             if (!rule) {
-               cursor = addMonths(cursor, 1);
-               continue;
-             }
-         
-               if (rule.type === "day_of_month") {
-                 date = new Date(
-                   cursor.getFullYear(),
-                   cursor.getMonth(),
-                   rule.day
-                 );
-               }
+      if (rule.type === "day_of_month") {
+        date = new Date(
+          cursor.getFullYear(),
+          cursor.getMonth(),
+          rule.day
+        );
+      }
 
-               
-               if (rule.type === "last_weekday") {
-                 date = getLastWeekdayOfMonth(
-                   cursor.getFullYear(),
-                   cursor.getMonth(),
-                   rule.weekday
-                 );
-               }
-               
-               if (rule.type === "nth_weekday") {
-                 date = getNthWeekdayOfMonth(
-                   cursor.getFullYear(),
-                   cursor.getMonth(),
-                   rule.weekday,
-                   rule.nth
-                 );
-               }
+      if (rule.type === "last_weekday") {
+        date = getLastWeekdayOfMonth(
+          cursor.getFullYear(),
+          cursor.getMonth(),
+          rule.weekday
+        );
+      }
 
-         
-             if (date && date >= start && date <= end) {
-               results.push(toISO(date));
-             }
-         
-             cursor = addMonths(cursor, 1);
-           }
-         }
+      if (rule.type === "nth_weekday") {
+        date = getNthWeekdayOfMonth(
+          cursor.getFullYear(),
+          cursor.getMonth(),
+          rule.weekday,
+          rule.nth
+        );
+      }
 
-   
+      if (date && date >= start && date <= end) {
+        results.push(toISO(date));
+      }
+
+      cursor = addMonths(cursor, 1);
+    }
+  }
 
   return results;
 };
 
+/* ================================
+   PUBLIC HOOK
+================================ */
 
 export function useRecurrenceEngine({ startDate }) {
   const [recurrence, setRecurrence] = useState({
     enabled: false,
-    frequency: "weekly", // weekly | biweekly | monthly
+    frequency: "weekly",
     startDate,
     endDate: "",
-    weekly: {
-      weekdays: []
-    },
-    monthly: { type: "same_day" }
+    weekly: { weekdays: [] },
+    monthly: null
   });
 
-  // keep startDate in sync with form
+  // Keep startDate in sync with form
   useEffect(() => {
     setRecurrence(r => ({ ...r, startDate }));
   }, [startDate]);
@@ -148,22 +148,17 @@ export function useRecurrenceEngine({ startDate }) {
     [recurrence]
   );
 
-const isValid =
-  !recurrence.enabled ||
-  (
-    recurrence.startDate &&
-    recurrence.endDate &&
+  const isValid =
+    !recurrence.enabled ||
     (
-      (recurrence.frequency === "weekly" ||
-       recurrence.frequency === "biweekly")
-        ? recurrence.weekly.weekdays.length > 0
-        : recurrence.frequency === "monthly"
+      recurrence.startDate &&
+      recurrence.endDate &&
+      (
+        recurrence.frequency === "monthly"
           ? true
-          : true
-    )
-  );
-
-
+          : recurrence.weekly.weekdays.length > 0
+      )
+    );
 
   return {
     recurrence,
@@ -172,5 +167,3 @@ const isValid =
     isValid
   };
 }
-
-
