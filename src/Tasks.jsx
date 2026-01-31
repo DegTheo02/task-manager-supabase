@@ -363,33 +363,60 @@ if (isEditing) {
       // SAVE TASK (single or recurring)
       // --------------------------------
 
-         if (recurrence.enabled) {
-          if (!isValid) {
-            alert("Invalid recurrence configuration");
-            return;
-          }
-        
-          const groupId = crypto.randomUUID();
-        
-          const tasksToInsert = occurrences.map(date => ({
-            ...payload,
-            recurrence_group_id: groupId,
-            initial_deadline: date
-          }));
-        
+   // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
+        if (!recurrence.enabled) {
           const { error } = await supabase
             .from("tasks")
-            .insert(tasksToInsert);
+            .insert(payload);
         
           if (error) {
-            alert("Failed to create recurring tasks");
+            console.error(error);
+            alert("Insert failed");
             return;
           }
         
           loadTasks();
           setForm(emptyTask);
-          return;
+          return; // ⛔️ STOP HERE — do NOT fall into recurring logic
         }
+
+
+   
+          // 🔁 RECURRING TASK
+          if (recurrence.enabled) {
+            if (!isValid) {
+              alert("Please complete recurrence settings (days and end date).");
+              return;
+            }
+          
+            if (occurrences.length === 0) {
+              alert("No occurrences generated. Check recurrence configuration.");
+              return;
+            }
+          
+            const groupId = crypto.randomUUID();
+          
+            const tasksToInsert = occurrences.map(date => ({
+              ...payload,
+              recurrence_group_id: groupId,
+              initial_deadline: date
+            }));
+          
+            const { error } = await supabase
+              .from("tasks")
+              .insert(tasksToInsert);
+          
+            if (error) {
+              console.error(error);
+              alert("Failed to create recurring tasks");
+              return;
+            }
+          
+            loadTasks();
+            setForm(emptyTask);
+            return;
+          }
+
 
      
  else {
@@ -403,12 +430,6 @@ if (isEditing) {
           return;
         }
       }
-
-  if (error) {
-    console.error("Insert failed:", error);
-    alert("Insert failed. Check console.");
-    return;
-  }
 }
 
 
@@ -1083,42 +1104,40 @@ return (
 
                 <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
-                <td style={{ ...td(darkMode), fontSize: "5px"}}>
-                  <button 
-                    style={{ fontSize: "10px", padding: "4px 4px" }} 
-                   
-                      onClick={() => {
-                        if (t.recurrence_group_id) {
-                          const applyToSeries = window.confirm(
-                            "This is a recurring task.\n\nOK = Edit entire series\nCancel = Edit only this task"
-                          );
-                    
-                          editTask(t, applyToSeries);
-                        } else {
-                          editTask(t, false);
-                        }
-                      }}
+                <td style={{ ...td(darkMode), fontSize: "5px"}}>    
+                <button
+                  onClick={() => editTask(t, false)}
+                  style={{ fontSize: "10px" }}
+                >
+                  Edit
+                </button>
+              
+                {t.recurrence_group_id && (
+                  <>
+                    <button
+                      onClick={() => editTask(t, true)}
+                      style={{ fontSize: "10px", marginLeft: 4 }}
                     >
-                      Edit
-                  </button>{" "}
-                  
-                  <button 
-                    style={{ fontSize: "10px", padding: "4px 4px" }} 
-                      onClick={() => {
-                        if (t.recurrence_group_id) {
-                          const choice = window.confirm(
-                            "OK = Delete this and all future occurrences\nCancel = Delete only this task"
-                          );
-                    
-                          deleteTask(t, choice);
-                        } else {
-                          deleteTask(t, false);
-                        }
-                      }}
+                      Edit Series
+                    </button>
+              
+                    <button
+                      onClick={() => deleteTask(t, true)}
+                      style={{ fontSize: "10px", marginLeft: 4 }}
                     >
-                      Delete
-                  </button>
-                </td>
+                      Delete Series
+                    </button>
+                  </>
+                )}
+              
+                <button
+                  onClick={() => deleteTask(t, false)}
+                  style={{ fontSize: "10px", marginLeft: 4 }}
+                >
+                  Delete
+                </button>
+              </td>
+
 
               </tr>
             ))}
