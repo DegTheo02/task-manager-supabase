@@ -45,18 +45,7 @@ const WEEKDAYS = [
   { label: "Sat", value: 6 }
 ];
 
-  const nextDate = (date, type) => {
-    switch (type) {
-      case "Weekly":
-        return addDays(date, 7);
-      case "Bi-Weekly":
-        return addDays(date, 14);
-      case "Monthly":
-        return addMonths(date, 1);
-      default:
-        return null;
-    }
-  };
+
 
     const getLastWeekdayOfMonth = (year, month, weekday) => {
       const d = new Date(year, month + 1, 0); // last day
@@ -97,6 +86,19 @@ const addMonths = (date, months) => {
   }
   return d;
 };
+
+  const nextDate = (date, type) => {
+    switch (type) {
+      case "Weekly":
+        return addDays(date, 7);
+      case "Bi-Weekly":
+        return addDays(date, 14);
+      case "Monthly":
+        return addMonths(date, 1);
+      default:
+        return null;
+    }
+  };
 
 
 /* ----------------------------------
@@ -383,49 +385,77 @@ const payload = {
   comments: form.comments || null
 };
 
-
-    if (form.recurrence_type === "Monthly") {
-  let cursor = new Date(form.initial_deadline);
-  const end = new Date(repeatTo);
-
-  while (cursor <= end) {
-    let occurrenceDate;
-
-    if (form.recurrence_rule === "DAY_OF_MONTH") {
-      occurrenceDate = cursor;
+    
+    if (isRecurring && form.recurrence_type === "Monthly") {
+      if (!repeatTo) {
+        alert("Please select an end date");
+        return;
+      }
+    
+      const groupId = crypto.randomUUID();
+      const tasksToInsert = [];
+    
+      let cursor = new Date(form.initial_deadline);
+      const end = new Date(repeatTo);
+    
+      while (cursor <= end) {
+        let occurrenceDate = null;
+    
+        if (form.recurrence_rule === "DAY_OF_MONTH") {
+          occurrenceDate = new Date(cursor);
+        }
+    
+        if (form.recurrence_rule === "LAST_WEEKDAY") {
+          occurrenceDate = getLastWeekdayOfMonth(
+            cursor.getFullYear(),
+            cursor.getMonth(),
+            form.recurrence_weekday
+          );
+        }
+    
+        if (form.recurrence_rule === "NTH_WEEKDAY") {
+          occurrenceDate = getNthWeekdayOfMonth(
+            cursor.getFullYear(),
+            cursor.getMonth(),
+            form.recurrence_weekday,
+            form.recurrence_nth
+          );
+        }
+    
+        if (occurrenceDate && occurrenceDate <= end) {
+          tasksToInsert.push({
+            title: form.title,
+            owner: form.owner,
+            team: form.team,
+            requester: form.requester,
+            status: form.status,
+            recurrence_type: "Monthly",
+            recurrence_rule: form.recurrence_rule,
+            recurrence_weekday: form.recurrence_weekday,
+            recurrence_nth: form.recurrence_nth,
+            recurrence_group_id: groupId,
+            assigned_date: form.assigned_date,
+            initial_deadline: occurrenceDate.toISOString().slice(0, 10),
+            new_deadline: null,
+            closing_date: null,
+            comments: form.comments || null
+          });
+        }
+    
+        cursor = addMonths(cursor, 1);
+      }
+    
+      const { error } = await supabase.from("tasks").insert(tasksToInsert);
+      if (error) {
+        alert("Failed to create monthly recurring tasks");
+        return;
+      }
+    
+      loadTasks();
+      setForm(emptyTask);
+      return;
     }
 
-    if (form.recurrence_rule === "LAST_WEEKDAY") {
-      occurrenceDate = getLastWeekdayOfMonth(
-        cursor.getFullYear(),
-        cursor.getMonth(),
-        form.recurrence_weekday
-      );
-    }
-
-    if (form.recurrence_rule === "NTH_WEEKDAY") {
-      occurrenceDate = getNthWeekdayOfMonth(
-        cursor.getFullYear(),
-        cursor.getMonth(),
-        form.recurrence_weekday,
-        form.recurrence_nth
-      );
-    }
-
-    if (occurrenceDate && occurrenceDate <= end) {
-      rows.push({
-        ...basePayload,
-        recurrence_group_id: groupId,
-        recurrence_rule: form.recurrence_rule,
-        recurrence_weekday: form.recurrence_weekday,
-        recurrence_nth: form.recurrence_nth,
-        initial_deadline: occurrenceDate.toISOString().slice(0, 10)
-      });
-    }
-
-    cursor = addMonths(cursor, 1);
-  }
-}
 
 
 if (isEditing) {
