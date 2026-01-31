@@ -3,9 +3,14 @@ import React, { useMemo, useState } from "react";
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const normalizeDay = d => d?.split("T")?.[0];
 
+// ✅ LOCAL date formatter (NO UTC)
+const toLocalISO = d =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+
 const isToday = iso => {
-  const today = new Date().toISOString().slice(0, 10);
-  return iso === today;
+  return iso === toLocalISO(new Date());
 };
 
 export default function TaskCalendar({ rows, darkMode, onDayClick }) {
@@ -51,7 +56,7 @@ export default function TaskCalendar({ rows, darkMode, onDayClick }) {
   const maxCount = Math.max(0, ...Object.values(tasksByDay));
 
   /* ===============================
-     BUILD FULL CALENDAR GRID (REAL DATES)
+     BUILD FULL CALENDAR GRID (LOCAL DATES)
   ================================ */
   const first = new Date(startOfMonth);
   const firstWeekday = first.getDay() === 0 ? 6 : first.getDay() - 1;
@@ -151,7 +156,7 @@ export default function TaskCalendar({ rows, darkMode, onDayClick }) {
         }}
       >
         {cells.map(date => {
-          const iso = date.toISOString().slice(0, 10);
+          const iso = toLocalISO(date);
           const isOutsideMonth = date.getMonth() !== month;
           const count = tasksByDay[iso] || 0;
 
