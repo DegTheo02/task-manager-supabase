@@ -309,6 +309,12 @@ const bV =
       return;
     }
 
+      /* ADDED VALIDATION: Check if recurrence data is valid */
+  if (recurrence.enabled && !isValid) {
+    alert("The recurrence rule is invalid. Please check the dates and frequency settings.");
+    return;
+  }
+
     const normalizedClosingDate =
     form.closing_date === "" ? null : form.closing_date;
 
@@ -365,7 +371,13 @@ const bV =
           comments: form.comments || null
         };
 
+  const { data, error } = await supabase.from("tasks").insert([payload]);
 
+  if (error) {
+    console.error("Supabase error:", error); // Log the specific error details
+    alert("Failed to create recurring task. Check console for details.");
+    return;
+  }
     
 
 if (isEditing) {
@@ -445,7 +457,7 @@ if (isEditing) {
           
             const firstDate = occurrences[0];
             const nextDate = occurrences.length > 1 ? occurrences[1] : null;
-          
+          console.log(payload)
             const { error } = await supabase.from("tasks").insert({
               ...payload,
               initial_deadline: firstDate,
