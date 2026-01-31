@@ -375,7 +375,7 @@ export default function DailyTaskVolume() {
           borderRadius: 10,
           padding: 12,
           marginBottom: 40,
-          marginTop: 80
+          marginTop: 100
         }}
       >
         <Bar
