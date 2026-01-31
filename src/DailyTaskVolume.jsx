@@ -239,11 +239,14 @@ export default function DailyTaskVolume() {
       <div
         style={{
           position: "sticky",
-          top: 0,
+          top: 40,
           zIndex: 100,
           background: darkMode ? "#0f0f0f" : "#f5f5f5",
           paddingBottom: 12,
-          marginBottom: 20
+          marginBottom: 20,
+          borderBottom: darkMode
+            ? "1px solid #222"
+            : "1px solid #ddd"
         }}
       >
         <div
