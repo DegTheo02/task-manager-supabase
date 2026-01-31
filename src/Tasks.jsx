@@ -731,7 +731,7 @@ return (
               }
             />
           </label>
-
+          {/*
           <label style={formLabel}>
             Recurrence Type
             <select
@@ -747,7 +747,7 @@ return (
                 </option>
               ))}
             </select>
-          </label>
+          </label> */}
 
 
           {isRecurring && form.recurrence_type === "Monthly" && (
