@@ -65,7 +65,10 @@ export default function TaskCalendar({
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
 
-  const startOffset = (firstDay.getDay() + 6) % 7; // Monday start
+  const startOffset = firstDay.getDay() === 0
+  ? 6   // Sunday → last column
+  : firstDay.getDay() - 1;
+
   const daysInMonth = lastDay.getDate();
 
   const cells = [];
