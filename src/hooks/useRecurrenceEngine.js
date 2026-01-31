@@ -76,50 +76,39 @@ const generateOccurrences = recurrence => {
   }
 
   /* MONTHLY */
-  if (recurrence.frequency === "monthly") {
-    let cursor = new Date(start);
-    const rule = recurrence.monthly;
+   if (recurrence.frequency === "monthly") {
+     const rule = recurrence.monthly;
+   
+     // iterate by month, not by date
+     let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+   
+     while (cursor <= end) {
+       let date = null;
+       const year = cursor.getFullYear();
+       const month = cursor.getMonth();
+   
+       if (rule.type === "day_of_month") {
+         const lastDay = new Date(year, month + 1, 0).getDate();
+         const day = Math.min(rule.day, lastDay);
+         date = new Date(year, month, day);
+       }
+   
+       if (rule.type === "last_weekday") {
+         date = getLastWeekdayOfMonth(year, month, rule.weekday);
+       }
+   
+       if (rule.type === "nth_weekday") {
+         date = getNthWeekdayOfMonth(year, month, rule.weekday, rule.nth);
+       }
+   
+       if (date && date >= start && date <= end) {
+         results.push(toISO(date));
+       }
+   
+       cursor.setMonth(cursor.getMonth() + 1);
+     }
+   }
 
-    while (cursor <= end) {
-      let date = null;
-
-      if (!rule) {
-        cursor = addMonths(cursor, 1);
-        continue;
-      }
-
-      if (rule.type === "day_of_month") {
-        date = new Date(
-          cursor.getFullYear(),
-          cursor.getMonth(),
-          rule.day
-        );
-      }
-
-      if (rule.type === "last_weekday") {
-        date = getLastWeekdayOfMonth(
-          cursor.getFullYear(),
-          cursor.getMonth(),
-          rule.weekday
-        );
-      }
-
-      if (rule.type === "nth_weekday") {
-        date = getNthWeekdayOfMonth(
-          cursor.getFullYear(),
-          cursor.getMonth(),
-          rule.weekday,
-          rule.nth
-        );
-      }
-
-      if (date && date >= start && date <= end) {
-        results.push(toISO(date));
-      }
-
-      cursor = addMonths(cursor, 1);
-    }
-  }
 
   return results;
 };
