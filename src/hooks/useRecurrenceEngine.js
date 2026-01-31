@@ -134,7 +134,7 @@ export function useRecurrenceEngine({ startDate }) {
     weekly: {
       weekdays: []
     },
-    monthly: null
+    monthly: { type: "same_day" }
   });
 
   // keep startDate in sync with form
@@ -157,10 +157,11 @@ const isValid =
        recurrence.frequency === "biweekly")
         ? recurrence.weekly.weekdays.length > 0
         : recurrence.frequency === "monthly"
-          ? !!recurrence.monthly
+          ? true
           : true
     )
   );
+
 
 
   return {
