@@ -342,6 +342,33 @@ export default function DailyTaskVolume() {
         </div>
       </div>
 
+       {/* CALENDAR */}
+          <TaskCalendar
+            rows={rows}
+            darkMode={darkMode}
+            statuses={filters.statuses}
+            onDayClick={(day, evt) => {
+              const params = new URLSearchParams({
+                date_from: day,
+                date_to: day,
+                owners: filters.owners.join(","),
+                teams: filters.teams.join(","),
+                requesters: filters.requesters.join(","),
+                statuses: filters.statuses.join(",")
+              });
+    
+              const url = `/tasks?${params.toString()}`;
+    
+              evt.ctrlKey || evt.metaKey
+                ? window.open(url, "_blank")
+                : navigate(url);
+            }}
+          />
+        </div>
+      );
+    }
+
+
       {/* CHART */}
       <div
         style={{
@@ -388,31 +415,7 @@ export default function DailyTaskVolume() {
         />
       </div>
 
-      {/* CALENDAR */}
-      <TaskCalendar
-        rows={rows}
-        darkMode={darkMode}
-        statuses={filters.statuses}
-        onDayClick={(day, evt) => {
-          const params = new URLSearchParams({
-            date_from: day,
-            date_to: day,
-            owners: filters.owners.join(","),
-            teams: filters.teams.join(","),
-            requesters: filters.requesters.join(","),
-            statuses: filters.statuses.join(",")
-          });
-
-          const url = `/tasks?${params.toString()}`;
-
-          evt.ctrlKey || evt.metaKey
-            ? window.open(url, "_blank")
-            : navigate(url);
-        }}
-      />
-    </div>
-  );
-}
+     
 
 /* ===============================
    STYLES
