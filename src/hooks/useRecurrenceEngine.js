@@ -85,13 +85,14 @@ const generateOccurrences = recurrence => {
                continue;
              }
          
-               if (rule.type === "same_day") {
+               if (rule.type === "day_of_month") {
                  date = new Date(
                    cursor.getFullYear(),
                    cursor.getMonth(),
-                   start.getDate()
+                   rule.day
                  );
                }
+
                
                if (rule.type === "last_weekday") {
                  date = getLastWeekdayOfMonth(
