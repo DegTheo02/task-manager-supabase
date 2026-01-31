@@ -1,0 +1,1 @@
+day.isCurrentMonth ? onClick : undefined
