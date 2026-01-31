@@ -3,6 +3,16 @@ import React, { useMemo, useState } from "react";
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const normalizeDay = d => d?.split("T")?.[0];
 
+const isToday = iso => {
+  const today = new Date().toISOString().slice(0, 10);
+  return iso === today;
+};
+
+const getWeekday = iso => {
+  return new Date(iso).getDay(); // 0=Sun ... 6=Sat
+};
+
+
 export default function TaskCalendar({
   rows,
   darkMode,
@@ -171,19 +181,58 @@ export default function TaskCalendar({
             <div
               key={day}
               onClick={e => count && onDayClick(day, e)}
+
               style={{
-                height: 70,
-                borderRadius: 8,
-                cursor: count ? "pointer" : "default",
-                background: getHeatColor(count),
-                border: darkMode ? "1px solid #222" : "1px solid #ddd",
-                padding: 6,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between"
-              }}
+                      height: 70,
+                      borderRadius: 8,
+                      cursor: count ? "pointer" : "default",
+                      background: todayFlag
+                        ? darkMode
+                          ? "#2563eb"   // blue (today, dark)
+                          : "#dbeafe"   // blue (today, light)
+                        : isSunday || isSaturday
+                        ? darkMode
+                          ? "rgba(245,158,11,0.15)" // weekend dark
+                          : "rgba(245,158,11,0.12)" // weekend light
+                        : getHeatColor(count),
+                      border: todayFlag
+                        ? "2px solid #2563eb"
+                        : darkMode
+                        ? "1px solid #222"
+                        : "1px solid #ddd",
+                      padding: 6,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between"
+                    }}
+
             >
-              <div style={{ fontSize: 12, opacity: 0.6 }}>
+                        
+                        <div
+                          style={{
+                            fontSize: 12,
+                            opacity: 0.6,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center"
+                          }}
+                        >
+                          <span>{day.slice(-2)}</span>
+                        
+                          {todayFlag && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: "#22c55e"
+                              }}
+                            >
+                              TODAY
+                            </span>
+                          )}
+                        </div>
+
+
                 {day.slice(-2)}
               </div>
 
@@ -200,6 +249,13 @@ export default function TaskCalendar({
               )}
             </div>
           );
+
+        const weekday = getWeekday(day);
+        const isSunday = weekday === 0;
+        const isSaturday = weekday === 6;
+        const todayFlag = isToday(day);
+
+        
         })}
       </div>
     </div>
