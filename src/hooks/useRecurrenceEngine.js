@@ -78,7 +78,10 @@ const generateOccurrences = recurrence => {
   /* MONTHLY */
    if (recurrence.frequency === "monthly") {
      const rule = recurrence.monthly;
-   
+
+      if (!rule || !rule.type) {
+    return results; // fail safely, no crash
+        }
      // iterate by month, not by date
      let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
    
@@ -124,7 +127,7 @@ export function useRecurrenceEngine({ startDate }) {
     startDate,
     endDate: "",
     weekly: { weekdays: [] },
-    monthly: null
+    monthly: {type: "day_of_month", day: null}
   });
 
   // Keep startDate in sync with form
