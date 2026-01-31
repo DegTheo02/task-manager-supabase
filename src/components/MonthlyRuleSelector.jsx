@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function MonthlyRuleSelector({ value, onChange, baseDate }) {
-  const rule = value || { type: "same_day" };
+  const rule = value || { type: "day_of_month" };
   const base = baseDate ? new Date(baseDate) : new Date();
   const weekday = base.getDay();
 
@@ -14,13 +14,12 @@ export default function MonthlyRuleSelector({ value, onChange, baseDate }) {
         <input
           type="radio"
           name="monthlyRule"
-          checked={rule.type === "same_day"}
+          checked={rule.type === "day_of_month"}
           onChange={() =>
             onChange({
               type: "day_of_month",
               day: base.getDate()
             })
-
           }
         />
         Same day each month
