@@ -111,6 +111,17 @@ const [filters, setFilters] = useState(() => {
   };
 });
 
+  const generateOccurrences = recurrence => {
+  if (!recurrence.enabled) return [];
+
+  if (!recurrence.startDate || !recurrence.endDate) return [];
+
+  const start = new Date(recurrence.startDate);
+  const end = new Date(recurrence.endDate);
+
+  if (isNaN(start) || isNaN(end) || start > end) return [];
+
+
   useEffect(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
@@ -420,6 +431,13 @@ if (isEditing) {
             if (!isValid) {
               alert("Please complete recurrence settings");
               return;
+            }
+
+            if (recurrence.enabled) {
+              if (!recurrence.startDate || !recurrence.endDate) {
+                alert("Please select a recurrence date range (From / To)");
+                return;
+              }
             }
           
             if (occurrences.length === 0) {
