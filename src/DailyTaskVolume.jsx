@@ -374,7 +374,8 @@ export default function DailyTaskVolume() {
           background: darkMode ? "#111" : "#fff",
           borderRadius: 10,
           padding: 12,
-          marginBottom: 40
+          marginBottom: 40,
+          marginTop: 80
         }}
       >
         <Bar
