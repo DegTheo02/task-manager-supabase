@@ -16,6 +16,8 @@ import {
   isSameMonth
 } from 'date-fns'
 
+import './CalendarHeatmap.css'
+
 
 type CalendarDay = {
   date: string
