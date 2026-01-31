@@ -1,39 +1,36 @@
 import React from "react";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export default function MonthlyRuleSelector({ value, onChange, baseDate }) {
+  const rule = value || { type: "same_day" };
+  const base = baseDate ? new Date(baseDate) : new Date();
+  const weekday = base.getDay();
 
-export default function MonthlyRuleSelector({
-  rule,
-  weekday,
-  nth,
-  onChange
-}) {
   return (
-    <div
-      style={{
-        padding: 12,
-        border: "1px dashed #999",
-        borderRadius: 6
-      }}
-    >
+    <div>
       <strong>Monthly rule</strong>
 
+      {/* SAME DAY */}
       <label>
         <input
           type="radio"
-          checked={rule === "DAY_OF_MONTH"}
-          onChange={() => onChange({ rule: "DAY_OF_MONTH" })}
+          name="monthlyRule"
+          checked={rule.type === "same_day"}
+          onChange={() =>
+            onChange({ type: "same_day" })
+          }
         />
         Same day each month
       </label>
 
-      <label>
+      {/* LAST WEEKDAY */}
+      <label style={{ marginLeft: 12 }}>
         <input
           type="radio"
-          checked={rule === "LAST_WEEKDAY"}
+          name="monthlyRule"
+          checked={rule.type === "last_weekday"}
           onChange={() =>
             onChange({
-              rule: "LAST_WEEKDAY",
+              type: "last_weekday",
               weekday
             })
           }
@@ -41,52 +38,22 @@ export default function MonthlyRuleSelector({
         Last weekday of month
       </label>
 
-      <label>
+      {/* NTH WEEKDAY */}
+      <label style={{ marginLeft: 12 }}>
         <input
           type="radio"
-          checked={rule === "NTH_WEEKDAY"}
+          name="monthlyRule"
+          checked={rule.type === "nth_weekday"}
           onChange={() =>
             onChange({
-              rule: "NTH_WEEKDAY",
+              type: "nth_weekday",
               weekday,
-              nth
+              nth: 1
             })
           }
         />
         Nth weekday of month
       </label>
-
-      {(rule === "LAST_WEEKDAY" || rule === "NTH_WEEKDAY") && (
-        <div style={{ marginTop: 8 }}>
-          <select
-            value={weekday}
-            onChange={e =>
-              onChange({ rule, weekday: Number(e.target.value), nth })
-            }
-          >
-            {WEEKDAYS.map((d, i) => (
-              <option key={i} value={i}>
-                {d}
-              </option>
-            ))}
-          </select>
-
-          {rule === "NTH_WEEKDAY" && (
-            <select
-              value={nth}
-              onChange={e =>
-                onChange({ rule, weekday, nth: Number(e.target.value) })
-              }
-            >
-              {[1, 2, 3, 4, 5].map(n => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      )}
     </div>
   );
 }
