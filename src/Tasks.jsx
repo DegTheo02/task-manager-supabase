@@ -443,16 +443,6 @@ if (isEditing) {
               return;
             }
 
-              if (error) {
-              console.group("🚨 Supabase Insert Error (Recurring)");
-              console.error("Message:", error.message);
-              console.error("Details:", error.details);
-              console.error("Hint:", error.hint);
-              console.error("Code:", error.code);
-              console.groupEnd();
-              alert("Failed to create recurring task. Check console for details.");
-              return;
-            }
             
             if (occurrences.length === 0) {
               alert("No occurrences generated");
