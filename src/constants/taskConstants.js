@@ -31,6 +31,7 @@ export const STATUS_ICONS = {
 export const OWNERS = [
   "AURELLE",
   "CHRISTIAN",
+  "DESIRE",
   "SERGEA",
   "FABRICE",
   "FLORIAN",
@@ -56,6 +57,7 @@ export const OWNER_TEAM_MAP = {
   JOSIAS: "CVM",
   MARIUS: "CVM",
   THEOPHANE: "SM",
+  DESIRE : "SM",
   FLYTXT: "FLYTXT",
   IT: "IT"
 };
