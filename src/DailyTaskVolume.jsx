@@ -415,6 +415,9 @@ export default function DailyTaskVolume() {
           },
       
           plugins: {
+                      valueLabelPlugin: {
+                       disabled: true    // ❌ DISABLE absolute
+                                       },
             datalabels: {
               display: context =>
                 context.dataset.data[context.dataIndex] > 0,
