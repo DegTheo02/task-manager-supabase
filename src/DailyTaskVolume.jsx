@@ -378,40 +378,66 @@ export default function DailyTaskVolume() {
           marginTop: 100
         }}
       >
+
         <Bar
-          data={chartData}
-          options={{
-            responsive: true,
-            maintainAspectRatio: false,
-            onClick: (evt, elements) => {
-              if (!elements.length) return;
-
-              const el = elements[0];
-              const day = chartData.days[el.index];
-              const status =
-                chartData.datasets[el.datasetIndex].label;
-
-              const params = new URLSearchParams({
-                status,
-                date_from: day,
-                date_to: day,
-                owners: filters.owners.join(","),
-                teams: filters.teams.join(","),
-                requesters: filters.requesters.join(",")
-              });
-
-              const url = `/tasks?${params.toString()}`;
-
-              evt.native.ctrlKey || evt.native.metaKey
-                ? window.open(url, "_blank")
-                : navigate(url);
+        data={chartData}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+      
+          onClick: (evt, elements) => {
+            if (!elements.length) return;
+      
+            const el = elements[0];
+            const day = chartData.days[el.index];
+            const status =
+              chartData.datasets[el.datasetIndex].label;
+      
+            const params = new URLSearchParams({
+              status,
+              date_from: day,
+              date_to: day,
+              owners: filters.owners.join(","),
+              teams: filters.teams.join(","),
+              requesters: filters.requesters.join(",")
+            });
+      
+            const url = `/tasks?${params.toString()}`;
+      
+            evt.native.ctrlKey || evt.native.metaKey
+              ? window.open(url, "_blank")
+              : navigate(url);
+          },
+      
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+          },
+      
+          plugins: {
+            datalabels: {
+              display: context =>
+                context.dataset.data[context.dataIndex] > 0,
+              color: "#fff",
+              font: { weight: "bold" },
+              formatter: value => value // 🔥 only absolute values
             },
-            scales: {
-              x: { stacked: true },
-              y: { stacked: true, beginAtZero: true }
+            tooltip: {
+              callbacks: {
+                label: context =>
+                  `${context.dataset.label}: ${context.raw}`
+              }
+            },
+            legend: {
+              labels: {
+                color: darkMode ? "#fff" : "#000"
+              }
             }
-          }}
-        />
+          }
+        }}
+      />
+
+        
       </div>
         </div>
       );
