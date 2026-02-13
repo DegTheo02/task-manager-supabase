@@ -116,20 +116,34 @@ const [filters, setFilters] = useState(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
 
+
 useEffect(() => {
-  setFilters(f => ({
-    ...f,
-    statuses: statusesParam
-      ? statusesParam.split(",")
-      : status
-      ? [status]
-      : [],
-    deadline_from: dateFrom || "",
-    deadline_to: dateTo || "",
-    owners: ownersParam ? ownersParam.split(",") : [],
-    teams: teamsParam ? teamsParam.split(",") : [],
-    requesters: requestersParam ? requestersParam.split(",") : []
-  }));
+  // Only apply URL filters if at least one param exists
+  if (
+    status ||
+    statusesParam ||
+    dateFrom ||
+    dateTo ||
+    ownersParam ||
+    teamsParam ||
+    requestersParam
+  ) {
+    setFilters(f => ({
+      ...f,
+      statuses: statusesParam
+        ? statusesParam.split(",")
+        : status
+        ? [status]
+        : f.statuses,
+      deadline_from: dateFrom || f.deadline_from,
+      deadline_to: dateTo || f.deadline_to,
+      owners: ownersParam ? ownersParam.split(",") : f.owners,
+      teams: teamsParam ? teamsParam.split(",") : f.teams,
+      requesters: requestersParam
+        ? requestersParam.split(",")
+        : f.requesters
+    }));
+  }
 }, [
   status,
   statusesParam,
@@ -139,6 +153,7 @@ useEffect(() => {
   teamsParam,
   requestersParam
 ]);
+
 
 
 
