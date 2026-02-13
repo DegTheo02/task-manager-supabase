@@ -415,7 +415,7 @@ export default function DailyTaskVolume() {
           },
       
           plugins: {
-                      valueLabelPlugin: {
+                      percentageLabelPlugin: {
                        disabled: true    // ❌ DISABLE absolute
                                        },
             datalabels: {
