@@ -29,6 +29,22 @@ function ProtectedRoute({ children }) {
 }
 
 
+function AdminRoute({ children }) {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
 /* ===============================
    APP
 ================================ */
