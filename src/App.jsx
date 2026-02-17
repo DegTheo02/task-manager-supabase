@@ -50,7 +50,7 @@ function AdminRoute({ children }) {
    APP
 ================================ */
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user,role, loading } = useAuth();
   console.log("Auth state:", { user, role, loading });
   const [filters, setFilters] = useState({
     owners: [],
