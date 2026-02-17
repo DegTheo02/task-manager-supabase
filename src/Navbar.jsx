@@ -1,9 +1,20 @@
 import { NavLink, Link } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";   // ✅ THIS LINE WAS MISSING
+import { useAuth } from "./context/AuthContext";  
+import { useNavigate } from "react-router-dom";
+import { supabase } from "./supabaseClient";
+import { signOut } from "./auth";
+
+
 
 
 export default function Navbar() {
   const { user, role, fullName } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <nav style={nav}>
@@ -19,36 +30,41 @@ export default function Navbar() {
 
         {/* User Info */}
         <div style={{ marginRight: 20, fontSize: 13 }}>
-          {fullName || user?.email} ({role?.toUpperCase()})
+          {fullName || user?.email}
         </div>
 
         {/* Navigation Links */}
-        <NavLink to="/dashboard" style={link}>
-          Dashboard
-        </NavLink>
-
-        <NavLink to="/tasks" style={link}>
-          Tasks
-        </NavLink>
-
-        <NavLink to="/daily-volume" style={link}>
-          Daily Volume
-        </NavLink>
-
-        <NavLink to="/kanban" style={link}>
-          Kanban
-        </NavLink>
+        <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
+        <NavLink to="/tasks" style={link}>Tasks</NavLink>
+        <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
+        <NavLink to="/kanban" style={link}>Kanban</NavLink>
 
         {role === "admin" && (
-          <NavLink to="/admin" style={link}>
-            Admin
-          </NavLink>
+          <NavLink to="/admin" style={link}>Admin</NavLink>
         )}
+
+        {/* 🔴 LOGOUT BUTTON */}
+        <button
+          onClick={handleLogout}
+          style={{
+            marginLeft: 20,
+            padding: "6px 12px",
+            borderRadius: 6,
+            border: "none",
+            background: "#DC2626",
+            color: "white",
+            cursor: "pointer",
+            fontWeight: 600
+          }}
+        >
+          Logout
+        </button>
 
       </div>
     </nav>
   );
 }
+
 
 
 
