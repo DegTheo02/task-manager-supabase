@@ -54,35 +54,78 @@ export default function Navbar() {
         )}
 
         {/* USER DROPDOWN */}
-        <div style={{ position: "relative", marginLeft: 20 }} ref={menuRef}>
-          
+       
+        <div
+          ref={menuRef}
+          style={{ position: "relative", marginLeft: 20 }}
+        >
+          {/* Trigger */}
           <div
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
               cursor: "pointer",
+              fontWeight: 600,
               fontSize: 13,
-              fontWeight: 600
+              padding: "6px 10px",
+              borderRadius: 6,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
             👤 {fullName || user?.email}
           </div>
-
+        
+          {/* Dropdown Panel */}
           {menuOpen && (
-            <div style={dropdown}>
-              <div style={dropdownItem}>
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "110%",
+                background: "#1F2937",
+                color: "white",
+                borderRadius: 8,
+                padding: "8px 0",
+                minWidth: 180,
+                boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+                zIndex: 9999,
+              }}
+            >
+              {/* Role */}
+              <div
+                style={{
+                  padding: "10px 16px",
+                  fontSize: 13,
+                  opacity: 0.8,
+                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
                 Role: {role?.toUpperCase()}
               </div>
-
+        
+              {/* Logout */}
               <div
-                style={{ ...dropdownItem, color: "#DC2626" }}
                 onClick={handleLogout}
+                style={{
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                  color: "#F87171",
+                  fontWeight: 600,
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#374151")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
               >
                 🔴 Logout
               </div>
             </div>
           )}
-
         </div>
+
 
       </div>
     </nav>
