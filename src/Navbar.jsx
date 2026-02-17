@@ -1,10 +1,9 @@
 import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 
-const { user, role } = useAuth();
-
-
 export default function Navbar() {
+  const { user, role } = useAuth();   // ✅ MOVE INSIDE COMPONENT
+
   return (
     <nav style={nav}>
       
@@ -18,12 +17,9 @@ export default function Navbar() {
         <span>BI & CVM Task Manager</span>
       </Link>
 
-      {role === "admin" && (
-        <Link to="/dashboard">Daily Volume</Link>
-          )}
-
       {/* RIGHT: Navigation */}
       <div>
+
         <NavLink to="/dashboard" style={link}>
           Dashboard
         </NavLink>
@@ -35,50 +31,21 @@ export default function Navbar() {
         <NavLink to="/daily-volume" style={link}>
           Daily Volume
         </NavLink>
-        
+
         <NavLink to="/kanban" style={link}>
           Kanban
         </NavLink>
-        
+
+        {/* 🔐 ADMIN LINKS */}
+        {role === "admin" && (
+          <>
+            <NavLink to="/admin" style={link}>
+              Admin
+            </NavLink>
+          </>
+        )}
+
       </div>
     </nav>
   );
 }
-
-/* =====================
-   STYLES
-===================== */
-
-const nav = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "8px 16px",
-  background: "#111827",
-  color: "white",
-  position: "sticky",
-  top: 0,
-  zIndex: 2000
-};
-
-const brand = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  textDecoration: "none",
-  color: "white",
-  fontWeight: 700,
-  fontSize: 16
-};
-
-const logo = {
-  height: 34,
-  width: "auto"
-};
-
-const link = {
-  marginLeft: 18,
-  color: "white",
-  textDecoration: "none",
-  fontWeight: 500
-};
