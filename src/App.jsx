@@ -11,6 +11,7 @@ import DailyTaskVolume from "./DailyTaskVolume";
 
 import { useAuth } from "./context/AuthContext";
 
+import RoleRoute from "./routes/RoleRoute";
 
 
 /* ===============================
@@ -21,20 +22,6 @@ function ProtectedRoute({ children }) {
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-
-  return children;
-}
-
-/* ===============================
-   ROLE ROUTE
-================================ */
-function RoleRoute({ children, requiredRole }) {
-  const { user, role, loading } = useAuth();
-
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  if (role !== requiredRole)
-    return <Navigate to="/dashboard" replace />;
 
   return children;
 }
