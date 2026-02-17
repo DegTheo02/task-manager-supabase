@@ -22,7 +22,7 @@ import Admin from "./Admin";
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
   return children;
@@ -33,7 +33,7 @@ function ProtectedRoute({ children }) {
 function AdminRoute({ children }) {
   const { user, role, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <div>Loading...</div>;
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -67,7 +67,7 @@ export default function App() {
   });
 
   // Prevent UI flash before auth loads
-  if (loading) return null;
+  if (loading) return <div>Loading...</div>;
 
   return (
     <>
