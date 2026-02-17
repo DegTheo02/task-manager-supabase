@@ -9,47 +9,30 @@ import Kanban from "./Kanban";
 import Login from "./Login";
 import DailyTaskVolume from "./DailyTaskVolume";
 
+import { useAuth } from "./context/AuthContext";
+
+
 
 /* ===============================
    PROTECTED ROUTE
 ================================ */
 function ProtectedRoute({ children }) {
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState(null);
-
-  useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-
-    // Listen to auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-      }
-    );
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+  const { user, loading } = useAuth();
 
   if (loading) return null;
 
-  if (!session) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
   return children;
 }
 
+
 /* ===============================
    APP
 ================================ */
 export default function App() {
-  const [session, setSession] = useState(null);
 
   const [filters, setFilters] = useState({
   owners: [],
@@ -65,22 +48,6 @@ export default function App() {
   today: false
 });
 
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-      }
-    );
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
 
   return (
     <>
