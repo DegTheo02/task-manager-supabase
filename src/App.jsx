@@ -99,11 +99,12 @@ export default function App() {
          <Route
            path="/dashboard"
            element={
-             <ProtectedRoute>
+             <RoleRoute requiredRole="admin">
                <Dashboard />
-             </ProtectedRoute>
+             </RoleRoute>
            }
          />
+
 
 
         <Route
@@ -115,14 +116,15 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/kanban"
-          element={
-            <AdminRoute>
-              <Kanban />
-            </AdminRoute>
-          }
-        />
+         <Route
+           path="/kanban"
+           element={
+             <RoleRoute requiredRole="admin">
+               <Kanban />
+             </RoleRoute>
+           }
+         />
+
 
         <Route
           path="/daily-volume"
