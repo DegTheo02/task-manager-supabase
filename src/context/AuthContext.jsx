@@ -15,11 +15,12 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         setUser(session.user);
 
-        const { data } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();   // 👈 IMPORTANT
+
 
         setRole(data?.role);
       }
