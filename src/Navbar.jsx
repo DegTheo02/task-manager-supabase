@@ -49,3 +49,44 @@ export default function Navbar() {
     </nav>
   );
 }
+
+
+
+
+/* =====================
+   STYLES
+===================== */
+
+const nav = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 16px",
+  background: "#111827",
+  color: "white",
+  position: "sticky",
+  top: 0,
+  zIndex: 2000
+};
+
+const brand = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  textDecoration: "none",
+  color: "white",
+  fontWeight: 700,
+  fontSize: 16
+};
+
+const logo = {
+  height: 34,
+  width: "auto"
+};
+
+const link = {
+  marginLeft: 18,
+  color: "white",
+  textDecoration: "none",
+  fontWeight: 500
+};
