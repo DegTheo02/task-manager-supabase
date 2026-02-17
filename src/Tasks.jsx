@@ -7,6 +7,9 @@ import { useRecurrenceEngine } from "./hooks/useRecurrenceEngine";
 
 import MonthlyRuleSelector from "./components/MonthlyRuleSelector";
 
+import { useAuth } from "./context/AuthContext";
+
+
 
 
 
@@ -56,6 +59,8 @@ const WEEKDAYS = [
    TASKS PAGE
 ---------------------------------- */
 export default function Tasks() {
+
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
@@ -72,7 +77,6 @@ export default function Tasks() {
   const ownersParam = searchParams.get("owners");
   const teamsParam = searchParams.get("teams");
   const requestersParam = searchParams.get("requesters");
-
 
 
 
@@ -362,7 +366,9 @@ const bV =
 
         const payload = {
           title: form.title,
-          owner: form.owner,
+          owner: form.owner,         // for display
+          owner_id: user.id,         // for security
+
           team: form.team,
           requester: form.requester,
           recurrence_type: recurrence.enabled
