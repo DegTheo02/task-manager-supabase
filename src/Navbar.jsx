@@ -17,6 +17,13 @@ export default function Navbar() {
         <span>BI & CVM Task Manager</span>
       </Link>
 
+
+    <div style={{ display: "flex", alignItems: "center" }}>
+    <div style={{ marginRight: 20, fontSize: 13 }}>
+    {user?.email} ({role})
+    </div>
+
+      
       {/* RIGHT: Navigation */}
       <div>
 
