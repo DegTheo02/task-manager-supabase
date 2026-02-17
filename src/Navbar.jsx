@@ -1,3 +1,7 @@
+import { NavLink, Link } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";   // ✅ THIS LINE WAS MISSING
+
+
 export default function Navbar() {
   const { user, role, fullName } = useAuth();
 
