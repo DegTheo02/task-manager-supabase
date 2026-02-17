@@ -3,6 +3,8 @@ import { useAuth } from "./context/AuthContext";
 
 export default function Navbar() {
   const { user, role } = useAuth();   // ✅ MOVE INSIDE COMPONENT
+  const { user, role, fullName } = useAuth();
+
 
   return (
     <nav style={nav}>
@@ -20,7 +22,7 @@ export default function Navbar() {
 
     <div style={{ display: "flex", alignItems: "center" }}>
     <div style={{ marginRight: 20, fontSize: 13 }}>
-    {user?.email} ({role})
+    {fullName || user?.email} ({role?.toUpperCase()})
     </div>
 
       
