@@ -1377,7 +1377,7 @@ const td = dark => ({
 const stickyBar = dark => ({
   position: "sticky",
   top: 70,
-  zIndex: 1000,
+  zIndex: 10,
   background: dark ? "#000" : "#fff",
   paddingBottom: 10,
   marginBottom: 20
