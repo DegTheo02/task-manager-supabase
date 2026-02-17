@@ -51,7 +51,7 @@ function AdminRoute({ children }) {
 ================================ */
 export default function App() {
   const { user, loading } = useAuth();
-
+  console.log("Auth state:", { user, role, loading });
   const [filters, setFilters] = useState({
     owners: [],
     teams: [],
