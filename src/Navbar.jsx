@@ -51,6 +51,11 @@ export default function Navbar() {
 }
 
 
+
+/* =====================
+   STYLES
+===================== */
+
 const nav = {
   display: "flex",
   justifyContent: "space-between",
@@ -61,4 +66,26 @@ const nav = {
   position: "sticky",
   top: 0,
   zIndex: 2000
+};
+
+const brand = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  textDecoration: "none",
+  color: "white",
+  fontWeight: 700,
+  fontSize: 16
+};
+
+const logo = {
+  height: 34,
+  width: "auto"
+};
+
+const link = {
+  marginLeft: 18,
+  color: "white",
+  textDecoration: "none",
+  fontWeight: 500
 };
