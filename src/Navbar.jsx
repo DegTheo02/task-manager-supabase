@@ -49,3 +49,16 @@ export default function Navbar() {
     </nav>
   );
 }
+
+
+const nav = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 16px",
+  background: "#111827",
+  color: "white",
+  position: "sticky",
+  top: 0,
+  zIndex: 2000
+};
