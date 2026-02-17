@@ -33,26 +33,29 @@ function ProtectedRoute({ children }) {
    APP
 ================================ */
 export default function App() {
+  const { user, loading } = useAuth();
 
   const [filters, setFilters] = useState({
-  owners: [],
-  teams: [],
-  statuses: [],
-  recurrence_types: [],
-  assigned_from: "",
-  assigned_to: "",
-  deadline_from: "",
-  deadline_to: "",
-  closing_from: "",
-  closing_to: "",
-  today: false
-});
+    owners: [],
+    teams: [],
+    statuses: [],
+    recurrence_types: [],
+    assigned_from: "",
+    assigned_to: "",
+    deadline_from: "",
+    deadline_to: "",
+    closing_from: "",
+    closing_to: "",
+    today: false
+  });
 
+  // Prevent UI flash before auth loads
+  if (loading) return null;
 
   return (
     <>
-      {/* Sticky Navbar only when logged in */}
-      {session && (
+      {/* Navbar only when logged in */}
+      {user && (
         <div style={stickyBar}>
           <Navbar />
         </div>
@@ -90,25 +93,23 @@ export default function App() {
           }
         />
 
-         <Route
-           path="/daily-volume"
-           element={
-             <ProtectedRoute>
-               <DailyTaskVolume />
-             </ProtectedRoute>
-           }
-         />
-
+        <Route
+          path="/daily-volume"
+          element={
+            <ProtectedRoute>
+              <DailyTaskVolume />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-
-
       </Routes>
     </>
   );
 }
+
 
 /* ===============================
    STYLES
