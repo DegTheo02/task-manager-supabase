@@ -316,6 +316,12 @@ const bV =
   
   /* SAVE TASK */
   const saveTask = async () => {
+
+    if (!user) {
+    alert("Authentication error. Please login again.");
+    return;
+            }
+
     if (
       !form.title ||
       !form.owner ||
@@ -367,7 +373,7 @@ const bV =
         const payload = {
           title: form.title,
           owner: form.owner,         // for display
-          owner_id: user.id,         // for security
+          owner_id: user?.id,         // for security
 
           team: form.team,
           requester: form.requester,
@@ -395,6 +401,11 @@ const bV =
     
 
 if (isEditing) {
+  
+  // 🔐 Never allow owner_id to change on update
+  const updatePayload = { ...payload };
+  delete updatePayload.owner_id;
+  
   if (editSeries && form.recurrence_group_id) {
     // 🔁 UPDATE ALL IN SERIES
     const { error } = await supabase
