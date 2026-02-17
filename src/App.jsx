@@ -79,15 +79,19 @@ export default function App() {
 
       <Routes>
         {/* Public */}
-        <Route path="/login" element={<Login />} />
+        <Route 
+           path="/login" 
+           element={<Login />} 
+         />
 
+         
         {/* Protected */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <Dashboard />
-            </ProtectedRoute>
+            </AdminRoute>
           }
         />
 
@@ -103,9 +107,9 @@ export default function App() {
         <Route
           path="/kanban"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <Kanban />
-            </ProtectedRoute>
+            </AdminRoute>
           }
         />
 
