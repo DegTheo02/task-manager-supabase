@@ -13,6 +13,8 @@ import { useAuth } from "./context/AuthContext";
 
 import RoleRoute from "./routes/RoleRoute";
 
+import Admin from "./Admin";
+
 
 /* ===============================
    PROTECTED ROUTE
@@ -83,7 +85,16 @@ export default function App() {
            element={<Login />} 
          />
 
-         
+
+         <Route
+           path="/admin"
+           element={
+             <RoleRoute requiredRole="admin">
+               <Admin />
+             </RoleRoute>
+        }
+      />
+
         {/* Protected */}
         <Route
           path="/dashboard"
