@@ -14,7 +14,31 @@ export function AuthProvider({ children }) {
   let mounted = true;
 
   const initialize = async () => {
-    const { data } = await supabase.auth.getSession();
+
+  const getSession = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      setUser(session.user);
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("role, full_name")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      setRole(data?.role || "user");       // fallback
+      setFullName(data?.full_name || null);
+    }
+  } catch (err) {
+    console.error("Auth error:", err);
+  }
+
+  setLoading(false);   // ✅ ALWAYS end loading
+};
+
+    
     const session = data?.session;
 
     if (!mounted) return;
