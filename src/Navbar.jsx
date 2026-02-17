@@ -43,15 +43,25 @@ export default function Navbar() {
       {/* RIGHT SIDE */}
       <div style={{ display: "flex", alignItems: "center" }}>
 
+                
         {/* Navigation Links */}
-        <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
-        <NavLink to="/tasks" style={link}>Tasks</NavLink>
-        <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
-        <NavLink to="/kanban" style={link}>Kanban</NavLink>
-
+        
         {role === "admin" && (
-          <NavLink to="/admin" style={link}>Admin</NavLink>
+          <>
+            <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
+            <NavLink to="/kanban" style={link}>Kanban</NavLink>
+            <NavLink to="/admin" style={link}>Admin</NavLink>
+          </>
         )}
+        
+        {/* Available to admin, manager, user */}
+        {["admin", "manager", "user"].includes(role) && (
+          <>
+            <NavLink to="/tasks" style={link}>Tasks</NavLink>
+            <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
+          </>
+        )}
+
 
         {/* USER DROPDOWN */}
        
