@@ -18,6 +18,10 @@ export default function Navbar() {
         <span>BI & CVM Task Manager</span>
       </Link>
 
+      {role === "admin" && (
+        <Link to="/dashboard">Daily Volume</Link>
+          )}
+
       {/* RIGHT: Navigation */}
       <div>
         <NavLink to="/dashboard" style={link}>
