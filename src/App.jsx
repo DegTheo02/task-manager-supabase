@@ -96,14 +96,15 @@ export default function App() {
       />
 
         {/* Protected */}
-        <Route
-          path="/dashboard"
-          element={
-            <RoleRoute requiredRole="admin">
-              <Dashboard />
-            </RoleRoute>
-          }
-        />
+         <Route
+           path="/dashboard"
+           element={
+             <ProtectedRoute>
+               <Dashboard />
+             </ProtectedRoute>
+           }
+         />
+
 
         <Route
           path="/tasks"
@@ -133,7 +134,15 @@ export default function App() {
         />
 
         {/* Default */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route
+           path="/"
+           element={
+             role === "admin"
+               ? <Navigate to="/dashboard" replace />
+               : <Navigate to="/tasks" replace />
+           }
+         />
+
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </>
