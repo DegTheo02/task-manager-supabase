@@ -1,17 +1,32 @@
-import { NavLink, Link } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";  
-import { useNavigate } from "react-router-dom";
-import { supabase } from "./supabaseClient";
+import { NavLink, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 import { signOut } from "./auth";
-
-
-
+import { supabase } from "./supabaseClient";
+import { useState, useRef, useEffect } from "react";
 
 export default function Navbar() {
   const { user, role, fullName } = useAuth();
   const navigate = useNavigate();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef();
+
+  /* Close menu when clicking outside */
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleLogout = async () => {
+    const confirmLogout = window.confirm("Are you sure you want to log out?");
+    if (!confirmLogout) return;
+
     await signOut();
     navigate("/login");
   };
@@ -28,11 +43,6 @@ export default function Navbar() {
       {/* RIGHT SIDE */}
       <div style={{ display: "flex", alignItems: "center" }}>
 
-        {/* User Info */}
-        <div style={{ marginRight: 20, fontSize: 13 }}>
-          {fullName || user?.email}
-        </div>
-
         {/* Navigation Links */}
         <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
         <NavLink to="/tasks" style={link}>Tasks</NavLink>
@@ -43,31 +53,41 @@ export default function Navbar() {
           <NavLink to="/admin" style={link}>Admin</NavLink>
         )}
 
-        {/* 🔴 LOGOUT BUTTON */}
-        <button
-          onClick={handleLogout}
-          style={{
-            marginLeft: 20,
-            padding: "6px 12px",
-            borderRadius: 6,
-            border: "none",
-            background: "#DC2626",
-            color: "white",
-            cursor: "pointer",
-            fontWeight: 600
-          }}
-        >
-          Logout
-        </button>
+        {/* USER DROPDOWN */}
+        <div style={{ position: "relative", marginLeft: 20 }} ref={menuRef}>
+          
+          <div
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600
+            }}
+          >
+            👤 {fullName || user?.email}
+          </div>
+
+          {menuOpen && (
+            <div style={dropdown}>
+              <div style={dropdownItem}>
+                Role: {role?.toUpperCase()}
+              </div>
+
+              <div
+                style={{ ...dropdownItem, color: "#DC2626" }}
+                onClick={handleLogout}
+              >
+                🔴 Logout
+              </div>
+            </div>
+          )}
+
+        </div>
 
       </div>
     </nav>
   );
 }
-
-
-
-
 
 /* =====================
    STYLES
@@ -105,4 +125,23 @@ const link = {
   color: "white",
   textDecoration: "none",
   fontWeight: 500
+};
+
+const dropdown = {
+  position: "absolute",
+  right: 0,
+  top: 35,
+  background: "white",
+  color: "black",
+  borderRadius: 6,
+  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+  minWidth: 160,
+  padding: 6,
+  zIndex: 3000
+};
+
+const dropdownItem = {
+  padding: "8px 12px",
+  cursor: "pointer",
+  borderRadius: 4
 };
