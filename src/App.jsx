@@ -20,13 +20,25 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) return null;
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
   return children;
 }
+
+/* ===============================
+   ROLE ROUTE
+================================ */
+function RoleRoute({ children, requiredRole }) {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  if (role !== requiredRole)
+    return <Navigate to="/dashboard" replace />;
+
+  return children;
+}
+
 
 
 function AdminRoute({ children }) {
@@ -89,9 +101,9 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <AdminRoute>
+            <RoleRoute requiredRole="admin">
               <Dashboard />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
 
