@@ -60,7 +60,7 @@ const WEEKDAYS = [
 ---------------------------------- */
 export default function Tasks() {
 
-  const { user, fullName, permissions,team: myTeam, ownerLabel } = useAuth();
+  const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [owners, setOwners] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -225,25 +225,49 @@ setTasks(data || []);
   };
 
   
-  const loadOwners = async () => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, owner_label")
-    .order("owner_label");
+    const loadOwners = async () => {
+      if (!user) return;
+    
+      let q = supabase
+        .from("profiles")
+        .select("id, owner_label, team")
+        .order("owner_label");
+    
+      // 👤 USER → only themselves
+      if (role === "user") {
+        q = q.eq("id", user.id);
+      }
+    
+      // 👔 MANAGER → only their team
+      if (role === "manager") {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("team")
+          .eq("id", user.id)
+          .maybeSingle();
+    
+        if (myProfile?.team) {
+          q = q.eq("team", myProfile.team);
+        }
+      }
+    
+      const { data, error } = await q;
+    
+      if (!error) {
+        setOwners(data || []);
+      }
+    };
 
-      console.log("OWNERS FROM DB:", data);
-  console.log("ERROR:", error);
-
-  if (!error) {
-    setOwners(data || []);
-  }
-};
 
   
-useEffect(() => {
-  loadTasks();
-  loadOwners();
-}, []);
+    useEffect(() => {
+      loadTasks();
+    }, []);
+    
+    useEffect(() => {
+      loadOwners();
+    }, [user, role]);
+
 
 
   useEffect(() => {
@@ -1045,7 +1069,7 @@ return (
 
          
           {/* Owners */}
-          <div style={filterItem}>
+           <div style={filterItem}>
             <span>👤 Owners</span>
             <select
               multiple
@@ -1058,13 +1082,14 @@ return (
                 }))
               }
             >
-              
-            {OWNERS.map(o => (
-              <option key={o} value={o}>{o}</option>
-            ))}
-
+              {owners.map(o => (
+                <option key={o.id} value={o.owner_label}>
+                  {o.owner_label}
+                </option>
+              ))}
             </select>
           </div>
+
 
          {/* Teams */}
          <div style={filterItem}>
