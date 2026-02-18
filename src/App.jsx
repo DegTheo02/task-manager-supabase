@@ -34,7 +34,7 @@ function ProtectedRoute({ children }) {
 ================================ */
 export default function App() {
   const { user,permissions, loading } = useAuth();
-  console.log("Auth state:", { user, role, loading });
+  console.log("Auth state:", { user, permissions, loading });
   const [filters, setFilters] = useState({
     owners: [],
     teams: [],
