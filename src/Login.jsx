@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useEffect } from "react";
 import { signIn } from "./auth";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const [remember, setRemember] = useState(
   localStorage.getItem("rememberEmail") === "true"
 );
@@ -35,8 +39,19 @@ const handleLogin = async (e) => {
     setError(error.message);
     setLoading(false);
   }
+
+  // 🔥 Force redirect after login
+  navigate("/", { replace: true });
 };
 
+
+  const { user, permissions } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user]);
 
   return (
     <div style={page}>
