@@ -215,6 +215,10 @@ export default function DailyTaskVolume() {
             value: p.id
           }));
 
+          console.log("ROLE:", role);
+          console.log("USER ID:", user?.id);
+          console.log("OWNERS FROM DB:", data);
+
       
           setOwnerOptions(owners);
       
