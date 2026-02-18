@@ -128,7 +128,7 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
 ================================ */
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
-  const { user, role } = useAuth();
+  const { user, permissions, loading } = useAuth();
 
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("darkMode") === "true"
@@ -175,50 +175,51 @@ export default function DailyTaskVolume() {
      DATA LOAD
   ================================ */
       useEffect(() => {
+        if (!user || !permissions) return;
+      
         const load = async () => {
           let q = supabase
             .from("task_daily_status")
-            .select("status_day,status,owner,team,requester");
+            .select("status_day,status,owner,owner_id,team,requester");
       
-            // 🔐 ROLE RESTRICTIONS
-            if (permissions.view_own_tasks && !permissions.view_all_tasks) {
-              q = q.eq("owner_id", user.id);
-            }
-
-            
-            if (permissions.view_team_tasks && !permissions.view_all_tasks) {
+          // 🔐 PERMISSION RESTRICTIONS
+      
+          // Only own tasks
+          if (permissions.view_own_tasks && !permissions.view_all_tasks) {
+            q = q.eq("owner_id", user.id);
+          }
+      
+          // Team tasks only (but not full access)
+          if (
+            permissions.view_team_tasks &&
+            !permissions.view_all_tasks &&
+            !permissions.view_own_tasks
+          ) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("team")
+              .eq("id", user.id)
+              .maybeSingle();
+      
+            if (profile?.team) {
               q = q.eq("team", profile.team);
             }
-
+          }
       
-          // Existing filters
+          // Filters
           if (filters.owners.length) q = q.in("owner", filters.owners);
           if (filters.teams.length) q = q.in("team", filters.teams);
-          if (filters.requesters.length)
-            q = q.in("requester", filters.requesters);
-          if (filters.statuses.length)
-            q = q.in("status", filters.statuses);
-          if (filters.date_from)
-            q = q.gte("status_day", filters.date_from);
-          if (filters.date_to)
-            q = q.lte("status_day", filters.date_to);
+          if (filters.requesters.length) q = q.in("requester", filters.requesters);
+          if (filters.statuses.length) q = q.in("status", filters.statuses);
+          if (filters.date_from) q = q.gte("status_day", filters.date_from);
+          if (filters.date_to) q = q.lte("status_day", filters.date_to);
       
           const { data } = await q;
           setRows(data || []);
         };
       
-        if (user && role) load();
-      }, [filters, user, role]);
-
-          useEffect(() => {
-          if (role === "user" && user) {
-            setFilters(f => ({
-              ...f,
-              owners: [],   // prevent manual override
-              teams: []
-            }));
-          }
-        }, [role, user]);
+        load();
+      }, [filters, user, permissions]);
 
 
   /* ===============================
@@ -287,7 +288,7 @@ export default function DailyTaskVolume() {
             boxShadow: "0 2px 6px rgba(0,0,0,0.12)"
           }}
         >
-        {role !== "user" && (
+        {permissions?.view_all_tasks && (
           <MultiDropdown
             label="👤 Owner(s)"
             items={OWNERS}
@@ -298,7 +299,7 @@ export default function DailyTaskVolume() {
         )}
 
 
-            {role !== "user" && (
+            {permissions?.view_all_tasks && (
               <MultiDropdown
                 label="🧩 Team(s)"
                 items={TEAMS}
@@ -384,10 +385,7 @@ export default function DailyTaskVolume() {
               status,
               date_from: day,
               date_to: day,
-              owners:
-                role === "user"
-                  ? user.email
-                  : filters.owners.join(","),
+              owners: filters.owners.join(","),
               teams:
                 role === "manager"
                   ? ""
