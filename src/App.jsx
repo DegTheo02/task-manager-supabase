@@ -31,27 +31,11 @@ function ProtectedRoute({ children }) {
 
 
 
-function AdminRoute({ children }) {
-  const { user, loading } = useAuth();
-
-  if (loading) return <div>Loading...</div>;
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role !== "admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
-}
-
 /* ===============================
    APP
 ================================ */
 export default function App() {
-  const { user,role, loading } = useAuth();
+  const { user,permissions, loading } = useAuth();
   console.log("Auth state:", { user, role, loading });
   const [filters, setFilters] = useState({
     owners: [],
