@@ -107,16 +107,24 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
 
           <hr style={{ margin: "6px 0" }} />
 
-          {items.map(item => (
-            <label key={item} style={dropdownItem}>
-              <input
-                type="checkbox"
-                checked={values.includes(item)}
-                onChange={() => toggleItem(item)}
-              />
-              {item}
-            </label>
-          ))}
+            {items.map(item => {
+              const label =
+                typeof item === "object" ? item.label : item;
+              const value =
+                typeof item === "object" ? item.value : item;
+            
+              return (
+                <label key={value} style={dropdownItem}>
+                  <input
+                    type="checkbox"
+                    checked={values.includes(value)}
+                    onChange={() => toggleItem(value)}
+                  />
+                  {label}
+                </label>
+              );
+            })}
+
         </div>
       )}
     </div>
@@ -210,7 +218,11 @@ export default function DailyTaskVolume() {
       
           const { data } = await q;
       
-          const owners = (data || []).map(p => p.owner_label);
+          const owners = (data || []).map(p => ({
+            label: p.owner_label,
+            value: p.id
+          }));
+
       
           setOwnerOptions(owners);
       
@@ -259,7 +271,7 @@ export default function DailyTaskVolume() {
 
       
           // Filters
-          if (filters.owners.length) q = q.in("owner", filters.owners);
+          if (filters.owners.length) q = q.in("owner_id", filters.owners);
           if (filters.teams.length) q = q.in("team", filters.teams);
           if (filters.requesters.length) q = q.in("requester", filters.requesters);
           if (filters.statuses.length) q = q.in("status", filters.statuses);
@@ -271,7 +283,7 @@ export default function DailyTaskVolume() {
         };
       
         load();
-      }, [filters, user, permissions]);
+      }, [filters, user, permissions, role]);
 
 
   /* ===============================
@@ -341,13 +353,14 @@ export default function DailyTaskVolume() {
           }}
         >
 
-          <MultiDropdown
-            label="👤 Owner(s)"
-            items={ownerOptions}
-            values={filters.owners}
-            onChange={v => setFilters(f => ({ ...f, owners: v }))}
-            darkMode={darkMode}
-          />
+            <MultiDropdown
+              label="👤 Owner(s)"
+              items={ownerOptions.map(o => o.value)}
+              values={filters.owners}
+              onChange={v => setFilters(f => ({ ...f, owners: v }))}
+              darkMode={darkMode}
+            />
+
 
 
             {permissions?.view_all_tasks && (
