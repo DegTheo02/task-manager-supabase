@@ -4,6 +4,8 @@ import { supabase } from "../supabaseClient";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+  
+  const [permissions, setPermissions] = useState({});
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [fullName, setFullName] = useState(null);
@@ -18,11 +20,14 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         setUser(session.user);
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, full_name")
-          .eq("id", session.user.id)
-          .maybeSingle();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("permissions, full_name")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      
+      setPermissions(profile?.permissions || {});
+
 
         setRole(profile?.role || "user");
         setFullName(profile?.full_name || null);
@@ -54,7 +59,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, fullName, loading }}>
+    <AuthContext.Provider value={{ user, fullName,permissions, loading }}>
       {children}
     </AuthContext.Provider>
   );
