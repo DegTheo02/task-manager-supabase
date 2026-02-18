@@ -76,13 +76,16 @@ const handleLogin = async (e) => {
           <form onSubmit={handleLogin} style={form}>
             <div style={fieldGroup}>
               <label style={label}>Corporate Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                style={input}
-              />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onFocus={(e) => e.target.style.border = "1px solid #1E3A8A"}
+              onBlur={(e) => e.target.style.border = "1px solid #CBD5E1"}
+              required
+              style={input}
+            />
+
             </div>
 
             <div style={fieldGroup}>
@@ -110,9 +113,16 @@ const handleLogin = async (e) => {
             
             {error && <div style={errorBox}>{error}</div>}
 
-            <button type="submit" style={button} disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
+          <button
+            type="submit"
+            style={button}
+            disabled={loading}
+            onMouseEnter={(e) => !loading && (e.target.style.background = "#1D4ED8")}
+            onMouseLeave={(e) => !loading && (e.target.style.background = "#1E3A8A")}
+          >
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+
           </form>
 
           <div style={footer}>
@@ -143,10 +153,13 @@ const page = {
   display: "flex",
   height: "100vh",
   fontFamily: "Inter, system-ui, sans-serif",
+  flexWrap: "wrap",
 };
+
 
 const leftPanel = {
   flex: 1,
+  minWidth: "400px",
   position: "relative",
   overflow: "hidden",
   background: "linear-gradient(160deg, #0F172A 0%, #1E3A8A 100%)",
@@ -188,6 +201,7 @@ const featureList = {
 
 const rightPanel = {
   flex: 1,
+  minWidth: "400px",
   background: "#F8FAFC",
   display: "flex",
   alignItems: "center",
@@ -234,7 +248,10 @@ const input = {
   borderRadius: 8,
   border: "1px solid #CBD5E1",
   fontSize: 14,
+  outline: "none",
+  transition: "all 0.2s ease",
 };
+
 
 const button = {
   marginTop: 10,
@@ -246,6 +263,7 @@ const button = {
   fontWeight: 600,
   fontSize: 14,
   cursor: "pointer",
+  transition: "all 0.2s ease",
 };
 
 const errorBox = {
@@ -265,12 +283,15 @@ const footer = {
 
 const animatedBg = {
   position: "absolute",
-  width: "600px",
-  height: "600px",
+  top: "-150px",
+  left: "-150px",
+  width: "700px",
+  height: "700px",
   background:
-    "radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(59,130,246,0) 70%)",
-  animation: "float 8s ease-in-out infinite",
-  filter: "blur(40px)",
+    "radial-gradient(circle at center, rgba(59,130,246,0.35) 0%, rgba(59,130,246,0) 70%)",
+  animation: "float 12s ease-in-out infinite",
+  filter: "blur(60px)",
 };
+
 
 
