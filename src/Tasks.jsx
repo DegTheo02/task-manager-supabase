@@ -62,6 +62,7 @@ export default function Tasks() {
 
   const { user, fullName, permissions } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [owners, setOwners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
 
@@ -183,20 +184,22 @@ useEffect(() => {
 
 
   /* FORM */
-  const emptyTask = {
-    id: null,
-    title: "",
-    owner: "",
-    team: "",
-    requester: "",
-    status: "",
-    recurrence_type: "Non-Recurring",
-    assigned_date: "",
-    initial_deadline: "",
-    new_deadline: "",
-    closing_date: "" ,
-    comments: "" 
-  };
+const emptyTask = {
+  id: null,
+  title: "",
+  owner_id: "",
+  owner: "",
+  team: "",
+  requester: "",
+  status: "",
+  recurrence_type: "Non-Recurring",
+  assigned_date: "",
+  initial_deadline: "",
+  new_deadline: "",
+  closing_date: "",
+  comments: ""
+};
+
 
   const [form, setForm] = useState(emptyTask);
   const [isEditing, setIsEditing] = useState(false);
@@ -222,10 +225,38 @@ setTasks(data || []);
     setLoading(false);
   };
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
+  
+  const loadOwners = async () => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, owner_label")
+    .order("owner_label");
 
+  if (!error) {
+    setOwners(data || []);
+  }
+};
+
+  
+useEffect(() => {
+  loadTasks();
+  loadOwners();
+}, []);
+
+
+  useEffect(() => {
+  if (user && !permissions?.manage_users) {
+    const currentOwner = owners.find(o => o.id === user.id);
+
+    setForm(f => ({
+      ...f,
+      owner_id: user.id,
+      owner: currentOwner?.owner_label || ""
+    }));
+  }
+}, [user, permissions, owners]);
+
+  
   /* FILTER + TODAY LOGIC */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
@@ -371,17 +402,16 @@ const bV =
     };
 
       // 🚫 Double protection: backend-level guard
-      if (!permissions?.manage_users && form.owner !== fullName) {
+      if (!permissions?.manage_users && form.owner_id !== user.id) {
         alert("You are not allowed to assign tasks to this user.");
         return;
       }
 
         const payload = {
           title: form.title,
-          owner: permissions?.manage_users
-          ? form.owner
-          : (fullName || user.email),  // for display
-          owner_id: user?.id,         // for security
+          owner: form.owner,
+          owner_id: form.owner_id,
+                // for security
 
           team: form.team,
           requester: form.requester,
@@ -671,33 +701,36 @@ return (
 
           
             <label style={formLabel}>
-              Owner *
+
               <select
                 style={formInput}
-                value={form.owner}
+                value={form.owner_id}
                 onChange={e => {
-                  const selectedOwner = e.target.value;
-            
+                  const selectedOwnerId = e.target.value;
+              
                   // 🚫 Non-managers cannot assign to others
-                  if (!permissions?.manage_users && selectedOwner !== fullName) {
+                  if (!permissions?.manage_users && selectedOwnerId !== user.id) {
                     alert("You can only assign tasks to yourself.");
                     return;
                   }
-            
+              
+                  const selectedOwner = owners.find(o => o.id === selectedOwnerId);
+              
                   setForm(f => ({
                     ...f,
-                    owner: selectedOwner,
-                    team: OWNER_TEAM_MAP[selectedOwner] || ""
+                    owner_id: selectedOwnerId,
+                    owner: selectedOwner?.owner_label || "",
+                    team: OWNER_TEAM_MAP[selectedOwner?.owner_label] || ""
                   }));
                 }}
               >
                 <option value="">Select owner</option>
-                {OWNERS.map(o => (
-                  <option key={o} value={o}>
-                    {o}
+                {owners.map(o => (
+                  <option key={o.id} value={o.id}>
+                    {o.owner_label}
                   </option>
                 ))}
-              </select>
+              </select>   
             </label>
 
 
@@ -1013,9 +1046,12 @@ return (
                 }))
               }
             >
-              {OWNERS.map(o => (
-                <option key={o} value={o}>{o}</option>
+              {owners.map(o => (
+                <option key={o.id} value={o.owner_label}>
+                  {o.owner_label}
+                </option>
               ))}
+
             </select>
           </div>
 
