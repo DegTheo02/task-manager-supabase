@@ -128,7 +128,8 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
 ================================ */
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
-  const { user, permissions, loading } = useAuth();
+  const { user, permissions, loading, role } = useAuth();
+  const [ownerOptions, setOwnerOptions] = useState([]);
 
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("darkMode") === "true"
@@ -180,6 +181,51 @@ export default function DailyTaskVolume() {
       }
     }, [permissions, user]);
 
+      
+        useEffect(() => {
+        if (!user || !role) return;
+      
+        const loadOwners = async () => {
+          let q = supabase
+            .from("profiles")
+            .select("id, owner_label, team");
+      
+          // 🔐 USER → only themselves
+          if (role === "user") {
+            q = q.eq("id", user.id);
+          }
+      
+          // 🔐 MANAGER → only their team
+          if (role === "manager") {
+            const { data: myProfile } = await supabase
+              .from("profiles")
+              .select("team")
+              .eq("id", user.id)
+              .maybeSingle();
+      
+            if (myProfile?.team) {
+              q = q.eq("team", myProfile.team);
+            }
+          }
+      
+          const { data } = await q;
+      
+          const owners = (data || []).map(p => p.owner_label);
+      
+          setOwnerOptions(owners);
+      
+          // 🔒 If user → auto lock to themselves
+          if (role === "user" && owners.length === 1) {
+            setFilters(f => ({
+              ...f,
+              owners: owners
+            }));
+          }
+        };
+      
+        loadOwners();
+      }, [user, role]);
+
   /* ===============================
      DATA LOAD
   ================================ */
@@ -192,28 +238,25 @@ export default function DailyTaskVolume() {
             .select("status_day,status,owner,owner_id,team,requester");
       
           // 🔐 PERMISSION RESTRICTIONS
-      
-          // Only own tasks
-          if (permissions.view_own_tasks && !permissions.view_all_tasks) {
+                
+          // 🔐 USER → only own
+          if (role === "user") {
             q = q.eq("owner_id", user.id);
           }
-      
-          // Team tasks only (but not full access)
-          if (
-            permissions.view_team_tasks &&
-            !permissions.view_all_tasks &&
-            !permissions.view_own_tasks
-          ) {
-            const { data: profile } = await supabase
+          
+          // 🔐 MANAGER → only team
+          if (role === "manager") {
+            const { data: myProfile } = await supabase
               .from("profiles")
               .select("team")
               .eq("id", user.id)
               .maybeSingle();
-      
-            if (profile?.team) {
-              q = q.eq("team", profile.team);
+          
+            if (myProfile?.team) {
+              q = q.eq("team", myProfile.team);
             }
           }
+
       
           // Filters
           if (filters.owners.length) q = q.in("owner", filters.owners);
@@ -300,7 +343,7 @@ export default function DailyTaskVolume() {
 
           <MultiDropdown
             label="👤 Owner(s)"
-            items={OWNERS}
+            items={ownerOptions}
             values={filters.owners}
             onChange={v => setFilters(f => ({ ...f, owners: v }))}
             darkMode={darkMode}
