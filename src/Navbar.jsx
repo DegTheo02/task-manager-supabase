@@ -5,7 +5,7 @@ import { supabase } from "./supabaseClient";
 import { useState, useRef, useEffect } from "react";
 
 export default function Navbar() {
-  const { user, role, fullName } = useAuth();
+  const { user, permissions, fullName } = useAuth();
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,23 +44,25 @@ export default function Navbar() {
       <div style={{ display: "flex", alignItems: "center" }}>
 
                 
-        {/* Navigation Links */}
-        
-        {permissions.manage_users && (
-          <>
-            <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
-            <NavLink to="/kanban" style={link}>Kanban</NavLink>
-            <NavLink to="/admin" style={link}>Admin</NavLink>
-          </>
-        )}
-        
-        {/* Available to admin, manager, user */}
-        {["admin", "manager", "user"].includes(role) && (
-          <>
-            <NavLink to="/tasks" style={link}>Tasks</NavLink>
-            <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
-          </>
-        )}
+      {/* Navigation Links */}
+      
+      {/* Admin / Power User */}
+      {permissions?.manage_users && (
+        <>
+          <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
+          <NavLink to="/kanban" style={link}>Kanban</NavLink>
+          <NavLink to="/admin" style={link}>Admin</NavLink>
+        </>
+      )}
+      
+      {/* Anyone who can view tasks */}
+      {permissions?.view_tasks && (
+        <>
+          <NavLink to="/tasks" style={link}>Tasks</NavLink>
+          <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
+        </>
+      )}
+
 
 
         {/* USER DROPDOWN */}
@@ -128,7 +130,7 @@ export default function Navbar() {
                     borderBottom: "1px solid #E5E7EB",
                   }}
                 >
-                  Role: {role?.toUpperCase()}
+                  
                 </div>
             
                 {/* Logout */}
