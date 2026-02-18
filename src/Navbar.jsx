@@ -31,6 +31,11 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const canViewTasks =
+  permissions?.view_own_tasks ||
+  permissions?.view_team_tasks ||
+  permissions?.view_all_tasks;
+
   return (
     <nav style={nav}>
       
@@ -55,13 +60,14 @@ export default function Navbar() {
         </>
       )}
       
-      {/* Anyone who can view tasks */}
-      {permissions?.view_tasks && (
-        <>
-          <NavLink to="/tasks" style={link}>Tasks</NavLink>
-          <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
-        </>
-      )}
+        {/* Anyone who can view tasks */}
+        {canViewTasks && (
+          <>
+            <NavLink to="/tasks" style={link}>Tasks</NavLink>
+            <NavLink to="/daily-volume" style={link}>Daily Volume</NavLink>
+          </>
+        )}
+
 
 
 
