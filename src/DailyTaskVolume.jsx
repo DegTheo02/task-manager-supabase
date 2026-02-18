@@ -61,9 +61,17 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
     );
   };
 
-  const toggleAll = () => {
-    onChange(allSelected ? [] : [...items]);
-  };
+    const toggleAll = () => {
+      if (allSelected) {
+        onChange([]);
+      } else {
+        const allValues = items.map(item =>
+          typeof item === "object" ? item.value : item
+        );
+        onChange(allValues);
+      }
+    };
+
 
   useEffect(() => {
     const close = e => {
