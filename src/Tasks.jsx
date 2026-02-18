@@ -370,6 +370,11 @@ const bV =
       return null;
     };
 
+      // 🚫 Double protection: backend-level guard
+      if (!permissions?.manage_users && form.owner !== fullName) {
+        alert("You are not allowed to assign tasks to this user.");
+        return;
+      }
 
         const payload = {
           title: form.title,
@@ -664,41 +669,37 @@ return (
             />
           </label>
 
-            {permissions?.manage_users ? (
-              // Admin / Manager can select owner
-              <label style={formLabel}>
-                Owner *
-                <select
-                  style={formInput}
-                  value={form.owner}
-                  onChange={e => {
-                    const owner = e.target.value;
-                    setForm(f => ({
-                      ...f,
-                      owner,
-                      team: OWNER_TEAM_MAP[owner] || ""
-                    }));
-                  }}
-                >
-                  <option value="">Select owner</option>
-                  {OWNERS.map(o => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              // Normal user → fixed owner
-              <label style={formLabel}>
-                Owner *
-                <input
-                  style={formInput}
-                  value={fullName || user?.email}
-                  disabled
-                />
-              </label>
-            )}
+          
+            <label style={formLabel}>
+              Owner *
+              <select
+                style={formInput}
+                value={form.owner}
+                onChange={e => {
+                  const selectedOwner = e.target.value;
+            
+                  // 🚫 Non-managers cannot assign to others
+                  if (!permissions?.manage_users && selectedOwner !== fullName) {
+                    alert("You can only assign tasks to yourself.");
+                    return;
+                  }
+            
+                  setForm(f => ({
+                    ...f,
+                    owner: selectedOwner,
+                    team: OWNER_TEAM_MAP[selectedOwner] || ""
+                  }));
+                }}
+              >
+                <option value="">Select owner</option>
+                {OWNERS.map(o => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </label>
+
 
           <label style={formLabel}>
             Requester *
