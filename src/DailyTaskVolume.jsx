@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 import TaskCalendar from "./TaskCalendar";
+import { useAuth } from "./context/AuthContext";
+
 
 import {
   Chart as ChartJS,
@@ -126,6 +128,8 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
 ================================ */
 export default function DailyTaskVolume() {
   const [rows, setRows] = useState([]);
+  const { user, role } = useAuth();
+
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("darkMode") === "true"
   );
@@ -170,28 +174,60 @@ export default function DailyTaskVolume() {
   /* ===============================
      DATA LOAD
   ================================ */
-  useEffect(() => {
-    const load = async () => {
-      let q = supabase
-        .from("task_daily_status")
-        .select("status_day,status,owner,team,requester");
+      useEffect(() => {
+        const load = async () => {
+          let q = supabase
+            .from("task_daily_status")
+            .select("status_day,status,owner,team,requester");
+      
+            // 🔐 ROLE RESTRICTIONS
+              if (role === "user") {
+                q = q.eq("owner_id", user.id);
+              }
 
-      if (filters.owners.length) q = q.in("owner", filters.owners);
-      if (filters.teams.length) q = q.in("team", filters.teams);
-      if (filters.requesters.length)
-        q = q.in("requester", filters.requesters);
-      if (filters.statuses.length)
-        q = q.in("status", filters.statuses);
-      if (filters.date_from)
-        q = q.gte("status_day", filters.date_from);
-      if (filters.date_to)
-        q = q.lte("status_day", filters.date_to);
+            
+            if (role === "manager") {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("team")
+                .eq("id", user.id)
+                .maybeSingle();
+            
+              if (profile?.team) {
+                q = q.eq("team", profile.team);
+              }
+            }
 
-      const { data } = await q;
-      setRows(data || []);
-    };
-    load();
-  }, [filters]);
+      
+          // Existing filters
+          if (filters.owners.length) q = q.in("owner", filters.owners);
+          if (filters.teams.length) q = q.in("team", filters.teams);
+          if (filters.requesters.length)
+            q = q.in("requester", filters.requesters);
+          if (filters.statuses.length)
+            q = q.in("status", filters.statuses);
+          if (filters.date_from)
+            q = q.gte("status_day", filters.date_from);
+          if (filters.date_to)
+            q = q.lte("status_day", filters.date_to);
+      
+          const { data } = await q;
+          setRows(data || []);
+        };
+      
+        if (user && role) load();
+      }, [filters, user, role]);
+
+          useEffect(() => {
+          if (role === "user" && user) {
+            setFilters(f => ({
+              ...f,
+              owners: [],   // prevent manual override
+              teams: []
+            }));
+          }
+        }, [role, user]);
+
 
   /* ===============================
      CHART DATA
@@ -259,25 +295,29 @@ export default function DailyTaskVolume() {
             boxShadow: "0 2px 6px rgba(0,0,0,0.12)"
           }}
         >
+        {role !== "user" && (
           <MultiDropdown
             label="👤 Owner(s)"
             items={OWNERS}
             values={filters.owners}
-            onChange={v =>
-              setFilters(f => ({ ...f, owners: v }))
-            }
+            onChange={v => setFilters(f => ({ ...f, owners: v }))}
             darkMode={darkMode}
           />
+        )}
 
-          <MultiDropdown
-            label="🧩 Team(s)"
-            items={TEAMS}
-            values={filters.teams}
-            onChange={v =>
-              setFilters(f => ({ ...f, teams: v }))
-            }
-            darkMode={darkMode}
-          />
+
+            {role !== "user" && (
+              <MultiDropdown
+                label="🧩 Team(s)"
+                items={TEAMS}
+                values={filters.teams}
+                onChange={v =>
+                  setFilters(f => ({ ...f, teams: v }))
+                }
+                darkMode={darkMode}
+              />
+            )}
+
 
           <MultiDropdown
             label="📄 Requester(s)"
@@ -348,15 +388,22 @@ export default function DailyTaskVolume() {
             darkMode={darkMode}
             statuses={filters.statuses}
             onDayClick={(day, evt) => {
-              const params = new URLSearchParams({
-                date_from: day,
-                date_to: day,
-                owners: filters.owners.join(","),
-                teams: filters.teams.join(","),
-                requesters: filters.requesters.join(","),
-                statuses: filters.statuses.join(",")
-              });
-    
+            const params = new URLSearchParams({
+              status,
+              date_from: day,
+              date_to: day,
+              owners:
+                role === "user"
+                  ? user.email
+                  : filters.owners.join(","),
+              teams:
+                role === "manager"
+                  ? ""
+                  : filters.teams.join(","),
+              requesters: filters.requesters.join(",")
+            });
+            
+                
               const url = `/tasks?${params.toString()}`;
     
               evt.ctrlKey || evt.metaKey
@@ -393,14 +440,21 @@ export default function DailyTaskVolume() {
             const status =
               chartData.datasets[el.datasetIndex].label;
       
-            const params = new URLSearchParams({
-              status,
-              date_from: day,
-              date_to: day,
-              owners: filters.owners.join(","),
-              teams: filters.teams.join(","),
-              requesters: filters.requesters.join(",")
-            });
+              const params = new URLSearchParams({
+                status,
+                date_from: day,
+                date_to: day,
+                owners:
+                  role === "user"
+                    ? user.email
+                    : filters.owners.join(","),
+                teams:
+                  role === "manager"
+                    ? ""
+                    : filters.teams.join(","),
+                requesters: filters.requesters.join(",")
+              });
+
       
             const url = `/tasks?${params.toString()}`;
       
