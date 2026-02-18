@@ -741,24 +741,28 @@ return (
                 value={form.owner_id}
                 onChange={e => {
                   const selectedOwnerId = e.target.value;
-              
-                  // 🚫 Non-managers cannot assign to others
+                
                   if (!permissions?.manage_users && selectedOwnerId !== user.id) {
                     alert("You can only assign tasks to yourself.");
                     return;
                   }
-              
-                  const selectedOwner = owners.find(o => o.id === selectedOwnerId);
-              
-                    setForm(f => ({
-                      ...f,
-                      owner: selectedOwner,
-                      team: permissions?.role === 'manager'
-                        ? OWNER_TEAM_MAP[selectedOwner]
-                        : myTeam
-                    }));
-
+                
+                  const selectedOwner = owners.find(
+                    o => o.id === selectedOwnerId
+                  );
+                
+                  if (!selectedOwner) return;
+                
+                  setForm(f => ({
+                    ...f,
+                    owner_id: selectedOwnerId,               // ✅ VERY IMPORTANT
+                    owner: selectedOwner.owner_label,        // ✅ string, not object
+                    team: role === "manager"
+                      ? selectedOwner.team                  // ✅ correct team
+                      : myTeam
+                  }));
                 }}
+
               >
                 <option value="">Select owner</option>
                 {owners.map(o => (
