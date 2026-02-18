@@ -75,6 +75,9 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  console.log("DROPDOWN ITEMS:", items);
+console.log("DROPDOWN VALUES:", values);
+
   return (
     <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
       <label style={filterLabel}>{label}</label>
@@ -214,11 +217,6 @@ export default function DailyTaskVolume() {
             label: p.owner_label,
             value: p.id
           }));
-
-          console.log("ROLE:", role);
-          console.log("USER ID:", user?.id);
-          console.log("OWNERS FROM DB:", data);
-
       
           setOwnerOptions(owners);
       
