@@ -78,6 +78,7 @@ export default function Tasks() {
   const teamsParam = searchParams.get("teams");
   const requestersParam = searchParams.get("requesters");
 
+  const { user, permissions } = useAuth();
 
 
   /* DARK MODE */
@@ -372,7 +373,9 @@ const bV =
 
         const payload = {
           title: form.title,
-          owner: form.owner,         // for display
+          owner: permissions?.manage_users
+          ? form.owner
+          : (fullName || user.email),  // for display
           owner_id: user?.id,         // for security
 
           team: form.team,
@@ -661,28 +664,41 @@ return (
             />
           </label>
 
-          <label style={formLabel}>
-            Owner *
-            <select
-              style={formInput}
-              value={form.owner}
-              onChange={e => {
-                const owner = e.target.value;
-                setForm(f => ({
-                  ...f,
-                  owner,
-                  team: OWNER_TEAM_MAP[owner] || ""
-                }));
-              }}
-            >
-              <option value="">Select owner</option>
-              {OWNERS.map(o => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </label>
+            {permissions?.manage_users ? (
+              // Admin / Manager can select owner
+              <label style={formLabel}>
+                Owner *
+                <select
+                  style={formInput}
+                  value={form.owner}
+                  onChange={e => {
+                    const owner = e.target.value;
+                    setForm(f => ({
+                      ...f,
+                      owner,
+                      team: OWNER_TEAM_MAP[owner] || ""
+                    }));
+                  }}
+                >
+                  <option value="">Select owner</option>
+                  {OWNERS.map(o => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              // Normal user → fixed owner
+              <label style={formLabel}>
+                Owner *
+                <input
+                  style={formInput}
+                  value={fullName || user?.email}
+                  disabled
+                />
+              </label>
+            )}
 
           <label style={formLabel}>
             Requester *
