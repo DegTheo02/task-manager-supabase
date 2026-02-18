@@ -60,7 +60,7 @@ const WEEKDAYS = [
 ---------------------------------- */
 export default function Tasks() {
 
-  const { user, fullName, permissions } = useAuth();
+  const { user, fullName, permissions,team: myTeam, ownerLabel } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [owners, setOwners] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -409,6 +409,10 @@ const bV =
         return;
       }
 
+    if (!permissions?.manage_users) {
+          form.team = myTeam;
+        }
+
         const payload = {
           title: form.title,
           owner: form.owner,
@@ -722,12 +726,14 @@ return (
               
                   const selectedOwner = owners.find(o => o.id === selectedOwnerId);
               
-                  setForm(f => ({
-                    ...f,
-                    owner_id: selectedOwnerId,
-                    owner: selectedOwner?.owner_label || "",
-                    team: OWNER_TEAM_MAP[selectedOwner?.owner_label] || ""
-                  }));
+                    setForm(f => ({
+                      ...f,
+                      owner: selectedOwner,
+                      team: permissions?.role === 'manager'
+                        ? OWNER_TEAM_MAP[selectedOwner]
+                        : myTeam
+                    }));
+
                 }}
               >
                 <option value="">Select owner</option>
