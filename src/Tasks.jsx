@@ -60,7 +60,7 @@ const WEEKDAYS = [
 ---------------------------------- */
 export default function Tasks() {
 
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
@@ -78,7 +78,7 @@ export default function Tasks() {
   const teamsParam = searchParams.get("teams");
   const requestersParam = searchParams.get("requesters");
 
-  const { user, permissions } = useAuth();
+
 
 
   /* DARK MODE */
