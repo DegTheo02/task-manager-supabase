@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { signIn } from "./auth";
 
 export default function Login() {
@@ -6,25 +7,43 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(
+  localStorage.getItem("rememberEmail") === "true"
+);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  useEffect(() => {
+  const savedEmail = localStorage.getItem("savedEmail");
+  if (savedEmail) setEmail(savedEmail);
+}, []);
 
-    const { error } = await signIn(email, password);
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    }
-  };
+  if (remember) {
+    localStorage.setItem("savedEmail", email);
+    localStorage.setItem("rememberEmail", "true");
+  } else {
+    localStorage.removeItem("savedEmail");
+    localStorage.removeItem("rememberEmail");
+  }
+
+  const { error } = await signIn(email, password);
+
+  if (error) {
+    setError(error.message);
+    setLoading(false);
+  }
+};
+
 
   return (
     <div style={page}>
       
       {/* LEFT PANEL */}
       <div style={leftPanel}>
+        <div style={animatedBg}></div>
         <div style={brandingContent}>
           <img
             src="/logo.png"   // 🔥 Put your logo file in /public folder
@@ -77,6 +96,18 @@ export default function Login() {
               />
             </div>
 
+            <div style={rememberRow}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              Remember me
+            </label>
+          </div>
+
+            
             {error && <div style={errorBox}>{error}</div>}
 
             <button type="submit" style={button} disabled={loading}>
@@ -94,6 +125,10 @@ export default function Login() {
 }
 
 
+const rememberRow = {
+  fontSize: 13,
+  color: "#475569",
+};
 
 
 const container = {
@@ -112,6 +147,8 @@ const page = {
 
 const leftPanel = {
   flex: 1,
+  position: "relative",
+  overflow: "hidden",
   background: "linear-gradient(160deg, #0F172A 0%, #1E3A8A 100%)",
   color: "white",
   display: "flex",
@@ -119,6 +156,7 @@ const leftPanel = {
   justifyContent: "center",
   padding: 60,
 };
+
 
 const brandingContent = {
   maxWidth: 420,
@@ -223,6 +261,16 @@ const footer = {
   fontSize: 11,
   color: "#94A3B8",
   textAlign: "center",
+};
+
+const animatedBg = {
+  position: "absolute",
+  width: "600px",
+  height: "600px",
+  background:
+    "radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(59,130,246,0) 70%)",
+  animation: "float 8s ease-in-out infinite",
+  filter: "blur(40px)",
 };
 
 
