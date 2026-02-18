@@ -42,7 +42,7 @@ export default function Navbar() {
       {/* LEFT */}
       <Link to="/dashboard" style={brand}>
         <img src="/favicon.ico" alt="Task Manager Logo" style={logo} />
-        <span>BI & CVM Task Manager</span>
+        <span>BI & CVM Execution Manager</span>
       </Link>
 
       {/* RIGHT SIDE */}
