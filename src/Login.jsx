@@ -18,9 +18,10 @@ export default function Login() {
     <div style={container}>
       <h2>Login</h2>
 
-      <form onSubmit={handleLogin} style={form}>
+      <form onSubmit={handleLogin} style={form} autoComplete="off">
         <input
           type="email"
+          autoComplete="username"
           placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
@@ -29,6 +30,7 @@ export default function Login() {
 
         <input
           type="password"
+          autoComplete="current-password"
           placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
