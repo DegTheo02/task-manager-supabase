@@ -180,14 +180,6 @@ export default function DailyTaskVolume() {
     setFilters(empty);
   };
 
-      useEffect(() => {
-      if (permissions.view_own_tasks && !permissions.view_all_tasks && user) {
-        setFilters(f => ({
-          ...f,
-          owners: [user.email]   // or owner name
-        }));
-      }
-    }, [permissions, user]);
 
       
         useEffect(() => {
@@ -230,7 +222,7 @@ export default function DailyTaskVolume() {
           if (role === "user" && owners.length === 1) {
             setFilters(f => ({
               ...f,
-              owners: owners
+              owners: [owners[0].value]
             }));
           }
         };
@@ -355,7 +347,7 @@ export default function DailyTaskVolume() {
 
             <MultiDropdown
               label="👤 Owner(s)"
-              items={ownerOptions.map(o => o.value)}
+              items={ownerOptions}
               values={filters.owners}
               onChange={v => setFilters(f => ({ ...f, owners: v }))}
               darkMode={darkMode}
