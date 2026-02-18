@@ -17,3 +17,9 @@ body.dark {
   background: #111 !important;
 }
 
+
+@keyframes float {
+  0% { transform: translate(-20%, -20%) }
+  50% { transform: translate(20%, 20%) }
+  100% { transform: translate(-20%, -20%) }
+}
