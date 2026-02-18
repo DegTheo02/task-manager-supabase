@@ -32,7 +32,7 @@ function ProtectedRoute({ children }) {
 
 
 function AdminRoute({ children }) {
-  const { user, role, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) return <div>Loading...</div>;
 
