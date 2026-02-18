@@ -11,8 +11,6 @@ import DailyTaskVolume from "./DailyTaskVolume";
 
 import { useAuth } from "./context/AuthContext";
 
-import RoleRoute from "./routes/RoleRoute";
-
 import PermissionRoute from "./routes/PermissionRoute";
 import Admin from "./Admin";
 
