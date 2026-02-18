@@ -77,13 +77,6 @@ const container = {
   height: "100vh"
 };
 
-const form = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-  width: 280
-};
-
 const page = {
   height: "100vh",
   display: "flex",
