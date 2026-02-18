@@ -33,7 +33,7 @@ export default function Login() {
           />
 
           <h1 style={headline}>
-            BI & CVM Task Manager
+            BI & CVM Execution Manager
           </h1>
 
           <p style={description}>
