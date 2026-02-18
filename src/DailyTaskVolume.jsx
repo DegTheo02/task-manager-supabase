@@ -194,7 +194,7 @@ export default function DailyTaskVolume() {
 
       
         useEffect(() => {
-        if (!user || !role) return;
+        if (!user) return;
       
         const loadOwners = async () => {
           let q = supabase
