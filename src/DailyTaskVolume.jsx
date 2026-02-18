@@ -181,21 +181,13 @@ export default function DailyTaskVolume() {
             .select("status_day,status,owner,team,requester");
       
             // 🔐 ROLE RESTRICTIONS
-              if (role === "user") {
-                q = q.eq("owner_id", user.id);
-              }
+            if (permissions.view_own_tasks && !permissions.view_all_tasks) {
+              q = q.eq("owner_id", user.id);
+            }
 
             
-            if (role === "manager") {
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("team")
-                .eq("id", user.id)
-                .maybeSingle();
-            
-              if (profile?.team) {
-                q = q.eq("team", profile.team);
-              }
+            if (permissions.view_team_tasks && !permissions.view_all_tasks) {
+              q = q.eq("team", profile.team);
             }
 
       
