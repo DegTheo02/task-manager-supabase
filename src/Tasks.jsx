@@ -238,6 +238,9 @@ setTasks(data || []);
     .select("id, owner_label")
     .order("owner_label");
 
+      console.log("OWNERS FROM DB:", data);
+  console.log("ERROR:", error);
+
   if (!error) {
     setOwners(data || []);
   }
