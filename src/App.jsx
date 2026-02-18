@@ -137,17 +137,20 @@ export default function App() {
         />
 
         {/* Default */}
-         <Route
-           path="/"
-           element={
-             user
-               ? <Navigate to="/tasks" replace />
-               : <Navigate to="/login" replace />
-           }
-         />
+            <Route
+              path="/"
+              element={
+                user
+                  ? permissions?.manage_users
+                      ? <Navigate to="/dashboard" replace />
+                      : <Navigate to="/tasks" replace />
+                  : <Navigate to="/login" replace />
+              }
+            />
 
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );
