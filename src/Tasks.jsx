@@ -60,7 +60,7 @@ const WEEKDAYS = [
 ---------------------------------- */
 export default function Tasks() {
 
-  const { user, permissions } = useAuth();
+  const { user, fullName, permissions } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
