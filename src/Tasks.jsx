@@ -122,13 +122,6 @@ const [filters, setFilters] = useState(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
 
-  
-  useEffect(() => {
-  console.log("USER:", user);
-  console.log("PERMISSIONS:", permissions);
-}, [user, permissions]);
-
-
 useEffect(() => {
   // Only apply URL filters if at least one param exists
   if (
