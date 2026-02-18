@@ -674,7 +674,8 @@ return (
             display: "grid",
             gridTemplateColumns: "repeat(9, 1fr)",
             gap: 20,
-            width: "100%"
+            width: "100%",
+            alignItems: "end"
           }}
         >
           {/* ROW 1 */}
@@ -705,7 +706,10 @@ return (
             <label style={formLabel}>
 
               <select
-                style={formInput}
+                  style={{
+                    ...formInput,
+                    appearance: "none"
+                  }}
                 value={form.owner_id}
                 onChange={e => {
                   const selectedOwnerId = e.target.value;
@@ -1390,8 +1394,11 @@ const formLabel = {
 const formInput = {
   padding: "6px 8px",
   border: "1px solid #D1D5DB",
-  borderRadius: 4
+  borderRadius: 4,
+  height: 36,
+  boxSizing: "border-box"
 };
+
 
 const filterBar = {
   display: "flex",
