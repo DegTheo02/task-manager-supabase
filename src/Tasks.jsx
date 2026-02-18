@@ -1046,11 +1046,10 @@ return (
                 }))
               }
             >
-              {owners.map(o => (
-                <option key={o.id} value={o.owner_label}>
-                  {o.owner_label}
-                </option>
-              ))}
+              
+            {OWNERS.map(o => (
+              <option key={o} value={o}>{o}</option>
+            ))}
 
             </select>
           </div>
