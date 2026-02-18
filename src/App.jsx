@@ -89,9 +89,9 @@ export default function App() {
          <Route
            path="/admin"
            element={
-             <RoleRoute requiredRole="admin">
+             <PermissionRoute permission="manage_users">
                <Admin />
-             </RoleRoute>
+              </PermissionRoute>
         }
       />
 
@@ -99,9 +99,9 @@ export default function App() {
          <Route
            path="/dashboard"
            element={
-             <RoleRoute requiredRole="admin">
+             <PermissionRoute permission="manage_users">
                <Dashboard />
-             </RoleRoute>
+              </PermissionRoute>
            }
          />
 
@@ -119,9 +119,9 @@ export default function App() {
          <Route
            path="/kanban"
            element={
-             <RoleRoute requiredRole="admin">
+             <PermissionRoute permission="manage_users">
                <Kanban />
-             </RoleRoute>
+              </PermissionRoute>
            }
          />
 
