@@ -46,7 +46,7 @@ export default function Navbar() {
                 
         {/* Navigation Links */}
         
-        {role === "admin" && (
+        {permissions.manage_users && (
           <>
             <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
             <NavLink to="/kanban" style={link}>Kanban</NavLink>
