@@ -4,10 +4,9 @@ import { supabase } from "../supabaseClient";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  
+
   const [permissions, setPermissions] = useState({});
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
   const [fullName, setFullName] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,32 +19,28 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         setUser(session.user);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("permissions, full_name")
-        .eq("id", session.user.id)
-        .maybeSingle();
-      
-      setPermissions(profile?.permissions || {});
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("permissions, full_name")
+          .eq("id", session.user.id)
+          .maybeSingle();
 
-
-        setRole(profile?.role || "user");
+        setPermissions(profile?.permissions || {});
         setFullName(profile?.full_name || null);
+
       } else {
         setUser(null);
-        setRole(null);
+        setPermissions({});
         setFullName(null);
       }
 
       setLoading(false);
     };
 
-    // Initial session
     supabase.auth.getSession().then(({ data }) => {
       loadUser(data.session);
     });
 
-    // Listen to login/logout
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         loadUser(session);
@@ -59,10 +54,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, fullName,permissions, loading }}>
+    <AuthContext.Provider value={{ user, fullName, permissions, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
+
 
 export const useAuth = () => useContext(AuthContext);
