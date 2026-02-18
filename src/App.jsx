@@ -72,7 +72,7 @@ export default function App() {
          <Route
            path="/admin"
            element={
-             <PermissionRoute permission="manage_users">
+             <PermissionRoute permission="view_all_tasks">
                <Admin />
               </PermissionRoute>
         }
@@ -82,7 +82,7 @@ export default function App() {
          <Route
            path="/dashboard"
            element={
-             <PermissionRoute permission="manage_users">
+             <PermissionRoute permission="view_all_tasks">
                <Dashboard />
               </PermissionRoute>
            }
@@ -102,7 +102,7 @@ export default function App() {
          <Route
            path="/kanban"
            element={
-             <PermissionRoute permission="manage_users">
+             <PermissionRoute permission="view_all_tasks">
                <Kanban />
               </PermissionRoute>
            }
@@ -123,7 +123,7 @@ export default function App() {
               path="/"
               element={
                 user
-                  ? permissions?.manage_users
+                  ? permissions?.view_all_tasks
                       ? <Navigate to="/dashboard" replace />
                       : <Navigate to="/tasks" replace />
                   : <Navigate to="/login" replace />
