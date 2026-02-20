@@ -508,8 +508,8 @@ if (isEditing) {
       // --------------------------------
 
         // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
-        if (!recurrence.enabled) {
-        
+
+         if (!recurrence.enabled) {
           if (isSubmitting) return;
           setIsSubmitting(true);
         
@@ -524,16 +524,14 @@ if (isEditing) {
             return;
           }
         
-        //  if (payload.owner_id !== user.id) {
-          const { data: { session } } = await supabase.auth.getSession();
-
-          if (!session) {
-            console.error("No session found");
-            return;
-          }
-          
+          // ✅ GET SESSION TOKEN CORRECTLY
+          const {
+            data: { session }
+          } = await supabase.auth.getSession();
+        
           try {
             console.log("🔥 Calling send-task-email function...");
+        
             await fetch(
               `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
               {
@@ -551,11 +549,9 @@ if (isEditing) {
           } catch (err) {
             console.error("Email failed but task was created:", err);
           }
-      //    }
         
           setForm(emptyTask);
           await loadTasks();
-        
           setIsSubmitting(false);
           return;
         }
