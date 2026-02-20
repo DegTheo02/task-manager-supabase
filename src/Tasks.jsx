@@ -525,25 +525,32 @@ if (isEditing) {
           }
         
         //  if (payload.owner_id !== user.id) {
-            try {
-              console.log("🔥 Calling send-task-email function...");
-              await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${user.access_token}`,
-                  },
-                  body: JSON.stringify({
-                    task: payload,
-                    creator_id: user.id,
-                  }),
-                }
-              );
-            } catch (err) {
-              console.error("Email failed but task was created:", err);
-            }
+          const { data: { session } } = await supabase.auth.getSession();
+
+          if (!session) {
+            console.error("No session found");
+            return;
+          }
+          
+          try {
+            console.log("🔥 Calling send-task-email function...");
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  task: payload,
+                  creator_id: user.id,
+                }),
+              }
+            );
+          } catch (err) {
+            console.error("Email failed but task was created:", err);
+          }
       //    }
         
           setForm(emptyTask);
