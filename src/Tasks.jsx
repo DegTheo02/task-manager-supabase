@@ -440,8 +440,8 @@ const bV =
         const payload = {
           title: form.title,
           owner: form.owner,
-          owner_id: form.owner_id,
-                // for security
+          owner_id: form.owner_id, // for security
+          created_by: user.id,   // 
 
           team: form.team,
           requester: form.requester,
@@ -503,24 +503,37 @@ if (isEditing) {
       // SAVE TASK (single or recurring)
       // --------------------------------
 
-   // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
+        // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
         if (!recurrence.enabled) {
-
-          console.log("🚀 INSERT PAYLOAD (Non-Recurring)", payload);
-          
+        
           const { error } = await supabase
             .from("tasks")
             .insert(payload);
         
           if (error) {
-            console.group("🚨 Supabase Insert Error (Non-Recurring)");
-            console.error("Message:", error.message);
-            console.error("Details:", error.details);
-            console.error("Hint:", error.hint);
-            console.error("Code:", error.code);
-            console.groupEnd();
-            alert("Insert failed. Check console for details.");
+            console.error("Insert failed:", error);
+            alert("Insert failed");
             return;
+          }
+        
+          // ✅ Send email AFTER successful insert
+          try {
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${user.access_token}`,
+                },
+                body: JSON.stringify({
+                  task: payload,
+                  creator_id: user.id,
+                }),
+              }
+            );
+          } catch (err) {
+            console.error("Email failed but task was created:", err);
           }
         
           loadTasks();
