@@ -531,6 +531,8 @@ if (isEditing) {
         
           try {
             console.log("🔥 Calling send-task-email function...");
+            console.log("Session:", session);
+            console.log("Access token:", session?.access_token);
         
             await fetch(
               `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
@@ -538,7 +540,8 @@ if (isEditing) {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
+                  "Authorization": `Bearer ${session.access_token}`,
+                  "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY
                 },
                 body: JSON.stringify({
                   task: payload,
