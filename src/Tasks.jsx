@@ -509,7 +509,6 @@ if (isEditing) {
         console.log("🔍 TEAM DEBUG");
         console.log("form.team:", form.team);
         console.log("myTeam:", myTeam);
-        console.log("effectiveTeam:", effectiveTeam);
         console.log("FINAL PAYLOAD:", payload);
                 
         const { error } = await supabase
