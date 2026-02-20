@@ -505,7 +505,13 @@ if (isEditing) {
 
       // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
       if (!recurrence.enabled) {
-      
+
+        console.log("🔍 TEAM DEBUG");
+        console.log("form.team:", form.team);
+        console.log("myTeam:", myTeam);
+        console.log("effectiveTeam:", effectiveTeam);
+        console.log("FINAL PAYLOAD:", payload);
+                
         const { error } = await supabase
           .from("tasks")
           .insert(payload);
