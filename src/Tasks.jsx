@@ -440,8 +440,8 @@ const bV =
         const payload = {
           title: form.title,
           owner: form.owner,
-          owner_id: form.owner_id,
-                // for security
+          owner_id: form.owner_id, // for security
+          created_by: user.id,   // 
 
           team: form.team,
           requester: form.requester,
