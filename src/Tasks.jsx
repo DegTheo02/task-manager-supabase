@@ -1078,9 +1078,6 @@ return (
           {isSubmitting ? "Creating..." : isEditing ? "Update Task" : "Create Task"}
         </button>
 
-        
-          {isEditing ? "Update Task" : "Create Task"}
-        </button>
       </div>
 
       {/* EXISTING TASKS */}
