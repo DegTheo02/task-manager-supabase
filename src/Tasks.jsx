@@ -524,8 +524,9 @@ if (isEditing) {
             return;
           }
         
-          if (payload.owner_id !== user.id) {
+        //  if (payload.owner_id !== user.id) {
             try {
+              console.log("🔥 Calling send-task-email function...");
               await fetch(
                 `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
                 {
@@ -543,7 +544,7 @@ if (isEditing) {
             } catch (err) {
               console.error("Email failed but task was created:", err);
             }
-          }
+      //    }
         
           setForm(emptyTask);
           await loadTasks();
