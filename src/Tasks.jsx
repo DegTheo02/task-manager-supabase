@@ -503,30 +503,53 @@ if (isEditing) {
       // SAVE TASK (single or recurring)
       // --------------------------------
 
-   // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
-        if (!recurrence.enabled) {
-
-          console.log("🚀 INSERT PAYLOAD (Non-Recurring)", payload);
-          
-          const { error } = await supabase
-            .from("tasks")
-            .insert(payload);
-        
-          if (error) {
-            console.group("🚨 Supabase Insert Error (Non-Recurring)");
-            console.error("Message:", error.message);
-            console.error("Details:", error.details);
-            console.error("Hint:", error.hint);
-            console.error("Code:", error.code);
-            console.groupEnd();
-            alert("Insert failed. Check console for details.");
-            return;
-          }
-        
-          loadTasks();
-          setForm(emptyTask);
+      // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
+      if (!recurrence.enabled) {
+      
+        const { error } = await supabase
+          .from("tasks")
+          .insert(payload);
+      
+        if (error) {
+          alert("Insert failed");
           return;
         }
+
+        await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.access_token}`,
+          },
+          body: JSON.stringify({
+            task: recurringPayload,
+            creator_id: user.id,
+          }),
+        }
+      );
+      
+        // ✅ CALL EDGE FUNCTION HERE
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${user.access_token}`,
+            },
+            body: JSON.stringify({
+              task: payload,
+              creator_id: user.id,
+            }),
+          }
+        );
+      
+        loadTasks();
+        setForm(emptyTask);
+        return;
+      }
 
 
 
