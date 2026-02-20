@@ -66,6 +66,7 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [editSeries, setEditSeries] = useState(false);
   
@@ -374,7 +375,10 @@ const bV =
   
   /* SAVE TASK */
   const saveTask = async () => {
+  if (isSubmitting) return; // 🚫 Prevent double click
 
+  setIsSubmitting(true);
+    
     if (!user) {
     alert("Authentication error. Please login again.");
     return;
@@ -506,6 +510,9 @@ if (isEditing) {
         // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
         if (!recurrence.enabled) {
         
+          if (isSubmitting) return;
+          setIsSubmitting(true);
+        
           const { error } = await supabase
             .from("tasks")
             .insert(payload);
@@ -513,31 +520,35 @@ if (isEditing) {
           if (error) {
             console.error("Insert failed:", error);
             alert("Insert failed");
+            setIsSubmitting(false);
             return;
           }
         
-          // ✅ Send email AFTER successful insert
-          try {
-            await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${user.access_token}`,
-                },
-                body: JSON.stringify({
-                  task: payload,
-                  creator_id: user.id,
-                }),
-              }
-            );
-          } catch (err) {
-            console.error("Email failed but task was created:", err);
+          if (payload.owner_id !== user.id) {
+            try {
+              await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${user.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    task: payload,
+                    creator_id: user.id,
+                  }),
+                }
+              );
+            } catch (err) {
+              console.error("Email failed but task was created:", err);
+            }
           }
         
-          loadTasks();
           setForm(emptyTask);
+          await loadTasks();
+        
+          setIsSubmitting(false);
           return;
         }
 
@@ -1055,7 +1066,19 @@ return (
 
         </div>
 
-        <button onClick={saveTask} style={{ marginTop: 10 }}>
+          <button
+          onClick={saveTask}
+          disabled={isSubmitting}
+          style={{
+            marginTop: 10,
+            opacity: isSubmitting ? 0.6 : 1,
+            cursor: isSubmitting ? "not-allowed" : "pointer"
+          }}
+        >
+          {isSubmitting ? "Creating..." : isEditing ? "Update Task" : "Create Task"}
+        </button>
+
+        
           {isEditing ? "Update Task" : "Create Task"}
         </button>
       </div>
