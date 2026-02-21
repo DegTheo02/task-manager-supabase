@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
 
   const [team, setTeam] = useState(null);
   const [ownerLabel, setOwnerLabel] = useState(null);
+  const [role, setRole] = useState(null);  
 
   useEffect(() => {
     let mounted = true;
@@ -24,7 +25,7 @@ export function AuthProvider({ children }) {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("permissions, full_name, team, owner_label")
+          .select("permissions, full_name, team, owner_label, role")
           .eq("id", session.user.id)
           .maybeSingle();
 
@@ -32,11 +33,13 @@ export function AuthProvider({ children }) {
         setFullName(profile?.full_name || null);
         setTeam(profile?.team || null);
         setOwnerLabel(profile?.owner_label || null);
+        setRole(profile?.role || null); 
 
       } else {
         setUser(null);
         setPermissions({});
         setFullName(null);
+        setRole(null);
       }
 
       setLoading(false);
