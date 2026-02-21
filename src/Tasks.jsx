@@ -60,6 +60,7 @@ const WEEKDAYS = [
 ---------------------------------- */
 export default function Tasks() {
 
+  console.log("Current role:", role);
   const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [owners, setOwners] = useState([]);
@@ -1064,7 +1065,7 @@ return (
               style={formInput}
               value={form.closing_date || ""}
               min={
-                role !== "admin"
+                role?.toLowerCase() !== "admin"
                   ? new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
                       .toISOString()
                       .slice(0, 10)
