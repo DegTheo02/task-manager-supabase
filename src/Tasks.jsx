@@ -61,9 +61,9 @@ const WEEKDAYS = [
 export default function Tasks() {
 
   
-  const { user, fullName, permissions,team: myTeam, Label, role } = useAuth();
+  const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [s, sets] = useState([]);
+  const [owners, setOwners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
 
