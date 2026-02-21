@@ -60,7 +60,7 @@ const WEEKDAYS = [
 ---------------------------------- */
 export default function Tasks() {
 
-  console.log("Current role:", role);
+  
   const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [owners, setOwners] = useState([]);
@@ -119,7 +119,7 @@ const [filters, setFilters] = useState(() => {
   };
 });
 
-
+console.log("Current role:", role);
   useEffect(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
