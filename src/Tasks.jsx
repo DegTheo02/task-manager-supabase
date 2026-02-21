@@ -1055,25 +1055,27 @@ return (
               </label>
             </div>
           </div>
-        )}
-        
-        
-                  
+        )}             
           
-             <label style={formLabel}>
+          <label style={formLabel}>
             Closing Date
-              <input
-                type="date"
-                style={formInput}
-                value={form.closing_date || ""}
-                min={new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-                  .toISOString()
-                  .slice(0, 10)}
-                onChange={e =>
-                  setForm(f => ({ ...f, closing_date: e.target.value }))
-                }
-              />
-                </label>
+            <input
+              type="date"
+              style={formInput}
+              value={form.closing_date || ""}
+              min={
+                role !== "admin"
+                  ? new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+                      .toISOString()
+                      .slice(0, 10)
+                  : undefined
+              }
+              onChange={e =>
+                setForm(f => ({ ...f, closing_date: e.target.value }))
+              }
+            />
+          </label>
+          
           <label style={formLabel}>
             Comments
            <textarea
