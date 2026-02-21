@@ -805,7 +805,7 @@ return (
                   setForm(f => ({
                     ...f,
                     owner_id: selectedOwnerId,               // ✅ VERY IMPORTANT
-                   // owner: selectedOwner.owner_label,        // ✅ string, not object
+                    owner: selectedOwner.owner_label,        // ✅ string, not object
                     team: role === "manager"
                       ? selectedOwner.team                  // ✅ correct team
                       : myTeam
