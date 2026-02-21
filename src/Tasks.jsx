@@ -61,9 +61,9 @@ const WEEKDAYS = [
 export default function Tasks() {
 
   
-  const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
+  const { user, fullName, permissions,team: myTeam, Label, role } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [owners, setOwners] = useState([]);
+  const [s, sets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
 
@@ -805,7 +805,7 @@ return (
                   setForm(f => ({
                     ...f,
                     owner_id: selectedOwnerId,               // ✅ VERY IMPORTANT
-                    owner: selectedOwner.owner_label,        // ✅ string, not object
+                   // owner: selectedOwner.owner_label,        // ✅ string, not object
                     team: role === "manager"
                       ? selectedOwner.team                  // ✅ correct team
                       : myTeam
