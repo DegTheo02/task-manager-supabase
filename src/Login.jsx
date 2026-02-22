@@ -90,7 +90,7 @@ const handleLogin = async (e) => {
 
           <form onSubmit={handleLogin} style={form}>
             <div style={fieldGroup}>
-              <label style={label}>Corporate Email</label>
+              <label style={label}>Email</label>
             <input
               type="email"
               value={email}
