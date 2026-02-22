@@ -18,7 +18,7 @@ export default function Admin() {
     <div style={{ padding: 30 }}>
       <h1>🛠 Admin Panel</h1>
 
-      <p><strong>User:</strong> {user?.fullName}</p>
+      <p><strong>User:</strong> {fullName || user?.email}</p>
 
       <hr />
 
