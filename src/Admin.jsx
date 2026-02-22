@@ -3,7 +3,7 @@ import { useAuth } from "./context/AuthContext";
 import { supabase } from "./supabaseClient";
 
 export default function Admin() {
-  const { user, permissions } = useAuth();
+  const { user,fullName, permissions } = useAuth();
 
   if (!permissions?.manage_users) {
     return (
