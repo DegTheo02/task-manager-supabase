@@ -54,9 +54,10 @@ export default function Navbar() {
       {/* Admin / Power User */}
       {permissions?.view_all_tasks && (
         <>
-          <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
-          <NavLink to="/kanban" style={link}>Kanban</NavLink>
           <NavLink to="/admin" style={link}>Admin</NavLink>
+          <NavLink to="/dashboard" style={link}>Dashboard</NavLink>
+          {/* <NavLink to="/kanban" style={link}>Kanban</NavLink>*/}
+
         </>
       )}
       
