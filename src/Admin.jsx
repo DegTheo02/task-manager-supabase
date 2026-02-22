@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "./context/AuthContext";
+import { supabase } from "./supabaseClient";
 
 export default function Admin() {
   const { user, permissions } = useAuth();
@@ -22,39 +23,138 @@ export default function Admin() {
       <hr />
 
       <div style={gridStyle}>
-        {permissions?.manage_users && (
-          <AdminCard title="Manage Users" description="Create, edit and manage system users." />
-        )}
-
-        {permissions?.view_logs && (
-          <AdminCard title="System Logs" description="View system activity and audit logs." />
-        )}
-
-        {permissions?.recalculate_tasks && (
-          <AdminCard title="Task Recalculation" description="Force recalculation of recurring tasks." />
-        )}
-
-        {permissions?.manage_sla && (
-          <AdminCard title="SLA Management" description="Configure SLA and deadline rules." />
-        )}
+        <SystemHealth />
+        <EmailStats />
+        <AdminLogs />
       </div>
     </div>
   );
 }
 
-function AdminCard({ title, description }) {
+/* ===============================
+   SYSTEM HEALTH
+================================ */
+
+function SystemHealth() {
+  const [stats, setStats] = useState({
+    users: 0,
+    tasks: 0,
+    openTasks: 0
+  });
+
+  useEffect(() => {
+    async function loadStats() {
+      const users = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      const tasks = await supabase
+        .from("tasks")
+        .select("*", { count: "exact", head: true });
+
+      const openTasks = await supabase
+        .from("tasks")
+        .select("*", { count: "exact", head: true })
+        .neq("status", "Closed");
+
+      setStats({
+        users: users.count || 0,
+        tasks: tasks.count || 0,
+        openTasks: openTasks.count || 0
+      });
+    }
+
+    loadStats();
+  }, []);
+
   return (
     <div style={cardStyle}>
-      <h3>{title}</h3>
-      <p>{description}</p>
-      <button style={buttonStyle}>Open</button>
+      <h3>🩺 System Health</h3>
+      <p>Total Users: {stats.users}</p>
+      <p>Total Tasks: {stats.tasks}</p>
+      <p>Open Tasks: {stats.openTasks}</p>
     </div>
   );
 }
 
+/* ===============================
+   EMAIL USAGE
+================================ */
+
+function EmailStats() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    async function loadEmailStats() {
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { count } = await supabase
+        .from("email_logs")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", today);
+
+      setCount(count || 0);
+    }
+
+    loadEmailStats();
+  }, []);
+
+  return (
+    <div style={cardStyle}>
+      <h3>📧 Email Usage</h3>
+      <p>Today: {count} / 100 emails</p>
+    </div>
+  );
+}
+
+/* ===============================
+   ADMIN ACTIVITY LOGS
+================================ */
+
+function AdminLogs() {
+  const [logs, setLogs] = useState([]);
+
+  useEffect(() => {
+    async function loadLogs() {
+      const { data } = await supabase
+        .from("admin_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      setLogs(data || []);
+    }
+
+    loadLogs();
+  }, []);
+
+  return (
+    <div style={cardStyle}>
+      <h3>📜 Admin Activity</h3>
+
+      {logs.length === 0 && (
+        <p style={{ opacity: 0.6 }}>No recent activity.</p>
+      )}
+
+      {logs.map(log => (
+        <div key={log.id} style={{ fontSize: 13, marginBottom: 10 }}>
+          <strong>{log.action}</strong>
+          <div style={{ opacity: 0.6 }}>
+            {new Date(log.created_at).toLocaleString()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ===============================
+   STYLES
+================================ */
+
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
   gap: 20,
   marginTop: 20
 };
@@ -64,10 +164,4 @@ const cardStyle = {
   border: "1px solid #ddd",
   borderRadius: 8,
   background: "#f9f9f9"
-};
-
-const buttonStyle = {
-  marginTop: 10,
-  padding: "6px 12px",
-  cursor: "pointer"
 };
