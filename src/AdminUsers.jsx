@@ -24,11 +24,29 @@ export default function AdminUsers() {
   }
 
   async function updateUser(id, updatedFields) {
-    await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+  
+    // 1️⃣ Update the user
+    const { error } = await supabase
       .from("profiles")
       .update(updatedFields)
       .eq("id", id);
-
+  
+    if (error) {
+      console.error("Update failed:", error);
+      return;
+    }
+  
+    // 2️⃣ Log the admin action
+    await supabase.from("admin_logs").insert({
+      action: "UPDATE_USER",
+      performed_by: user.id,
+      metadata: {
+        target_user: id,
+        changes: updatedFields
+      }
+    });
+  
     loadUsers();
   }
 
