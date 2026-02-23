@@ -534,10 +534,23 @@ if (isEditing) {
           const { error } = await supabase
             .from("tasks")
             .insert(payload);
-        
+    /*    
           if (error) {
             console.error("Insert failed:", error);
             alert("Insert failed");
+            setIsSubmitting(false);
+            return;
+          }*/
+
+           if (error) {
+            console.group("🚨 SUPABASE INSERT ERROR");
+            console.error("Message:", error.message);
+            console.error("Details:", error.details);
+            console.error("Hint:", error.hint);
+            console.error("Code:", error.code);
+            console.groupEnd();
+          
+            alert(error.message);
             setIsSubmitting(false);
             return;
           }
