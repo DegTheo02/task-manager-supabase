@@ -516,8 +516,14 @@ if (isEditing) {
 
     if (error) {
       alert("Update failed");
+      setIsSubmitting(false);   // ✅ add this
       return;
     }
+      setForm(emptyTask);
+      setIsEditing(false);
+      await loadTasks();
+      setIsSubmitting(false);     // ✅ VERY IMPORTANT
+      return;                     // ✅ stop execution
   }
 }
  else {
