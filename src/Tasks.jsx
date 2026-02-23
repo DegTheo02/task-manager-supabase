@@ -552,21 +552,20 @@ if (isEditing) {
             console.log("Session:", session);
             console.log("Access token:", session?.access_token);
         
-            await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${session.access_token}`,
-                  "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY
-                },
-                body: JSON.stringify({
-                  task: payload,
-                  creator_id: user.id,
-                }),
-              }
-            );
+            fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.access_token}`,
+                "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY
+              },
+              body: JSON.stringify({
+                task: payload,
+                creator_id: user.id,
+              }),
+            }).catch(err => {
+              console.error("Email failed:", err);
+            });
           } catch (err) {
             console.error("Email failed but task was created:", err);
           }
