@@ -537,7 +537,8 @@ if (isEditing) {
        
           if (error) {
             console.error("Insert failed:", error);
-            alert("Insert failed");
+            alert(`Insert failed:\n\n${error.message}`);
+        
             setIsSubmitting(false);
             return;
           }
