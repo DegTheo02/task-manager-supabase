@@ -338,6 +338,22 @@ const kpiPercent = {
   "requester");
 
 
+  // ✅ GLOBAL STATUS TOTALS
+  const globalTotals = STATUSES.reduce((acc, status) => {
+    acc[status] = filteredTasks.filter(t => t.status === status).length;
+    return acc;
+  }, {});
+  
+  const globalTotalCount = filteredTasks.length;
+  
+  // ✅ GLOBAL PERCENTAGES
+  const globalPercentages = STATUSES.reduce((acc, status) => {
+    acc[status] = globalTotalCount
+      ? Math.round((globalTotals[status] / globalTotalCount) * 100)
+      : 0;
+    return acc;
+  }, {});
+    
   const columnPercentageTotals = (rows) => {
   const totals = columnTotals(rows); // uses counts
   const result = {};
@@ -748,22 +764,6 @@ const resetFilters = () => setFilters({
 
 
       {/* TEAM CHART */}
-      // ✅ GLOBAL STATUS TOTALS
-      const globalTotals = STATUSES.reduce((acc, status) => {
-        acc[status] = filteredTasks.filter(t => t.status === status).length;
-        return acc;
-      }, {});
-      
-      const globalTotalCount = filteredTasks.length;
-      
-      // ✅ GLOBAL PERCENTAGES
-      const globalPercentages = STATUSES.reduce((acc, status) => {
-        acc[status] = globalTotalCount
-          ? Math.round((globalTotals[status] / globalTotalCount) * 100)
-          : 0;
-        return acc;
-      }, {});
-      
       <div style={{ overflowX: "auto" }}>
       <div style={{ height: 400, width: "100%", maxWidth: 1200 }}>
         <Bar
@@ -790,9 +790,12 @@ const resetFilters = () => setFilters({
                 scales: {
                   x: {
                     stacked: true,
-                    ticks: {
-                      font: {size: 14, weight: "600"} // ⬅ X-axis label size
-                    }
+                  ticks: {
+                    font: context => ({
+                      size: 14,
+                      weight: context.tick.label === "TOTAL" ? "bold" : "600"
+                    })
+                  }
                   },
                   y: {
                     stacked: true,
