@@ -31,13 +31,13 @@ export const STATUS_ICONS = {
 export const OWNERS = [
   "AURELLE",
   "CHRISTIAN",
-  "DESIRE",
   "SERGEA",
   "FABRICE",
   "FLORIAN",
   "JOSIAS",
   "ESTHER",
   "MARIUS",
+  "DESIRE",
   "THEOPHANE",
   "FLYTXT",
   "IT"
