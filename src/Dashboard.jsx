@@ -748,19 +748,40 @@ const resetFilters = () => setFilters({
 
 
       {/* TEAM CHART */}
+      // ✅ GLOBAL STATUS TOTALS
+      const globalTotals = STATUSES.reduce((acc, status) => {
+        acc[status] = filteredTasks.filter(t => t.status === status).length;
+        return acc;
+      }, {});
+      
+      const globalTotalCount = filteredTasks.length;
+      
+      // ✅ GLOBAL PERCENTAGES
+      const globalPercentages = STATUSES.reduce((acc, status) => {
+        acc[status] = globalTotalCount
+          ? Math.round((globalTotals[status] / globalTotalCount) * 100)
+          : 0;
+        return acc;
+      }, {});
+      
       <div style={{ overflowX: "auto" }}>
       <div style={{ height: 400, width: "100%", maxWidth: 1200 }}>
         <Bar
           data={{
-            labels: TEAMS,
+            labels: [...TEAMS, "TOTAL"], // 👈 add TOTAL label
             datasets: STATUSES.map(s => ({
               label: s,
-              data: TEAMS.map(team => {
-                const list = filteredTasks.filter(t => t.team === team);
-                const count = list.filter(t => t.status === s).length;
-                return list.length ? Math.round((count / list.length) * 100) : 0;
-              }),
-              backgroundColor: STATUS_COLORS[s]
+              data: [
+                ...TEAMS.map(team => {
+                  const list = filteredTasks.filter(t => t.team === team);
+                  const count = list.filter(t => t.status === s).length;
+                  return list.length
+                    ? Math.round((count / list.length) * 100)
+                    : 0;
+                }),
+                globalPercentages[s] // 👈 add global % at the end
+              ],
+              backgroundColor: [...TEAMS.map(() => STATUS_COLORS[s]), "#6B7280"]
             }))
           }}
               options={{
