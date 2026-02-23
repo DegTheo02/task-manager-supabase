@@ -706,13 +706,57 @@ if (isEditing) {
     };
 
 
-const editTask = (task, editSeries = false) => {
+
+  const editTask = (task, editSeries = false) => {
+
+  const normalized = normalizeTaskDates(task);
+
   setForm({
-    ...normalizeTaskDates(task),
+    ...normalized,
     comments: task.comments || ""
   });
+
+  // ✅ Restore recurrence state
+  if (task.recurrence_type && task.recurrence_type !== "Non-Recurring") {
+
+    let parsedRule = null;
+
+    try {
+      parsedRule = task.recurrence_rule
+        ? JSON.parse(task.recurrence_rule)
+        : null;
+    } catch (e) {
+      console.error("Failed to parse recurrence_rule:", e);
+    }
+
+    setRecurrence({
+      enabled: true,
+      frequency: task.recurrence_type,
+      weekly: {
+        weekdays: parsedRule?.weekdays || []
+      },
+      monthly: parsedRule?.frequency === "monthly"
+        ? parsedRule
+        : null,
+      startDate: task.initial_deadline || "",
+      endDate: task.next_occurrence_date || ""
+    });
+
+  } else {
+    // Non-recurring
+    setRecurrence({
+      enabled: false,
+      frequency: "weekly",
+      weekly: { weekdays: [] },
+      monthly: null,
+      startDate: "",
+      endDate: ""
+    });
+  }
+
   setIsEditing(true);
   setEditSeries(editSeries);
+
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
