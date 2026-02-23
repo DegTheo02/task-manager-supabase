@@ -781,7 +781,7 @@ const resetFilters = () => setFilters({
                 }),
                 globalPercentages[s] // 👈 add global % at the end
               ],
-              backgroundColor: [...TEAMS.map(() => STATUS_COLORS[s]), "#6B7280"]
+              backgroundColor:  STATUS_COLORS[s]
             }))
           }}
               options={{
