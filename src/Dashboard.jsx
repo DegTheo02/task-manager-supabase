@@ -353,6 +353,10 @@ const kpiPercent = {
       : 0;
     return acc;
   }, {});
+
+  const visibleTeams = TEAMS.filter(team =>
+  filteredTasks.some(t => t.team === team)
+    );
     
   const columnPercentageTotals = (rows) => {
   const totals = columnTotals(rows); // uses counts
@@ -768,11 +772,11 @@ const resetFilters = () => setFilters({
       <div style={{ height: 400, width: "100%", maxWidth: 1200 }}>
         <Bar
           data={{
-            labels: [...TEAMS, "TOTAL"], // 👈 add TOTAL label
+            labels: [...visibleTeams, "TOTAL"], // 👈 add TOTAL label
             datasets: STATUSES.map(s => ({
               label: s,
               data: [
-                ...TEAMS.map(team => {
+                ...visibleTeams.map(team => {
                   const list = filteredTasks.filter(t => t.team === team);
                   const count = list.filter(t => t.status === s).length;
                   return list.length
