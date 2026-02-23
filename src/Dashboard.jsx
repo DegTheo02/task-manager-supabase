@@ -160,8 +160,8 @@ const filteredTasks = useMemo(() => {
     if (filters.assigned_to && (!t.assigned_date || t.assigned_date > filters.assigned_to))
       return false;
 
-    /* DEADLINE RANGE (new_deadline OR initial_deadline) */
-    const deadline = t.new_deadline || t.initial_deadline;
+    /* DEADLINE RANGE (initial_deadline) */
+    const deadline = t.initial_deadline;
 
     if (filters.deadline_from && (!deadline || deadline < filters.deadline_from))
       return false;
