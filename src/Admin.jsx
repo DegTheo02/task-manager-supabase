@@ -338,23 +338,18 @@ function handleSort(column) {
 </thead>
 
   <tbody>
-    {profiles
-      .filter(user =>
-        selectedUsers.length > 0
-          ? selectedUsers.includes(user.id)
-          : true
-      )
-      .map(user => (
-        <tr key={user.id}>
-          <td style={leftCell}>
-            {user.full_name || user.email}
-          </td>
-          <td style={centerCell}>{stats[user.id]?.CREATE || 0}</td>
-          <td style={centerCell}>{stats[user.id]?.UPDATE || 0}</td>
-          <td style={centerCell}>{stats[user.id]?.DELETE || 0}</td>
-          <td style={centerCell}>{stats[user.id]?.CLOSE || 0}</td>
-        </tr>
-      ))}
+    
+{sortedProfiles.map(user => (
+  <tr key={user.id}>
+    <td style={leftCell}>
+      {user.full_name || user.email}
+    </td>
+    <td style={centerCell}>{stats[user.id]?.CREATE || 0}</td>
+    <td style={centerCell}>{stats[user.id]?.UPDATE || 0}</td>
+    <td style={centerCell}>{stats[user.id]?.DELETE || 0}</td>
+    <td style={centerCell}>{stats[user.id]?.CLOSE || 0}</td>
+  </tr>
+))}
 
     <tr style={totalRow}>
       <td style={leftCell}><strong>Total</strong></td>
@@ -451,7 +446,8 @@ const enterpriseTable = {
   width: "100%",
   borderCollapse: "collapse",
   fontSize: 14,
-  background: "#fff"
+  background: "#fff",
+  tableLayout: "fixed"  // 👈 VERY IMPORTANT
 };
 
 const leftHeader = {
@@ -459,7 +455,8 @@ const leftHeader = {
   padding: "12px",
   border: "1px solid #e5e7eb",
   background: "#f9fafb",
-  fontWeight: 600
+  fontWeight: 600,
+  width: "180px"  // 👈 narrower
 };
 
 const centerHeader = {
@@ -475,7 +472,8 @@ const leftCell = {
   textAlign: "left",
   padding: "10px 12px",
   border: "1px solid #e5e7eb",
-  maxWidth: "220px",
+  width: "180px",
+  maxWidth: "180px",
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis"
