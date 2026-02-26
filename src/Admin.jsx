@@ -3,8 +3,22 @@ import { useAuth } from "./context/AuthContext";
 import { supabase } from "./supabaseClient";
 
 export default function Admin() {
-  const { user,fullName, permissions } = useAuth();
+  const {user,fullName, permissions } = useAuth();
 
+  useEffect(() => {
+  if (!user) return;
+
+  const interval = setInterval(async () => {
+    await supabase
+      .from("profiles")
+      .update({ last_active_at: new Date() })
+      .eq("id", user.id);
+  }, 300000); // every 5 minutes
+
+  return () => clearInterval(interval);
+}, [user]);
+
+  
   if (!permissions?.manage_users) {
     return (
       <div style={{ padding: 30 }}>
@@ -171,8 +185,8 @@ function TeamActivityStats() {
 
   async function loadData() {
     const { data: users } = await supabase
-      .from("profiles")
-      .select("id, full_name, email");
+    .from("profiles")
+    .select("id, full_name, email, last_login_at, last_active_at");
 
     let query = supabase
       .from("activity_logs")
@@ -334,6 +348,9 @@ function handleSort(column) {
     <th style={centerHeader} onClick={() => handleSort("CLOSE")}>
       Close {sortConfig.key === "CLOSE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
     </th>
+
+    <th style={centerHeader}>Last Login</th>
+    <th style={centerHeader}>Last Active</th>
   </tr>
 </thead>
 
@@ -352,6 +369,19 @@ function handleSort(column) {
     <td style={centerCell}>{stats[user.id]?.UPDATE || 0}</td>
     <td style={centerCell}>{stats[user.id]?.DELETE || 0}</td>
     <td style={centerCell}>{stats[user.id]?.CLOSE || 0}</td>
+
+    <td style={centerCell}>
+    {user.last_login_at
+    ? new Date(user.last_login_at).toLocaleString()
+    : "-"}
+    </td>
+    
+    <td style={centerCell}>
+      {user.last_active_at
+        ? new Date(user.last_active_at).toLocaleString()
+        : "-"}
+    </td>
+    
   </tr>
 ))}
 
@@ -361,6 +391,8 @@ function handleSort(column) {
       <td style={centerCell}>{totals.UPDATE}</td>
       <td style={centerCell}>{totals.DELETE}</td>
       <td style={centerCell}>{totals.CLOSE}</td>
+      <td></td>
+      <td></td>
     </tr>
   </tbody>
 </table>
