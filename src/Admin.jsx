@@ -243,6 +243,16 @@ function handleSort(column) {
   }));
 }
 
+  function formatRelativeTime(dateString) {
+  const date = new Date(dateString);
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return Math.floor(diff / 60) + " min ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + " hr ago";
+  return Math.floor(diff / 86400) + " day(s) ago";
+}
+
   return (
     <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
       <div style={sectionHeader}>
@@ -359,13 +369,13 @@ function handleSort(column) {
 
     <td style={centerCell}>
     {user.last_login_at
-    ? new Date(user.last_login_at).toLocaleString()
+    ? formatRelativeTime(user.last_login_at)
     : "-"}
     </td>
     
     <td style={centerCell}>
       {user.last_active_at
-        ? new Date(user.last_active_at).toLocaleString()
+        ? formatRelativeTime(user.last_active_at)
         : "-"}
     </td>
     
