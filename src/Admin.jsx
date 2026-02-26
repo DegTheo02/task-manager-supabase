@@ -498,14 +498,14 @@ const centerHeader = {
   border: "1px solid #e5e7eb",
   background: "#f9fafb",
   fontWeight: 600,
-  width: "100px"   // 👈 reduced width
+  width: "70px"   // 👈 reduced width
 };
 
 const leftCell = {
   textAlign: "left",
   padding: "10px 12px",
   border: "1px solid #e5e7eb",
-  width: "180px",
+  width: "100px",
   maxWidth: "180px",
   whiteSpace: "nowrap",
   overflow: "hidden",
