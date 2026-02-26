@@ -275,42 +275,45 @@ function TeamActivityStats() {
       </div>
 
       {/* TABLE */}
-      <table style={enterpriseTable}>
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Create</th>
-            <th>Update</th>
-            <th>Delete</th>
-            <th>Close</th>
-          </tr>
-        </thead>
-        <tbody>
-          {profiles
-            .filter(user =>
-              selectedUsers.length > 0
-                ? selectedUsers.includes(user.id)
-                : true
-            )
-            .map(user => (
-              <tr key={user.id}>
-                <td>{user.full_name || user.email}</td>
-                <td>{stats[user.id]?.CREATE || 0}</td>
-                <td>{stats[user.id]?.UPDATE || 0}</td>
-                <td>{stats[user.id]?.DELETE || 0}</td>
-                <td>{stats[user.id]?.CLOSE || 0}</td>
-              </tr>
-            ))}
+ <table style={enterpriseTable}>
+  <thead>
+    <tr>
+      <th style={leftHeader}>User</th>
+      <th style={centerHeader}>Create</th>
+      <th style={centerHeader}>Update</th>
+      <th style={centerHeader}>Delete</th>
+      <th style={centerHeader}>Close</th>
+    </tr>
+  </thead>
 
-          <tr style={totalRow}>
-            <td><strong>Total</strong></td>
-            <td>{totals.CREATE}</td>
-            <td>{totals.UPDATE}</td>
-            <td>{totals.DELETE}</td>
-            <td>{totals.CLOSE}</td>
-          </tr>
-        </tbody>
-      </table>
+  <tbody>
+    {profiles
+      .filter(user =>
+        selectedUsers.length > 0
+          ? selectedUsers.includes(user.id)
+          : true
+      )
+      .map(user => (
+        <tr key={user.id}>
+          <td style={leftCell}>
+            {user.full_name || user.email}
+          </td>
+          <td style={centerCell}>{stats[user.id]?.CREATE || 0}</td>
+          <td style={centerCell}>{stats[user.id]?.UPDATE || 0}</td>
+          <td style={centerCell}>{stats[user.id]?.DELETE || 0}</td>
+          <td style={centerCell}>{stats[user.id]?.CLOSE || 0}</td>
+        </tr>
+      ))}
+
+    <tr style={totalRow}>
+      <td style={leftCell}><strong>Total</strong></td>
+      <td style={centerCell}>{totals.CREATE}</td>
+      <td style={centerCell}>{totals.UPDATE}</td>
+      <td style={centerCell}>{totals.DELETE}</td>
+      <td style={centerCell}>{totals.CLOSE}</td>
+    </tr>
+  </tbody>
+</table>
     </div>
   );
 }
@@ -396,10 +399,39 @@ const resetButton = {
 const enterpriseTable = {
   width: "100%",
   borderCollapse: "collapse",
-  fontSize: 14
+  fontSize: 14,
+  background: "#fff"
+};
+
+const leftHeader = {
+  textAlign: "left",
+  padding: "12px",
+  border: "1px solid #e5e7eb",
+  background: "#f9fafb",
+  fontWeight: 600
+};
+
+const centerHeader = {
+  textAlign: "center",
+  padding: "12px",
+  border: "1px solid #e5e7eb",
+  background: "#f9fafb",
+  fontWeight: 600
+};
+
+const leftCell = {
+  textAlign: "left",
+  padding: "10px 12px",
+  border: "1px solid #e5e7eb"
+};
+
+const centerCell = {
+  textAlign: "center",
+  padding: "10px 12px",
+  border: "1px solid #e5e7eb"
 };
 
 const totalRow = {
-  background: "#f9fafb",
-  fontWeight: "600"
+  background: "#f3f4f6",
+  fontWeight: 600
 };
