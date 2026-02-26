@@ -223,7 +223,7 @@ function handleSort(column) {
                 <strong>Select Users</strong>
               </div>
 
-              {sortedProfiles.map(user => (
+              {profiles.map(user => (
                 <label key={user.id} style={checkboxItem}>
                   <input
                     type="checkbox"
