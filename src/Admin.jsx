@@ -253,6 +253,17 @@ function handleSort(column) {
         >
           Reset
         </button>
+
+        <button
+        style={todayButton}
+        onClick={() => {
+          const today = new Date().toISOString().slice(0, 10);
+          setStartDate(today);
+          setEndDate(today);
+        }}
+      >
+        Today
+      </button>
       </div>
 
       {/* TABLE */}
@@ -360,7 +371,7 @@ const sectionHeader = {
 
 const filterContainer = {
   display: "flex",
-  gap: 20,
+  gap: 12,
   alignItems: "flex-end",
   marginBottom: 25,
   flexWrap: "wrap"
@@ -408,6 +419,16 @@ const resetButton = {
   borderRadius: 6,
   border: "none",
   background: "#f3f4f6",
+  cursor: "pointer",
+  fontWeight: 500
+};
+
+const todayButton = {
+  padding: "8px 16px",
+  borderRadius: 6,
+  border: "none",
+  background: "#2563eb",
+  color: "#fff",
   cursor: "pointer",
   fontWeight: 500
 };
