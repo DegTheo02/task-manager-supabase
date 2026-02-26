@@ -233,7 +233,29 @@ function TeamActivityStats() {
       }
     });
 
-    setProfiles(users || []);
+          const enrichedUsers = (users || []).map(user => ({
+            ...user,
+            email_received: emailCountMap[user.email] || 0
+          }));
+      
+          setProfiles(enrichedUsers);
+
+    // ✅ Fetch email counts
+      const { data: emailLogs } = await supabase
+        .from("email_logs")
+        .select("recipient, status");
+      
+      const emailCountMap = {};
+      
+      emailLogs?.forEach(log => {
+        if (log.status !== "sent") return;
+      
+        if (!emailCountMap[log.recipient]) {
+          emailCountMap[log.recipient] = 0;
+        }
+      
+        emailCountMap[log.recipient]++;
+      });
     setStats(activity);
   }
 
@@ -243,9 +265,10 @@ function TeamActivityStats() {
       acc.UPDATE += stats[user.id]?.UPDATE || 0;
       acc.DELETE += stats[user.id]?.DELETE || 0;
       acc.CLOSE += stats[user.id]?.CLOSE || 0;
+      acc.EMAILS += user.email_received || 0;
       return acc;
     },
-    { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0 }
+   { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0, EMAILS: 0 }
   );
 
   const sortedProfiles = [...profiles]
@@ -383,6 +406,7 @@ function handleSort(column) {
       Close {sortConfig.key === "CLOSE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
     </th>
 
+    <th style={centerHeader}>Emails</th>
     <th style={centerHeader}>Last Login</th>
     <th style={centerHeader}>Last Active</th>
   </tr>
@@ -403,6 +427,7 @@ function handleSort(column) {
     <td style={centerCell}>{stats[user.id]?.UPDATE || 0}</td>
     <td style={centerCell}>{stats[user.id]?.DELETE || 0}</td>
     <td style={centerCell}>{stats[user.id]?.CLOSE || 0}</td>
+    <td style={centerCell}>{user.email_received || 0}</td>
 
     <td style={centerCell}>
     {user.last_login_at
@@ -425,6 +450,7 @@ function handleSort(column) {
       <td style={centerCell}>{totals.UPDATE}</td>
       <td style={centerCell}>{totals.DELETE}</td>
       <td style={centerCell}>{totals.CLOSE}</td>
+      <td style={centerCell}>{totals.EMAILS}</td>
       <td></td>
       <td></td>
     </tr>
