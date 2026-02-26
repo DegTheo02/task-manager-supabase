@@ -208,21 +208,23 @@ function TeamActivityStats() {
   }, [startDate, endDate, selectedUsers]);
 
   async function loadData() {
+    // 1️⃣ Get users
     const { data: users } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, last_login_at, last_active_at");
-
+      .from("profiles")
+      .select("id, full_name, email, last_login_at, last_active_at");
+  
+    // 2️⃣ Get activity logs
     let query = supabase
       .from("activity_logs")
       .select("user_id, action, created_at");
-
+  
     if (startDate) query = query.gte("created_at", startDate);
     if (endDate) query = query.lte("created_at", endDate + "T23:59:59");
     if (selectedUsers.length > 0)
       query = query.in("user_id", selectedUsers);
-
+  
     const { data: logs } = await query;
-
+  
     const activity = {};
     logs?.forEach(log => {
       if (!activity[log.user_id]) {
@@ -232,30 +234,31 @@ function TeamActivityStats() {
         activity[log.user_id][log.action]++;
       }
     });
-
-          const enrichedUsers = (users || []).map(user => ({
-            ...user,
-            email_received: emailCountMap[user.email] || 0
-          }));
-      
-          setProfiles(enrichedUsers);
-
-    // ✅ Fetch email counts
-      const { data: emailLogs } = await supabase
-        .from("email_logs")
-        .select("recipient, status");
-      
-      const emailCountMap = {};
-      
-      emailLogs?.forEach(log => {
-        if (log.status !== "sent") return;
-      
-        if (!emailCountMap[log.recipient]) {
-          emailCountMap[log.recipient] = 0;
-        }
-      
-        emailCountMap[log.recipient]++;
-      });
+  
+    // 3️⃣ Fetch email logs
+    const { data: emailLogs } = await supabase
+      .from("email_logs")
+      .select("recipient, status");
+  
+    const emailCountMap = {};
+  
+    emailLogs?.forEach(log => {
+      if (log.status !== "sent") return;
+  
+      if (!emailCountMap[log.recipient]) {
+        emailCountMap[log.recipient] = 0;
+      }
+  
+      emailCountMap[log.recipient]++;
+    });
+  
+    // 4️⃣ Enrich users AFTER emailCountMap exists
+    const enrichedUsers = (users || []).map(user => ({
+      ...user,
+      email_received: emailCountMap[user.email] || 0
+    }));
+  
+    setProfiles(enrichedUsers);
     setStats(activity);
   }
 
