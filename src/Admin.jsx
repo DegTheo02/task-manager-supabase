@@ -204,6 +204,14 @@ function handleSort(column) {
   return Math.floor(diff / 86400) + " day(s) ago";
 }
 
+    const themeStyles = {
+      tableBg: theme === "dark" ? "#111827" : "#ffffff",
+      headerBg: theme === "dark" ? "#1f2937" : "#f9fafb",
+      border: theme === "dark" ? "1px solid #374151" : "1px solid #e5e7eb",
+      text: theme === "dark" ? "#f9fafb" : "#111827",
+      hover: theme === "dark" ? "#1f2937" : "#eef2ff",
+      totalBg: theme === "dark" ? "#1f2937" : "#f3f4f6"
+    };
   return (
     <div
         style={{
@@ -294,79 +302,115 @@ function handleSort(column) {
       </div>
 
       {/* TABLE */}
- <table style={enterpriseTable}>
-   
-<thead>
-  <tr>
-    <th style={leftHeader} onClick={() => handleSort("USER")}>
-      User {sortConfig.key === "USER" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
-    </th>
-
-    <th style={centerHeader} onClick={() => handleSort("CREATE")}>
-      Create {sortConfig.key === "CREATE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
-    </th>
-
-    <th style={centerHeader} onClick={() => handleSort("UPDATE")}>
-      Update {sortConfig.key === "UPDATE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
-    </th>
-
-    <th style={centerHeader} onClick={() => handleSort("DELETE")}>
-      Delete {sortConfig.key === "DELETE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
-    </th>
-
-    <th style={centerHeader} onClick={() => handleSort("CLOSE")}>
-      Close {sortConfig.key === "CLOSE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
-    </th>
-
-    <th style={centerHeader}>Emails</th>
-    <th style={centerHeader}>Last Login</th>
-    <th style={centerHeader}>Last Active</th>
-  </tr>
-</thead>
-
-  <tbody>
-    
-{sortedProfiles.map(user => (
-  <tr key={user.id}
-  style={tableRow}
-  onMouseEnter={e => e.currentTarget.style.background = "#eef2ff"}
-  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+ <table
+    style={{
+      ...enterpriseTable,
+      background: theme === "dark" ? "#111827" : "#ffffff",
+      color: theme === "dark" ? "#f9fafb" : "#111827"
+    }}
   >
-    <td style={leftCell}>
-      {user.full_name || user.email}
-    </td>
-    <td style={centerCell}>{stats[user.id]?.CREATE || 0}</td>
-    <td style={centerCell}>{stats[user.id]?.UPDATE || 0}</td>
-    <td style={centerCell}>{stats[user.id]?.DELETE || 0}</td>
-    <td style={centerCell}>{stats[user.id]?.CLOSE || 0}</td>
-    <td style={centerCell}>{user.email_received || 0}</td>
+   
+         <thead>
+          <tr>
+            <th
+              style={{
+                ...leftHeader,
+                background: themeStyles.headerBg,
+                border: themeStyles.border,
+                color: themeStyles.text
+              }}
+              onClick={() => handleSort("USER")}
+            >
+              User {sortConfig.key === "USER" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+            </th>
+        
+            {["CREATE", "UPDATE", "DELETE", "CLOSE"].map(col => (
+              <th
+                key={col}
+                style={{
+                  ...centerHeader,
+                  background: themeStyles.headerBg,
+                  border: themeStyles.border,
+                  color: themeStyles.text
+                }}
+                onClick={() => handleSort(col)}
+              >
+                {col.charAt(0) + col.slice(1).toLowerCase()}{" "}
+                {sortConfig.key === col
+                  ? (sortConfig.direction === "asc" ? "▲" : "▼")
+                  : ""}
+              </th>
+            ))}
+        
+            <th style={{ ...centerHeader, background: themeStyles.headerBg, border: themeStyles.border, color: themeStyles.text }}>
+              Emails
+            </th>
+            <th style={{ ...centerHeader, background: themeStyles.headerBg, border: themeStyles.border, color: themeStyles.text }}>
+              Last Login
+            </th>
+            <th style={{ ...centerHeader, background: themeStyles.headerBg, border: themeStyles.border, color: themeStyles.text }}>
+              Last Active
+            </th>
+          </tr>
+        </thead>
 
-    <td style={centerCell}>
-    {user.last_login_at
-    ? formatRelativeTime(user.last_login_at)
-    : "-"}
-    </td>
-    
-    <td style={centerCell}>
-      {user.last_active_at
-        ? formatRelativeTime(user.last_active_at)
-        : "-"}
-    </td>
-    
-  </tr>
-))}
-
-    <tr style={totalRow}>
-      <td style={leftCell}><strong>Total</strong></td>
-      <td style={centerCell}>{totals.CREATE}</td>
-      <td style={centerCell}>{totals.UPDATE}</td>
-      <td style={centerCell}>{totals.DELETE}</td>
-      <td style={centerCell}>{totals.CLOSE}</td>
-      <td style={centerCell}>{totals.EMAILS}</td>
-      <td></td>
-      <td></td>
-    </tr>
-  </tbody>
+             <tbody>
+            {sortedProfiles.map(user => (
+              <tr
+                key={user.id}
+                style={tableRow}
+                onMouseEnter={e => (e.currentTarget.style.background = themeStyles.hover)}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              >
+                <td style={{ ...leftCell, border: themeStyles.border, color: themeStyles.text }}>
+                  {user.full_name || user.email}
+                </td>
+          
+                {["CREATE", "UPDATE", "DELETE", "CLOSE"].map(col => (
+                  <td key={col} style={{ ...centerCell, border: themeStyles.border }}>
+                    {stats[user.id]?.[col] || 0}
+                  </td>
+                ))}
+          
+                <td style={{ ...centerCell, border: themeStyles.border }}>
+                  {user.email_received || 0}
+                </td>
+          
+                <td style={{ ...centerCell, border: themeStyles.border }}>
+                  {user.last_login_at ? formatRelativeTime(user.last_login_at) : "-"}
+                </td>
+          
+                <td style={{ ...centerCell, border: themeStyles.border }}>
+                  {user.last_active_at ? formatRelativeTime(user.last_active_at) : "-"}
+                </td>
+              </tr>
+            ))}
+          
+            <tr
+              style={{
+                ...totalRow,
+                background: themeStyles.totalBg,
+                color: themeStyles.text
+              }}
+            >
+              <td style={{ ...leftCell, border: themeStyles.border }}>
+                <strong>Total</strong>
+              </td>
+          
+              {["CREATE", "UPDATE", "DELETE", "CLOSE"].map(col => (
+                <td key={col} style={{ ...centerCell, border: themeStyles.border }}>
+                  {totals[col]}
+                </td>
+              ))}
+          
+              <td style={{ ...centerCell, border: themeStyles.border }}>
+                {totals.EMAILS}
+              </td>
+          
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
 </table>
     </div>
   );
