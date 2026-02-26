@@ -504,12 +504,13 @@ const leftCell = {
 const centerCell = {
   textAlign: "center",
   padding: "10px 12px",
-  border: "1px solid #e5e7eb"
+  border: "1px solid #e5e7eb",
+  fontWeight: 800
 };
 
 const totalRow = {
   background: "#f3f4f6",
-  fontWeight: 600
+  fontWeight: 1000
 };
 
 const tableRow = {
