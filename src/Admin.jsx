@@ -165,7 +165,7 @@ function TeamActivityStats() {
     // Get users
     const { data: users } = await supabase
       .from("profiles")
-      .select("id, email");
+      .select("id, full_name, email");
 
     // Get activity logs
     const { data: logs } = await supabase
@@ -208,7 +208,7 @@ function TeamActivityStats() {
         <tbody>
           {profiles.map(user => (
             <tr key={user.id}>
-              <td>{user.email}</td>
+              <td>{user.full_name || user.email}</td>
               <td>{stats[user.id]?.CREATE || 0}</td>
               <td>{stats[user.id]?.UPDATE || 0}</td>
               <td>{stats[user.id]?.DELETE || 0}</td>
