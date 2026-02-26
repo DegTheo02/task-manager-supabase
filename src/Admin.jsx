@@ -119,26 +119,35 @@ function AdminLogs() {
   useEffect(() => {
     async function loadLogs() {
       const { data } = await supabase
-            .from("admin_logs")
-            .select(`
-              id,
-              action,
-              metadata,
-              created_at,
-              performed_by,
-              profiles:performed_by (
-                full_name,
-                email
-              )
-            `)
-            .order("created_at", { ascending: false })
-            .limit(20);
+        .from("admin_logs")
+        .select(`
+          id,
+          action,
+          metadata,
+          created_at,
+          performed_by,
+          profiles:performed_by (
+            full_name,
+            email
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(20);
 
       setLogs(data || []);
     }
 
     loadLogs();
   }, []);
+
+  function formatRelativeTime(date) {
+    const diff = (new Date() - new Date(date)) / 1000;
+
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hrs ago`;
+    return new Date(date).toLocaleDateString();
+  }
 
   return (
     <div style={cardStyle}>
@@ -149,10 +158,11 @@ function AdminLogs() {
       )}
 
       {logs.map(log => (
-        <div key={log.id} style={{ fontSize: 13, marginBottom: 10 }}>
+        <div key={log.id} style={{ marginBottom: 14 }}>
           <strong>{log.action}</strong>
-          <div style={{ opacity: 0.6 }}><div style={{ opacity: 0.7, fontSize: 13 }}>
-          By {log.profiles?.full_name || log.profiles?.email || "Unknown"}            
+
+          <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
+            By {log.profiles?.full_name || log.profiles?.email || "Unknown"} •{" "}
             {formatRelativeTime(log.created_at)}
           </div>
         </div>
