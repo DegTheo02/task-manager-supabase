@@ -160,6 +160,10 @@ function TeamActivityStats() {
   const [endDate, setEndDate] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [sortConfig, setSortConfig] = useState({
+  key: "CREATE",
+  direction: "desc"
+});
 
   useEffect(() => {
     loadData();
@@ -206,6 +210,38 @@ function TeamActivityStats() {
     { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0 }
   );
 
+  const sortedProfiles = [...profiles]
+  .filter(user =>
+    selectedUsers.length > 0
+      ? selectedUsers.includes(user.id)
+      : true
+  )
+  .sort((a, b) => {
+    const aValue =
+      sortConfig.key === "USER"
+        ? (a.full_name || a.email).toLowerCase()
+        : stats[a.id]?.[sortConfig.key] || 0;
+
+    const bValue =
+      sortConfig.key === "USER"
+        ? (b.full_name || b.email).toLowerCase()
+        : stats[b.id]?.[sortConfig.key] || 0;
+
+    if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+
+function handleSort(column) {
+  setSortConfig(prev => ({
+    key: column,
+    direction:
+      prev.key === column && prev.direction === "asc"
+        ? "desc"
+        : "asc"
+  }));
+}
+
   return (
     <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
       <div style={sectionHeader}>
@@ -242,7 +278,7 @@ function TeamActivityStats() {
                 <strong>Select Users</strong>
               </div>
 
-              {profiles.map(user => (
+              {sortedProfiles.map(user => (
                 <label key={user.id} style={checkboxItem}>
                   <input
                     type="checkbox"
@@ -276,15 +312,30 @@ function TeamActivityStats() {
 
       {/* TABLE */}
  <table style={enterpriseTable}>
-  <thead>
-    <tr>
-      <th style={leftHeader}>User</th>
-      <th style={centerHeader}>Create</th>
-      <th style={centerHeader}>Update</th>
-      <th style={centerHeader}>Delete</th>
-      <th style={centerHeader}>Close</th>
-    </tr>
-  </thead>
+   
+<thead>
+  <tr>
+    <th style={leftHeader} onClick={() => handleSort("USER")}>
+      User {sortConfig.key === "USER" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+    </th>
+
+    <th style={centerHeader} onClick={() => handleSort("CREATE")}>
+      Create {sortConfig.key === "CREATE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+    </th>
+
+    <th style={centerHeader} onClick={() => handleSort("UPDATE")}>
+      Update {sortConfig.key === "UPDATE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+    </th>
+
+    <th style={centerHeader} onClick={() => handleSort("DELETE")}>
+      Delete {sortConfig.key === "DELETE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+    </th>
+
+    <th style={centerHeader} onClick={() => handleSort("CLOSE")}>
+      Close {sortConfig.key === "CLOSE" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+    </th>
+  </tr>
+</thead>
 
   <tbody>
     {profiles
@@ -416,13 +467,18 @@ const centerHeader = {
   padding: "12px",
   border: "1px solid #e5e7eb",
   background: "#f9fafb",
-  fontWeight: 600
+  fontWeight: 600,
+  width: "220px"   // 👈 reduced width
 };
 
 const leftCell = {
   textAlign: "left",
   padding: "10px 12px",
-  border: "1px solid #e5e7eb"
+  border: "1px solid #e5e7eb",
+  maxWidth: "220px",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis"
 };
 
 const centerCell = {
