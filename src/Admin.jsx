@@ -5,19 +5,6 @@ import { supabase } from "./supabaseClient";
 export default function Admin() {
   const {user,fullName, permissions } = useAuth();
 
-  useEffect(() => {
-  if (!user) return;
-
-  const interval = setInterval(async () => {
-    await supabase
-      .from("profiles")
-      .update({ last_active_at: new Date() })
-      .eq("id", user.id);
-  }, 300000); // every 5 minutes
-
-  return () => clearInterval(interval);
-}, [user]);
-
   
   if (!permissions?.manage_users) {
     return (
