@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "./context/AuthContext";
 import { supabase } from "./supabaseClient";
+import { useRef } from "react";
+const dropdownRef = useRef(null);
+
 
 export default function Admin() {
-  const {user,fullName, permissions } = useAuth();
+const {user,fullName, permissions } = useAuth();
 
   
   if (!permissions?.manage_users) {
@@ -43,6 +46,22 @@ function SystemHealth() {
     tasks: 0,
     openTasks: 0
   });
+
+  useEffect(() => {
+  function handleClickOutside(event) {
+    if (
+      dropdownRef.current &&
+      !dropdownRef.current.contains(event.target)
+    ) {
+      setShowDropdown(false);
+    }
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   useEffect(() => {
     async function loadStats() {
@@ -274,23 +293,17 @@ function TeamActivityStats() {
    { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0, EMAILS: 0 }
   );
 
-  const sortedProfiles = [...profiles]
-  .filter(user =>
-    selectedUsers.length > 0
-      ? selectedUsers.includes(user.id)
-      : true
-  )
-  .sort((a, b) => {
+  const sortedProfiles = [...profiles].sort((a, b) => {
     const aValue =
       sortConfig.key === "USER"
         ? (a.full_name || a.email).toLowerCase()
         : stats[a.id]?.[sortConfig.key] || 0;
-
+  
     const bValue =
       sortConfig.key === "USER"
         ? (b.full_name || b.email).toLowerCase()
         : stats[b.id]?.[sortConfig.key] || 0;
-
+  
     if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
     return 0;
@@ -335,7 +348,10 @@ function handleSort(column) {
         </div>
 
         {/* USER DROPDOWN */}
-        <div style={{ ...filterItem, position: "relative" }}>
+        <div
+          ref={dropdownRef}
+          style={{ ...filterItem, position: "relative" }}
+        >
           <label>Users</label>
           <div
             style={dropdownButton}
