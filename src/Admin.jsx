@@ -505,7 +505,7 @@ const leftCell = {
   textAlign: "left",
   padding: "10px 12px",
   border: "1px solid #e5e7eb",
-  width: "100px",
+  width: "70px",
   maxWidth: "100px",
   whiteSpace: "nowrap",
   overflow: "hidden",
