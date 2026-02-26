@@ -49,11 +49,20 @@ export function AuthProvider({ children }) {
       loadUser(data.session);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        loadUser(session);
-      }
-    );
+const { data: listener } = supabase.auth.onAuthStateChange(
+  async (event, session) => {
+
+    // Update last_login_at ONLY when user signs in
+    if (event === "SIGNED_IN" && session?.user) {
+      await supabase
+        .from("profiles")
+        .update({ last_login_at: new Date() })
+        .eq("id", session.user.id);
+    }
+
+    loadUser(session);
+  }
+);
 
     return () => {
       mounted = false;
