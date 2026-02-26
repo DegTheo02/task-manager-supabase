@@ -340,7 +340,11 @@ function handleSort(column) {
   <tbody>
     
 {sortedProfiles.map(user => (
-  <tr key={user.id}>
+  <tr key={user.id}
+  style={tableRow}
+  onMouseEnter={e => e.currentTarget.style.background = "#eef2ff"}
+  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+  >
     <td style={leftCell}>
       {user.full_name || user.email}
     </td>
@@ -465,7 +469,7 @@ const centerHeader = {
   border: "1px solid #e5e7eb",
   background: "#f9fafb",
   fontWeight: 600,
-  width: "220px"   // 👈 reduced width
+  width: "100px"   // 👈 reduced width
 };
 
 const leftCell = {
@@ -488,4 +492,8 @@ const centerCell = {
 const totalRow = {
   background: "#f3f4f6",
   fontWeight: 600
+};
+
+const tableRow = {
+  transition: "background 0.2s ease"
 };
