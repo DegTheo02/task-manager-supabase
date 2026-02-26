@@ -156,10 +156,13 @@ function AdminLogs() {
 function TeamActivityStats() {
   const [profiles, setProfiles] = useState([]);
   const [stats, setStats] = useState({});
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [startDate, endDate, selectedUsers]);
 
   async function loadData() {
     // Get users
@@ -167,10 +170,24 @@ function TeamActivityStats() {
       .from("profiles")
       .select("id, full_name, email");
 
-    // Get activity logs
-    const { data: logs } = await supabase
+    // Build query for activity logs
+    let query = supabase
       .from("activity_logs")
-      .select("user_id, action");
+      .select("user_id, action, created_at");
+
+    if (startDate) {
+      query = query.gte("created_at", startDate);
+    }
+
+    if (endDate) {
+      query = query.lte("created_at", endDate + "T23:59:59");
+    }
+
+    if (selectedUsers.length > 0) {
+      query = query.in("user_id", selectedUsers);
+    }
+
+    const { data: logs } = await query;
 
     const activity = {};
 
@@ -184,7 +201,9 @@ function TeamActivityStats() {
         };
       }
 
-      activity[log.user_id][log.action]++;
+      if (activity[log.user_id][log.action] !== undefined) {
+        activity[log.user_id][log.action]++;
+      }
     });
 
     setProfiles(users || []);
@@ -195,26 +214,75 @@ function TeamActivityStats() {
     <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
       <h3>📊 Team Activity</h3>
 
-      <table style={{ width: "100%", marginTop: 10 }}>
+      {/* ===== FILTERS ===== */}
+      <div style={{ display: "flex", gap: 15, marginBottom: 15 }}>
+        <div>
+          <label>From</label><br />
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label>To</label><br />
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label>Users</label><br />
+          <select
+            multiple
+            value={selectedUsers}
+            onChange={e =>
+              setSelectedUsers(
+                Array.from(e.target.selectedOptions, option => option.value)
+              )
+            }
+          >
+            {profiles.map(user => (
+              <option key={user.id} value={user.id}>
+                {user.full_name || user.email}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ===== TABLE ===== */}
+      <table style={tableStyle}>
         <thead>
           <tr>
-            <th align="left">User</th>
-            <th>Create</th>
-            <th>Update</th>
-            <th>Delete</th>
-            <th>Close</th>
+            <th style={thtdStyle}>User</th>
+            <th style={thtdStyle}>Create</th>
+            <th style={thtdStyle}>Update</th>
+            <th style={thtdStyle}>Delete</th>
+            <th style={thtdStyle}>Close</th>
           </tr>
         </thead>
         <tbody>
-          {profiles.map(user => (
-            <tr key={user.id}>
-              <td>{user.full_name || user.email}</td>
-              <td>{stats[user.id]?.CREATE || 0}</td>
-              <td>{stats[user.id]?.UPDATE || 0}</td>
-              <td>{stats[user.id]?.DELETE || 0}</td>
-              <td>{stats[user.id]?.CLOSE || 0}</td>
-            </tr>
-          ))}
+          {profiles
+            .filter(user =>
+              selectedUsers.length > 0
+                ? selectedUsers.includes(user.id)
+                : true
+            )
+            .map(user => (
+              <tr key={user.id}>
+                <td style={thtdStyle}>
+                  {user.full_name || user.email}
+                </td>
+                <td style={thtdStyle}>{stats[user.id]?.CREATE || 0}</td>
+                <td style={thtdStyle}>{stats[user.id]?.UPDATE || 0}</td>
+                <td style={thtdStyle}>{stats[user.id]?.DELETE || 0}</td>
+                <td style={thtdStyle}>{stats[user.id]?.CLOSE || 0}</td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>
@@ -237,4 +305,16 @@ const cardStyle = {
   border: "1px solid #ddd",
   borderRadius: 8,
   background: "#f9f9f9"
+};
+
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+  marginTop: 10
+};
+
+const thtdStyle = {
+  border: "1px solid #ccc",
+  padding: 8,
+  textAlign: "center"
 };
