@@ -57,7 +57,7 @@ const { data: listener } = supabase.auth.onAuthStateChange(
       supabase
         .from("profiles")
         .update({ last_login_at: new Date() })
-        .eq("id", session.user.id);
+        .eq("id", session.user.id)
         .select()
         .then(res => console.log("Login update result:", res));
     }
