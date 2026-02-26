@@ -200,7 +200,7 @@ function TeamActivityStats() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [showDropdown, setShofwDropdown] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const [sortConfig, setSortConfig] = useState({
   key: "CREATE",
