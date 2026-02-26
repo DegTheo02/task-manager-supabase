@@ -533,56 +533,45 @@ if (isEditing) {
 
         // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
 
-         if (!recurrence.enabled) {
-          if (isSubmitting) return;
-          setIsSubmitting(true);
-        
-          const { error } = await supabase
-            .from("tasks")
-            .insert(payload);
-       
-          if (error) {
-            console.error("Insert failed:", error);
-            alert(`Insert failed:\n\n${error.message}`);
-        
+          if (!recurrence.enabled) {
+            if (isSubmitting) return;
+            setIsSubmitting(true);
+          
+            const { error } = await supabase
+              .from("tasks")
+              .insert(payload);
+          
+            if (error) {
+              console.error("Insert failed:", error);
+              alert(`Insert failed:\n\n${error.message}`);
+              setIsSubmitting(false);
+              return;
+            }
+          
+            // ✅ Call Edge Function properly
+            try {
+              const { data, error } = await supabase.functions.invoke(
+                "send-task-email",
+                {
+                  body: {
+                    task: payload,
+                    creator_id: user.id,
+                  },
+                }
+              );
+          
+              if (error) {
+                console.error("Email function error:", error);
+              }
+            } catch (err) {
+              console.error("Email failed but task was created:", err);
+            }
+          
+            setForm(emptyTask);
+            await loadTasks();
             setIsSubmitting(false);
             return;
           }
-        
-          // ✅ GET SESSION TOKEN CORRECTLY
-          const {
-            data: { session }
-          } = await supabase.auth.getSession();
-        
-          try {
-            console.log("🔥 Calling send-task-email function...");
-            console.log("Session:", session);
-            console.log("Access token:", session?.access_token);
-        
-            fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-task-email`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${session.access_token}`,
-                "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY
-              },
-              body: JSON.stringify({
-                task: payload,
-                creator_id: user.id,
-              }),
-            }).catch(err => {
-              console.error("Email failed:", err);
-            });
-          } catch (err) {
-            console.error("Email failed but task was created:", err);
-          }
-        
-          setForm(emptyTask);
-          await loadTasks();
-          setIsSubmitting(false);
-          return;
-        }
-
 
 
                        
