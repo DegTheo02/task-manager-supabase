@@ -26,6 +26,7 @@ export default function Admin() {
         <SystemHealth />
         <EmailStats />
         <AdminLogs />
+        <TeamActivityStats />
       </div>
     </div>
   );
@@ -144,6 +145,78 @@ function AdminLogs() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ===============================
+   TEAM ACTIVITY STATS
+================================ */
+
+function TeamActivityStats() {
+  const [profiles, setProfiles] = useState([]);
+  const [stats, setStats] = useState({});
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    // Get users
+    const { data: users } = await supabase
+      .from("profiles")
+      .select("id, email");
+
+    // Get activity logs
+    const { data: logs } = await supabase
+      .from("activity_logs")
+      .select("user_id, action");
+
+    const activity = {};
+
+    logs?.forEach(log => {
+      if (!activity[log.user_id]) {
+        activity[log.user_id] = {
+          CREATE: 0,
+          UPDATE: 0,
+          DELETE: 0,
+          CLOSE: 0
+        };
+      }
+
+      activity[log.user_id][log.action]++;
+    });
+
+    setProfiles(users || []);
+    setStats(activity);
+  }
+
+  return (
+    <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+      <h3>📊 Team Activity</h3>
+
+      <table style={{ width: "100%", marginTop: 10 }}>
+        <thead>
+          <tr>
+            <th align="left">User</th>
+            <th>Create</th>
+            <th>Update</th>
+            <th>Delete</th>
+            <th>Close</th>
+          </tr>
+        </thead>
+        <tbody>
+          {profiles.map(user => (
+            <tr key={user.id}>
+              <td>{user.email}</td>
+              <td>{stats[user.id]?.CREATE || 0}</td>
+              <td>{stats[user.id]?.UPDATE || 0}</td>
+              <td>{stats[user.id]?.DELETE || 0}</td>
+              <td>{stats[user.id]?.CLOSE || 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
