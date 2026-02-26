@@ -8,6 +8,15 @@ import { useRef } from "react";
 export default function Admin() {
 const {user,fullName, permissions } = useAuth();
 
+const [theme, setTheme] = useState(
+localStorage.getItem("theme") || "light"
+);
+
+useEffect(() => {
+localStorage.setItem("theme", theme);
+document.body.style.background =
+  theme === "dark" ? "#111827" : "#f3f4f6";
+}, [theme]);
   
   if (!permissions?.manage_users) {
     return (
@@ -20,14 +29,25 @@ const {user,fullName, permissions } = useAuth();
 
   return (
     <div style={{ padding: 30 }}>
-      <h1>🛠 Admin Panel</h1>
+      <div style={headerRow}>
+          <h1 style={{ margin: 0 }}>🛠 Admin Panel</h1>
+        
+          <button
+            style={themeButton}
+            onClick={() =>
+              setTheme(theme === "light" ? "dark" : "light")
+            }
+          >
+            {theme === "light" ? "🌙 Dark" : "☀ Light"}
+          </button>
+        </div>
 
       <p><strong>User:</strong> {fullName || user?.email}</p>
 
       <hr />
 
       <div style={gridStyle}>
-        <TeamActivityStats />
+        <TeamActivityStats theme={theme} />
       </div>
     </div>
   );
@@ -37,7 +57,7 @@ const {user,fullName, permissions } = useAuth();
    TEAM ACTIVITY STATS
 ================================ */
 
-function TeamActivityStats() {
+  function TeamActivityStats({ theme }) {
   const [profiles, setProfiles] = useState([]);
   const [stats, setStats] = useState({});
   const [startDate, setStartDate] = useState("");
@@ -185,7 +205,14 @@ function handleSort(column) {
 }
 
   return (
-    <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+    <div
+        style={{
+          ...cardStyle,
+          gridColumn: "1 / -1",
+          background: theme === "dark" ? "#1f2937" : "#ffffff",
+          color: theme === "dark" ? "#f9fafb" : "#111827"
+        }}
+      >
       <div style={sectionHeader}>
         <h3 style={{ margin: 0 }}>Team Activity</h3>
       </div>
@@ -483,4 +510,21 @@ const totalRow = {
 
 const tableRow = {
   transition: "background 0.2s ease"
+};
+
+const headerRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 10
+};
+
+const themeButton = {
+  padding: "8px 14px",
+  borderRadius: 6,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 500,
+  background: "#2563eb",
+  color: "#fff"
 };
