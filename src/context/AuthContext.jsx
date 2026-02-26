@@ -70,6 +70,19 @@ const { data: listener } = supabase.auth.onAuthStateChange(
     };
   }, []);
 
+  useEffect(() => {
+  if (!user) return;
+
+  const interval = setInterval(async () => {
+    await supabase
+      .from("profiles")
+      .update({ last_active_at: new Date() })
+      .eq("id", user.id);
+  }, 300000); // 5 minutes
+
+  return () => clearInterval(interval);
+}, [user]);
+
   return (
    <AuthContext.Provider value={{ user, fullName, permissions, loading, team, ownerLabel, role }}>
       {children}
