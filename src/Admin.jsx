@@ -27,165 +27,8 @@ const {user,fullName, permissions } = useAuth();
       <hr />
 
       <div style={gridStyle}>
-        <SystemHealth />
-        <EmailStats />
-        <AdminLogs />
         <TeamActivityStats />
       </div>
-    </div>
-  );
-}
-
-/* ===============================
-   SYSTEM HEALTH
-================================ */
-
-function SystemHealth() {
-  const [stats, setStats] = useState({
-    users: 0,
-    tasks: 0,
-    openTasks: 0
-  });
-
-  useEffect(() => {
-    async function loadStats() {
-      const users = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true });
-
-      const tasks = await supabase
-        .from("tasks")
-        .select("*", { count: "exact", head: true });
-
-      const openTasks = await supabase
-        .from("tasks")
-        .select("*", { count: "exact", head: true })
-        .neq("status", "Closed");
-
-      setStats({
-        users: users.count || 0,
-        tasks: tasks.count || 0,
-        openTasks: openTasks.count || 0
-      });
-    }
-
-    loadStats();
-  }, []);
-
-  return (
-    <div style={cardStyle}>
-      <h3>🩺 System Health</h3>
-      <p>Total Users: {stats.users}</p>
-      <p>Total Tasks: {stats.tasks}</p>
-      <p>Open Tasks: {stats.openTasks}</p>
-    </div>
-  );
-}
-
-/* ===============================
-   EMAIL USAGE
-================================ */
-
-function EmailStats() {
-  const [stats, setStats] = useState({
-    today: 0,
-    month: 0
-  });
-
-  useEffect(() => {
-    async function loadEmailStats() {
-      const today = new Date().toISOString().slice(0, 10);
-
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      const monthISO = startOfMonth.toISOString();
-
-      const { count: todayCount } = await supabase
-        .from("email_logs")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today);
-
-      const { count: monthCount } = await supabase
-        .from("email_logs")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", monthISO);
-
-      setStats({
-        today: todayCount || 0,
-        month: monthCount || 0
-      });
-    }
-
-    loadEmailStats();
-  }, []);
-
-  return (
-    <div style={cardStyle}>
-      <h3>📧 Email Usage</h3>
-      <p>Today: {stats.today} / 100 emails</p>
-      <p>This Month: {stats.month}</p>
-    </div>
-  );
-}
-
-/* ===============================
-   ADMIN ACTIVITY LOGS
-================================ */
-
-function AdminLogs() {
-  const [logs, setLogs] = useState([]);
-
-  useEffect(() => {
-    async function loadLogs() {
-      const { data } = await supabase
-        .from("admin_logs")
-        .select(`
-          id,
-          action,
-          metadata,
-          created_at,
-          performed_by,
-          profiles:performed_by (
-            full_name,
-            email
-          )
-        `)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      setLogs(data || []);
-    }
-
-    loadLogs();
-  }, []);
-
-  function formatRelativeTime(date) {
-    const diff = (new Date() - new Date(date)) / 1000;
-
-    if (diff < 60) return "Just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hrs ago`;
-    return new Date(date).toLocaleDateString();
-  }
-
-  return (
-    <div style={cardStyle}>
-      <h3>📜 Admin Activity</h3>
-
-      {logs.length === 0 && (
-        <p style={{ opacity: 0.6 }}>No recent activity.</p>
-      )}
-
-      {logs.map(log => (
-        <div key={log.id} style={{ marginBottom: 14 }}>
-          <strong>{log.action}</strong>
-
-          <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
-            By {log.profiles?.full_name || log.profiles?.email || "Unknown"} •{" "}
-            {formatRelativeTime(log.created_at)}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -299,7 +142,13 @@ function TeamActivityStats() {
    { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0, EMAILS: 0 }
   );
 
-  const sortedProfiles = [...profiles].sort((a, b) => {
+  const sortedProfiles = [...profiles]
+  .filter(user =>
+    selectedUsers.length > 0
+      ? selectedUsers.includes(user.id)
+      : true
+  )
+  .sort((a, b) => {
     const aValue =
       sortConfig.key === "USER"
         ? (a.full_name || a.email).toLowerCase()
