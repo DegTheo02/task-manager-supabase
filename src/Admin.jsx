@@ -489,7 +489,7 @@ const leftHeader = {
   border: "1px solid #e5e7eb",
   background: "#f9fafb",
   fontWeight: 600,
-  width: "180px"  // 👈 narrower
+  width: "100px"  // 👈 narrower
 };
 
 const centerHeader = {
@@ -506,7 +506,7 @@ const leftCell = {
   padding: "10px 12px",
   border: "1px solid #e5e7eb",
   width: "100px",
-  maxWidth: "180px",
+  maxWidth: "100px",
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis"
