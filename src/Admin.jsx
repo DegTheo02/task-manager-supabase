@@ -159,48 +159,33 @@ function TeamActivityStats() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [startDate, endDate, selectedUsers]);
 
   async function loadData() {
-    // Get users
     const { data: users } = await supabase
       .from("profiles")
       .select("id, full_name, email");
 
-    // Build query for activity logs
     let query = supabase
       .from("activity_logs")
       .select("user_id, action, created_at");
 
-    if (startDate) {
-      query = query.gte("created_at", startDate);
-    }
-
-    if (endDate) {
-      query = query.lte("created_at", endDate + "T23:59:59");
-    }
-
-    if (selectedUsers.length > 0) {
+    if (startDate) query = query.gte("created_at", startDate);
+    if (endDate) query = query.lte("created_at", endDate + "T23:59:59");
+    if (selectedUsers.length > 0)
       query = query.in("user_id", selectedUsers);
-    }
 
     const { data: logs } = await query;
 
     const activity = {};
-
     logs?.forEach(log => {
       if (!activity[log.user_id]) {
-        activity[log.user_id] = {
-          CREATE: 0,
-          UPDATE: 0,
-          DELETE: 0,
-          CLOSE: 0
-        };
+        activity[log.user_id] = { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0 };
       }
-
       if (activity[log.user_id][log.action] !== undefined) {
         activity[log.user_id][log.action]++;
       }
@@ -210,59 +195,94 @@ function TeamActivityStats() {
     setStats(activity);
   }
 
+  const totals = profiles.reduce(
+    (acc, user) => {
+      acc.CREATE += stats[user.id]?.CREATE || 0;
+      acc.UPDATE += stats[user.id]?.UPDATE || 0;
+      acc.DELETE += stats[user.id]?.DELETE || 0;
+      acc.CLOSE += stats[user.id]?.CLOSE || 0;
+      return acc;
+    },
+    { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0 }
+  );
+
   return (
     <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
-      <h3>📊 Team Activity</h3>
-
-      {/* ===== FILTERS ===== */}
-      <div style={{ display: "flex", gap: 15, marginBottom: 15 }}>
-        <div>
-          <label>From</label><br />
-          <input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label>To</label><br />
-          <input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label>Users</label><br />
-          <select
-            multiple
-            value={selectedUsers}
-            onChange={e =>
-              setSelectedUsers(
-                Array.from(e.target.selectedOptions, option => option.value)
-              )
-            }
-          >
-            {profiles.map(user => (
-              <option key={user.id} value={user.id}>
-                {user.full_name || user.email}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div style={sectionHeader}>
+        <h3 style={{ margin: 0 }}>Team Activity</h3>
       </div>
 
-      {/* ===== TABLE ===== */}
-      <table style={tableStyle}>
+      {/* FILTERS */}
+      <div style={filterContainer}>
+        <div style={filterItem}>
+          <label>From</label>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+        </div>
+
+        <div style={filterItem}>
+          <label>To</label>
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+        </div>
+
+        {/* USER DROPDOWN */}
+        <div style={{ ...filterItem, position: "relative" }}>
+          <label>Users</label>
+          <div
+            style={dropdownButton}
+            onClick={() => setShowDropdown(!showDropdown)}
+          >
+            {selectedUsers.length === 0
+              ? "All Users"
+              : `${selectedUsers.length} selected`}
+          </div>
+
+          {showDropdown && (
+            <div style={dropdownMenu}>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Select Users</strong>
+              </div>
+
+              {profiles.map(user => (
+                <label key={user.id} style={checkboxItem}>
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.includes(user.id)}
+                    onChange={() => {
+                      if (selectedUsers.includes(user.id)) {
+                        setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                      } else {
+                        setSelectedUsers([...selectedUsers, user.id]);
+                      }
+                    }}
+                  />
+                  {user.full_name || user.email}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          style={resetButton}
+          onClick={() => {
+            setStartDate("");
+            setEndDate("");
+            setSelectedUsers([]);
+          }}
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* TABLE */}
+      <table style={enterpriseTable}>
         <thead>
           <tr>
-            <th style={thtdStyle}>User</th>
-            <th style={thtdStyle}>Create</th>
-            <th style={thtdStyle}>Update</th>
-            <th style={thtdStyle}>Delete</th>
-            <th style={thtdStyle}>Close</th>
+            <th>User</th>
+            <th>Create</th>
+            <th>Update</th>
+            <th>Delete</th>
+            <th>Close</th>
           </tr>
         </thead>
         <tbody>
@@ -274,15 +294,21 @@ function TeamActivityStats() {
             )
             .map(user => (
               <tr key={user.id}>
-                <td style={thtdStyle}>
-                  {user.full_name || user.email}
-                </td>
-                <td style={thtdStyle}>{stats[user.id]?.CREATE || 0}</td>
-                <td style={thtdStyle}>{stats[user.id]?.UPDATE || 0}</td>
-                <td style={thtdStyle}>{stats[user.id]?.DELETE || 0}</td>
-                <td style={thtdStyle}>{stats[user.id]?.CLOSE || 0}</td>
+                <td>{user.full_name || user.email}</td>
+                <td>{stats[user.id]?.CREATE || 0}</td>
+                <td>{stats[user.id]?.UPDATE || 0}</td>
+                <td>{stats[user.id]?.DELETE || 0}</td>
+                <td>{stats[user.id]?.CLOSE || 0}</td>
               </tr>
             ))}
+
+          <tr style={totalRow}>
+            <td><strong>Total</strong></td>
+            <td>{totals.CREATE}</td>
+            <td>{totals.UPDATE}</td>
+            <td>{totals.DELETE}</td>
+            <td>{totals.CLOSE}</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -295,26 +321,85 @@ function TeamActivityStats() {
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-  gap: 20,
-  marginTop: 20
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: 24,
+  marginTop: 30
 };
 
 const cardStyle = {
-  padding: 20,
+  padding: 24,
+  borderRadius: 12,
+  background: "#ffffff",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+};
+
+const sectionHeader = {
+  marginBottom: 20,
+  paddingBottom: 10,
+  borderBottom: "1px solid #eee"
+};
+
+const filterContainer = {
+  display: "flex",
+  gap: 20,
+  alignItems: "flex-end",
+  marginBottom: 25,
+  flexWrap: "wrap"
+};
+
+const filterItem = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 5
+};
+
+const dropdownButton = {
+  border: "1px solid #ccc",
+  padding: "8px 12px",
+  borderRadius: 6,
+  background: "#fff",
+  cursor: "pointer",
+  minWidth: 180
+};
+
+const dropdownMenu = {
+  position: "absolute",
+  top: 60,
+  left: 0,
+  background: "#fff",
   border: "1px solid #ddd",
   borderRadius: 8,
-  background: "#f9f9f9"
+  padding: 12,
+  width: 220,
+  maxHeight: 250,
+  overflowY: "auto",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+  zIndex: 10
 };
 
-const tableStyle = {
+const checkboxItem = {
+  display: "flex",
+  gap: 8,
+  marginBottom: 6,
+  fontSize: 14
+};
+
+const resetButton = {
+  padding: "8px 16px",
+  borderRadius: 6,
+  border: "none",
+  background: "#f3f4f6",
+  cursor: "pointer",
+  fontWeight: 500
+};
+
+const enterpriseTable = {
   width: "100%",
   borderCollapse: "collapse",
-  marginTop: 10
+  fontSize: 14
 };
 
-const thtdStyle = {
-  border: "1px solid #ccc",
-  padding: 8,
-  textAlign: "center"
+const totalRow = {
+  background: "#f9fafb",
+  fontWeight: "600"
 };
