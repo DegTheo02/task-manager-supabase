@@ -237,46 +237,6 @@ function handleSort(column) {
           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
         </div>
 
-        {/* USER DROPDOWN */}
-        <div
-          ref={dropdownRef}
-          style={{ ...filterItem, position: "relative" }}
-        >
-          <label>Users</label>
-          <div
-            style={dropdownButton}
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            {selectedUsers.length === 0
-              ? "All Users"
-              : `${selectedUsers.length} selected`}
-          </div>
-
-          {showDropdown && (
-            <div style={dropdownMenu}>
-              <div style={{ marginBottom: 8 }}>
-                <strong>Select Users</strong>
-              </div>
-
-              {profiles.map(user => (
-                <label key={user.id} style={checkboxItem}>
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.includes(user.id)}
-                    onChange={() => {
-                      if (selectedUsers.includes(user.id)) {
-                        setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                      } else {
-                        setSelectedUsers([...selectedUsers, user.id]);
-                      }
-                    }}
-                  />
-                  {user.full_name || user.email}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
 
         <button
           style={resetButton}
