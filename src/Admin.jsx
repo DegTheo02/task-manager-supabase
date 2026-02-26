@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "./context/AuthContext";
 import { supabase } from "./supabaseClient";
 import { useRef } from "react";
-const dropdownRef = useRef(null);
+
 
 
 export default function Admin() {
@@ -46,22 +46,6 @@ function SystemHealth() {
     tasks: 0,
     openTasks: 0
   });
-
-  useEffect(() => {
-  function handleClickOutside(event) {
-    if (
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target)
-    ) {
-      setShowDropdown(false);
-    }
-  }
-
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
 
   useEffect(() => {
     async function loadStats() {
@@ -216,70 +200,92 @@ function TeamActivityStats() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showDropdown, setShofwDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   const [sortConfig, setSortConfig] = useState({
   key: "CREATE",
   direction: "desc"
 });
 
   useEffect(() => {
-    loadData();
+    loadUsers();      // load profiles + email counts
+  }, []);
+  
+  useEffect(() => {
+    loadActivity();   // load activity logs only
   }, [startDate, endDate, selectedUsers]);
 
-  async function loadData() {
-    // 1️⃣ Get users
-    const { data: users } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, last_login_at, last_active_at");
-  
-    // 2️⃣ Get activity logs
-    let query = supabase
-      .from("activity_logs")
-      .select("user_id, action, created_at");
-  
-    if (startDate) query = query.gte("created_at", startDate);
-    if (endDate) query = query.lte("created_at", endDate + "T23:59:59");
-    if (selectedUsers.length > 0)
-      query = query.in("user_id", selectedUsers);
-  
-    const { data: logs } = await query;
-  
-    const activity = {};
-    logs?.forEach(log => {
-      if (!activity[log.user_id]) {
-        activity[log.user_id] = { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0 };
-      }
-      if (activity[log.user_id][log.action] !== undefined) {
-        activity[log.user_id][log.action]++;
-      }
-    });
-  
-    // 3️⃣ Fetch email logs
-    const { data: emailLogs } = await supabase
-      .from("email_logs")
-      .select("recipient, status");
-  
-    const emailCountMap = {};
-  
-    emailLogs?.forEach(log => {
-      if (log.status !== "sent") return;
-  
-      if (!emailCountMap[log.recipient]) {
-        emailCountMap[log.recipient] = 0;
-      }
-  
-      emailCountMap[log.recipient]++;
-    });
-  
-    // 4️⃣ Enrich users AFTER emailCountMap exists
-    const enrichedUsers = (users || []).map(user => ({
-      ...user,
-      email_received: emailCountMap[user.email] || 0
-    }));
-  
-    setProfiles(enrichedUsers);
-    setStats(activity);
+    useEffect(() => {
+  function handleClickOutside(event) {
+    if (
+      dropdownRef.current &&
+      !dropdownRef.current.contains(event.target)
+    ) {
+      setShowDropdown(false);
+    }
   }
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
+  
+  async function loadActivity() {
+  let query = supabase
+    .from("activity_logs")
+    .select("user_id, action, created_at");
+
+  if (startDate) query = query.gte("created_at", startDate);
+  if (endDate) query = query.lte("created_at", endDate + "T23:59:59");
+  if (selectedUsers.length > 0)
+    query = query.in("user_id", selectedUsers);
+
+  const { data: logs } = await query;
+
+  const activity = {};
+
+  logs?.forEach(log => {
+    if (!activity[log.user_id]) {
+      activity[log.user_id] = { CREATE: 0, UPDATE: 0, DELETE: 0, CLOSE: 0 };
+    }
+
+    if (activity[log.user_id][log.action] !== undefined) {
+      activity[log.user_id][log.action]++;
+    }
+  });
+
+  setStats(activity);
+}
+
+  async function loadUsers() {
+  const { data: users } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, last_login_at, last_active_at");
+
+  const { data: emailLogs } = await supabase
+    .from("email_logs")
+    .select("recipient, status");
+
+  const emailCountMap = {};
+
+  emailLogs?.forEach(log => {
+    if (log.status !== "sent") return;
+
+    emailCountMap[log.recipient] =
+      (emailCountMap[log.recipient] || 0) + 1;
+  });
+
+  const enrichedUsers = (users || []).map(user => ({
+    ...user,
+    email_received: emailCountMap[user.email] || 0
+  }));
+
+  setProfiles(enrichedUsers);
+}
+  
+
 
   const totals = profiles.reduce(
     (acc, user) => {
