@@ -84,18 +84,33 @@ function SystemHealth() {
 ================================ */
 
 function EmailStats() {
-  const [count, setCount] = useState(0);
+  const [stats, setStats] = useState({
+    today: 0,
+    month: 0
+  });
 
   useEffect(() => {
     async function loadEmailStats() {
       const today = new Date().toISOString().slice(0, 10);
 
-      const { count } = await supabase
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      const monthISO = startOfMonth.toISOString();
+
+      const { count: todayCount } = await supabase
         .from("email_logs")
         .select("*", { count: "exact", head: true })
         .gte("created_at", today);
 
-      setCount(count || 0);
+      const { count: monthCount } = await supabase
+        .from("email_logs")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", monthISO);
+
+      setStats({
+        today: todayCount || 0,
+        month: monthCount || 0
+      });
     }
 
     loadEmailStats();
@@ -104,7 +119,8 @@ function EmailStats() {
   return (
     <div style={cardStyle}>
       <h3>📧 Email Usage</h3>
-      <p>Today: {count} / 100 emails</p>
+      <p>Today: {stats.today} / 100 emails</p>
+      <p>This Month: {stats.month}</p>
     </div>
   );
 }
