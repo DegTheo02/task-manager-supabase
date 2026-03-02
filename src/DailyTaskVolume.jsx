@@ -441,8 +441,36 @@ export default function DailyTaskVolume() {
         </div>
       </div>
 
+       {/* CALENDAR */}
+          <TaskCalendar
+            rows={rows}
+            darkMode={darkMode}
+            statuses={filters.statuses}
+            onDayClick={(day, evt) => {
+            const params = new URLSearchParams({
+              status,
+              date_from: day,
+              date_to: day,
+              owners: filters.owners.join(","),
+              teams:
+                role === "manager"
+                  ? ""
+                  : filters.teams.join(","),
+              requesters: filters.requesters.join(",")
+            });
+            
+                
+              const url = `/tasks?${params.toString()}`;
+    
+              evt.ctrlKey || evt.metaKey
+                ? window.open(url, "_blank")
+                : navigate(url);
+            }}
+          />
 
-            {/* CHART */}
+
+
+      {/* CHART */}
       <div
         style={{
           ...chartContainer,
@@ -521,36 +549,6 @@ export default function DailyTaskVolume() {
           }
         }}
       />
-
-       {/* CALENDAR */}
-          <TaskCalendar
-            rows={rows}
-            darkMode={darkMode}
-            statuses={filters.statuses}
-            onDayClick={(day, evt) => {
-            const params = new URLSearchParams({
-              status,
-              date_from: day,
-              date_to: day,
-              owners: filters.owners.join(","),
-              teams:
-                role === "manager"
-                  ? ""
-                  : filters.teams.join(","),
-              requesters: filters.requesters.join(",")
-            });
-            
-                
-              const url = `/tasks?${params.toString()}`;
-    
-              evt.ctrlKey || evt.metaKey
-                ? window.open(url, "_blank")
-                : navigate(url);
-            }}
-          />
-
-
-
 
         
       </div>
