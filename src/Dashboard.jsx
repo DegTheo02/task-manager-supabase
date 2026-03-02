@@ -425,7 +425,7 @@ const resetFilters = () => setFilters({
     position: "sticky",
     top: 68,
     zIndex: 1000,
-    background: darkMode ? "#0b1220" : "#f5f5f5",
+    background: darkMode ? "#0f0f0f" : "#f5f5f5",
     paddingBottom: 40,
     marginBottom: 20
   };
