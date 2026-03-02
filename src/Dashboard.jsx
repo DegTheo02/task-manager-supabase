@@ -415,7 +415,7 @@ const resetFilters = () => setFilters({
 
   const pageStyle = {
     padding: 20,
-    background: darkMode ? "#0f0f0f" : "#f5f5f5",
+    background: darkMode ? "#0b1220" : "#f5f5f5",
     //#0f0f0f : Black ; #111827 : Dark blue
     color: darkMode ? "#fff" : "#000",
     minHeight: "100vh"
@@ -425,7 +425,7 @@ const resetFilters = () => setFilters({
     position: "sticky",
     top: 68,
     zIndex: 1000,
-    background: darkMode ? "#0f0f0f" : "#f5f5f5",
+    background: darkMode ? "#0b1220" : "#f5f5f5",
     paddingBottom: 40,
     marginBottom: 20
   };
