@@ -451,7 +451,10 @@ export default function DailyTaskVolume() {
               status,
               date_from: day,
               date_to: day,
-              owners: filters.owners.join(","),
+              owners: ownerOptions
+              .filter(o => filters.owners.includes(o.value))
+              .map(o => o.label)
+              .join(","),
               teams:
                 role === "manager"
                   ? ""
@@ -503,7 +506,10 @@ export default function DailyTaskVolume() {
                 owners:
                   role === "user"
                     ? user.email
-                    : filters.owners.join(","),
+                    : ownerOptions
+                        .filter(o => filters.owners.includes(o.value))
+                        .map(o => o.label)
+                        .join(","),
                 teams:
                   role === "manager"
                     ? ""
