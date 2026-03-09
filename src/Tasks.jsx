@@ -401,7 +401,7 @@ const bV =
       if (form.closing_date && role !== "admin") {
         const today = new Date();
         const minAllowedDate = new Date();
-        minAllowedDate.setDate(today.getDate() - 100);
+        minAllowedDate.setDate(today.getDate() - 7);
       
         const minDateStr = minAllowedDate.toISOString().slice(0, 10);
       
@@ -1105,7 +1105,7 @@ return (
               value={form.closing_date || ""}
               min={
                 role?.toLowerCase() !== "admin"
-                  ? new Date(Date.now() - 100 * 24 * 60 * 60 * 1000)
+                  ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
                       .toISOString()
                       .slice(0, 10)
                   : undefined
