@@ -1372,13 +1372,6 @@ return (
                 onClick={() => requestSort("title")}
               >
                 Title{arrow("title")}</th>
-
-              <th
-              style={{ ...th(darkMode), width: "9%" }}
-              onClick={() => requestSort("creator")}
-              >
-                Created by
-              </th>
               
 
               <th
@@ -1409,7 +1402,7 @@ return (
                 Status{arrow("status")}
               </th>
 
-
+              
               <th
                 style={{ ...th(darkMode), width: "8%" }}
                 onClick={() => requestSort("assigned_date")}
@@ -1439,6 +1432,13 @@ return (
               >
                 Closing Date{arrow("closing_date")}
               </th>
+                            <th
+              style={{ ...th(darkMode), width: "9%" }}
+              onClick={() => requestSort("creator")}
+              >
+                Created by
+              </th>
+              
               <th style={{ ...th(darkMode), width: "20%" }}>Comments</th>
 
               <th style={{ ...th(darkMode), width: "12%" }}>Actions</th>
@@ -1451,7 +1451,6 @@ return (
             {sortedTasks.map(t => (
               <tr key={t.id}>
                 <td style={{ ...td(darkMode), textAlign: "left" ,fontSize: "14px"}}>{t.title}</td>
-                <td style={td(darkMode)}>{t.creator_name}</td>
                 <td style={td(darkMode)}>{t.owner}</td>
                 <td style={td(darkMode)}>{t.team}</td>
                 <td style={td(darkMode)}>{t.requester }</td>
@@ -1468,10 +1467,12 @@ return (
                   {t.status}
                 </td>
 
+
                 <td style={td(darkMode)}>{t.assigned_date}</td>
                 <td style={td(darkMode)}>{t.initial_deadline}</td>
                 <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
+                <td style={td(darkMode)}>{t.creator_name}</td>
 
                 <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
