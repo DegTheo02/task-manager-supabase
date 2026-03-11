@@ -1390,13 +1390,13 @@ return (
               </th>
 
               
-              <th style={{ ...th(darkMode), width: "12%" }}>
+              <th style={{ ...th(darkMode), width: "10%" }}>
                 Requester
               </th>
 
 
               <th
-                style={{ ...th(darkMode), width: "10%" }}
+                style={{ ...th(darkMode), width: "8%" }}
                 onClick={() => requestSort("status")}
               >
                 Status{arrow("status")}
@@ -1432,8 +1432,8 @@ return (
               >
                 Closing Date{arrow("closing_date")}
               </th>
-                            <th
-              style={{ ...th(darkMode), width: "9%" }}
+              <th
+              style={{ ...th(darkMode), width: "8%" }}
               onClick={() => requestSort("creator")}
               >
                 Created by
