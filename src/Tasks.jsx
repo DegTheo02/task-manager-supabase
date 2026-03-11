@@ -218,7 +218,10 @@ const emptyTask = {
   /* LOAD DATA */
   const loadTasks = async () => {
     setLoading(true);
-    const { data } = await supabase.from("tasks").select("*").order("id");
+  const { data } = await supabase
+    .from("tasks_with_creator")
+    .select("*")
+    .order("id");
     
 setTasks(data || []);
 
@@ -1370,6 +1373,13 @@ return (
               >
                 Title{arrow("title")}</th>
 
+              <th
+              style={{ ...th(darkMode), width: "9%" }}
+              onClick={() => requestSort("creator")}
+              >
+                Created by
+              </th>
+              
 
               <th
                 style={{ ...th(darkMode), width: "9%" }}
@@ -1441,6 +1451,7 @@ return (
             {sortedTasks.map(t => (
               <tr key={t.id}>
                 <td style={{ ...td(darkMode), textAlign: "left" ,fontSize: "14px"}}>{t.title}</td>
+                <td style={td(darkMode)}>{t.creator_name}</td>
                 <td style={td(darkMode)}>{t.owner}</td>
                 <td style={td(darkMode)}>{t.team}</td>
                 <td style={td(darkMode)}>{t.requester }</td>
