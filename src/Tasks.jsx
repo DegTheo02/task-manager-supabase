@@ -1472,7 +1472,7 @@ return (
                 <td style={td(darkMode)}>{t.initial_deadline}</td>
                 <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
-                <td style={ ...td(darkMode), fontSize: "12px" , textAlign: "left"}>{t.creator_name}</td>
+                <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left"}}>{t.creator_name}</td>
 
                 <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
