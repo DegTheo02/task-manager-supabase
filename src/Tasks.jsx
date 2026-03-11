@@ -1433,7 +1433,7 @@ return (
                 Closing Date{arrow("closing_date")}
               </th>
               <th
-              style={{ ...th(darkMode), width: "8%" }}
+              style={{ ...th(darkMode), width: "7%" }}
               onClick={() => requestSort("creator")}
               >
                 Created by
@@ -1472,7 +1472,7 @@ return (
                 <td style={td(darkMode)}>{t.initial_deadline}</td>
                 <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
-                <td style={{ ...td(darkMode), fontSize: "10px" , textAlign: "left"}}>{t.creator_name}</td>
+                <td style={{ ...td(darkMode), fontSize: "10px" , textAlign: "center"}}>{t.creator_name}</td>
 
                 <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
