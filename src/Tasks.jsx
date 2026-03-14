@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { getTasks, createTask, updateTask, deleteTask } from "./services/taskService";
+import { fetchTasks,  createNewTask,  updateExistingTask,  removeTask} from "./api/tasksApi";
 import Navbar from "./Navbar";
 import { useSearchParams } from "react-router-dom";
 
@@ -221,9 +222,9 @@ const loadTasks = async () => {
   try {
     setLoading(true);
 
-    const { data } = await getTasks(filters, 0, 5000);
-
-    setTasks(data || []);
+const { tasks } = await fetchTasks(filters, 0, 5000);
+setTasks(tasks);
+    
   } catch (err) {
     console.error(err);
   } finally {
