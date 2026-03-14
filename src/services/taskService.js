@@ -1,6 +1,25 @@
 import { supabase } from "../supabaseClient";
 
 /* ==============================
+   SAFE QUERY WRAPPER
+============================== */
+async function safeQuery(promise, label) {
+  try {
+    const { data, error, count } = await promise;
+
+    if (error) {
+      console.error(`❌ Supabase error (${label})`, error);
+      return { data: null, error, count: null };
+    }
+
+    return { data, error: null, count };
+  } catch (err) {
+    console.error(`🔥 Unexpected error (${label})`, err);
+    return { data: null, error: err, count: null };
+  }
+}
+
+/* ==============================
    GET TASKS (FILTERS + PAGINATION)
 ============================== */
 export async function getTasks(filters = {}, page = 0, limit = 50) {
@@ -34,52 +53,44 @@ export async function getTasks(filters = {}, page = 0, limit = 50) {
 
   query = query.range(page * limit, page * limit + limit - 1);
 
-  const { data, error, count } = await query;
-
-  if (error) throw error;
-
-  return { data, count };
+  return safeQuery(query, "getTasks");
 }
 
 /* ==============================
    CREATE TASK
 ============================== */
 export async function createTask(task) {
-  const { data, error } = await supabase
+  const query = supabase
     .from("tasks")
     .insert(task)
     .select()
     .single();
 
-  if (error) throw error;
-
-  return data;
+  return safeQuery(query, "createTask");
 }
 
 /* ==============================
    UPDATE TASK
 ============================== */
 export async function updateTask(taskId, updates) {
-  const { data, error } = await supabase
+  const query = supabase
     .from("tasks")
     .update(updates)
     .eq("id", taskId)
     .select()
     .single();
 
-  if (error) throw error;
-
-  return data;
+  return safeQuery(query, "updateTask");
 }
 
 /* ==============================
    DELETE TASK
 ============================== */
 export async function deleteTask(taskId) {
-  const { error } = await supabase
+  const query = supabase
     .from("tasks")
     .delete()
     .eq("id", taskId);
 
-  if (error) throw error;
+  return safeQuery(query, "deleteTask");
 }
