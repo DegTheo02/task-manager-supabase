@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { getTasks, createTask, updateTask, deleteTask } from "./services/taskService";
 import Navbar from "./Navbar";
 import { useSearchParams } from "react-router-dom";
 
@@ -216,18 +217,19 @@ const emptyTask = {
     });
 
   /* LOAD DATA */
-  const loadTasks = async () => {
+const loadTasks = async () => {
+  try {
     setLoading(true);
-  const { data } = await supabase
-    .from("tasks_with_creator")
-    .select("*")
-    .order("id");
-    
-setTasks(data || []);
 
+    const { data } = await getTasks(filters, 0, 50);
 
+    setTasks(data || []);
+  } catch (err) {
+    console.error(err);
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   
     const loadOwners = async () => {
