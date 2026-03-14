@@ -221,7 +221,7 @@ const loadTasks = async () => {
   try {
     setLoading(true);
 
-    const { data } = await getTasks(filters, 0, 50);
+    const { data } = await getTasks(filters, 0, 5000);
 
     setTasks(data || []);
   } catch (err) {
