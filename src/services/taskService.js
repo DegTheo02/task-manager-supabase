@@ -1,7 +1,7 @@
 import { supabase } from "../supabaseClient";
 
 /* ==============================
-   GET TASKS (WITH FILTERS + PAGINATION)
+   GET TASKS (FILTERS + PAGINATION)
 ============================== */
 export async function getTasks(filters = {}, page = 0, limit = 50) {
   let query = supabase
@@ -82,19 +82,4 @@ export async function deleteTask(taskId) {
     .eq("id", taskId);
 
   if (error) throw error;
-}
-
-/* ==============================
-   GET TASK BY ID
-============================== */
-export async function getTaskById(id) {
-  const { data, error } = await supabase
-    .from("tasks_with_creator")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) throw error;
-
-  return data;
 }
