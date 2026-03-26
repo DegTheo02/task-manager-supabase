@@ -16,7 +16,7 @@ export default function TaskForm({
   WEEKDAYS
 }) {
   return (
-    <div 
+    <div> 
       
       {/* NEW / EDIT TASK FORM */}
       <div style={{ ...formBox, ...dark }}>
