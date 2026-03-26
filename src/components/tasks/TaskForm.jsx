@@ -19,11 +19,9 @@ export default function TaskForm({
   dark
 }) {
   return (
-      
-      {/* NEW / EDIT TASK FORM */}
       <div style={{ ...formBox, ...dark }}>
         <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
-
+      {/* NEW / EDIT TASK FORM */}
         {/* 1 ROW LAYOUT */}
         <div
           style={{
