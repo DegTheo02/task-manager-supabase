@@ -1,4 +1,6 @@
 import React from "react";
+import MonthlyRuleSelector from "../MonthlyRuleSelector";
+import { REQUESTERS } from "../../constants/taskConstants";
 
 export default function TaskForm({
   form,
@@ -13,10 +15,10 @@ export default function TaskForm({
   isEditing,
   isSubmitting,
   saveTask,
-  WEEKDAYS
+  WEEKDAYS,
+  dark
 }) {
   return (
-    <div> 
       
       {/* NEW / EDIT TASK FORM */}
       <div style={{ ...formBox, ...dark }}>
@@ -387,3 +389,87 @@ export default function TaskForm({
     </div>
   );
 }
+
+
+
+
+/* ----------------------------------
+   STYLES
+---------------------------------- */
+const formBox = {
+  display: "grid",
+  gap: 10,
+  maxWidth: 900,
+  marginBottom: 30,
+  padding: 12,
+  borderRadius: 6
+};
+
+const formLabel = {
+  display: "flex",
+  flexDirection: "column",
+  fontWeight: 600,
+  fontSize: 14,
+  gap: 6
+};
+
+const formInput = {
+  padding: "6px 8px",
+  border: "1px solid #D1D5DB",
+  borderRadius: 4,
+  height: 36,
+  boxSizing: "border-box"
+};
+
+
+const filterBar = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+  marginBottom: 20
+};
+
+const table = dark => ({
+  width: "100%",
+  borderCollapse: "collapse",
+  tableLayout: "fixed",
+  background: dark ? "#111" : "white"
+});
+
+
+const th = dark => ({
+  border: dark ? "1px solid #333" : "1px solid #D1D5DB",
+  padding: 8,
+  background: dark ? "#111" : "#F3F4F6",
+  textAlign: "center",
+  cursor: "pointer",
+  fontWeight: 700,
+  userSelect: "none"
+});
+
+const td = dark => ({
+  border: dark ? "1px solid #333" : "1px solid #D1D5DB",
+  padding: 8,
+  textAlign: "center",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  verticalAlign: "top"
+});
+
+
+const stickyBar = dark => ({
+  position: "sticky",
+  top: 70,
+  zIndex: 10,
+  background: dark ? "#000" : "#fff",
+  paddingBottom: 10,
+  marginBottom: 20
+});
+
+const filterItem = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 13,
+  fontWeight: 600
+};
