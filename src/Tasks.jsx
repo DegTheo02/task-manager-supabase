@@ -801,6 +801,7 @@ return (
       isSubmitting={isSubmitting}
       saveTask={saveTask}
       WEEKDAYS={WEEKDAYS}
+      dark={dark}
     />
 
 
