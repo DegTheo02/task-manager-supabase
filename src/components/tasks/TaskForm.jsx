@@ -418,4 +418,3 @@ const formInput = {
   height: 36,
   boxSizing: "border-box"
 };
-};
