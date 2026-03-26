@@ -384,8 +384,6 @@ export default function TaskForm({
         >
           {isSubmitting ? "Creating..." : isEditing ? "Update Task" : "Create Task"}
         </button>
-
-      </div>
     </div>
   );
 }
