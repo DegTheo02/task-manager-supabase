@@ -230,6 +230,7 @@ setTasks(tasks);
   } catch (err) {
     console.error(err);
   } finally {
+    setIsSubmitting(false);
     setLoading(false);
   }
 };
@@ -385,8 +386,6 @@ const bV =
   /* SAVE TASK */
   const saveTask = async () => {
   if (isSubmitting) return; // 🚫 Prevent double click
-
-  setIsSubmitting(true);
     
     if (!user) {
     alert("Authentication error. Please login again.");
@@ -417,8 +416,6 @@ const bV =
           alert(
             `Only admins can set a closing date earlier than ${minDateStr}`
           );
-          setIsSubmitting(false);
-          return;
         }
       }
 
@@ -466,7 +463,7 @@ const bV =
     if (!permissions?.manage_users) {
           form.team = myTeam;
         }
-
+  setIsSubmitting(true);
         const payload = {
           title: form.title,
           owner: form.owner,
@@ -543,7 +540,7 @@ if (isEditing) {
 
           if (!recurrence.enabled) {
             if (isSubmitting) return;
-            setIsSubmitting(true);
+           
           
             const { error } = await supabase
               .from("tasks")
@@ -555,7 +552,7 @@ if (isEditing) {
               setIsSubmitting(false);
               return;
             }
-          
+           setIsSubmitting(true);
             // ✅ Call Edge Function properly
             try {
               const { data, error } = await supabase.functions.invoke(
