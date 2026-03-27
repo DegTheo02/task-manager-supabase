@@ -816,6 +816,7 @@ return (
 
     {/* FILTER BAR */}
     <TaskFilters
+      key={filterKey}
       filters={filters}
       setFilters={setFilters}
       owners={owners}
