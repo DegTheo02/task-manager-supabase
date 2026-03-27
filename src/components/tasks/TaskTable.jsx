@@ -20,8 +20,9 @@ export default function TaskTable({
 
   return (
 
-      /* TASK TABLE */
+
         <table style={{ ...table(darkMode), ...dark }}>
+          {/* TASK TABLE */}
           <thead>
             <tr>
               <th
