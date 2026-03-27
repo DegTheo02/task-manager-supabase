@@ -1,53 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { fetchTasks } from "../api/tasksApi";
 
 export function useTasks(filters) {
-  const LIMIT = 20;
-
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [from, setFrom] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const loadTasks = useCallback(async (reset = false) => {
+  const loadTasks = async () => {
     try {
       setLoading(true);
-
-      const start = reset ? 0 : from;
-
-      const { tasks: newTasks } = await fetchTasks(filters, start, LIMIT);
-
-      if (reset) {
-        setTasks(newTasks);
-        setFrom(LIMIT);
-      } else {
-        setTasks(prev => [...prev, ...newTasks]);
-        setFrom(prev => prev + LIMIT);
-      }
-
-      if (newTasks.length < LIMIT) {
-        setHasMore(false);
-      }
-
+      const { tasks } = await fetchTasks(filters, 0, 5000);
+      setTasks(tasks);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [filters, from]);
+  };
 
-  // 🔄 reload when filters change
   useEffect(() => {
-    setFrom(0);
-    setHasMore(true);
-    loadTasks(true);
+    loadTasks();
   }, [filters]);
 
-  return {
-    tasks,
-    loading,
-    hasMore,
-    loadMore: () => loadTasks(false),
-    reload: () => loadTasks(true)
-  };
+  return { tasks, loading, reload: loadTasks };
 }
