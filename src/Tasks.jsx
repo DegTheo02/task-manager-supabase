@@ -358,288 +358,189 @@ const bV =
   
   /* SAVE TASK */
   const saveTask = async () => {
-  if (isSubmitting) return; // 🚫 Prevent double click
-    
-    if (!user) {
+  if (isSubmitting) return;
+
+  // =========================
+  // ✅ VALIDATION (OUTSIDE TRY)
+  // =========================
+  if (!user) {
     alert("Authentication error. Please login again.");
     return;
-    }
+  }
 
-    if (
-      !form.title ||
-      !form.owner ||
-      !form.requester ||
-      !form.assigned_date ||
-      !form.initial_deadline
-      
-    ) {
-      alert("Please fill all required fields");
-      return;
-    }
-    
-    // 🚫 Restrict old closing dates for non-admins
-      if (form.closing_date && role !== "admin") {
-        const today = new Date();
-        const minAllowedDate = new Date();
-        minAllowedDate.setDate(today.getDate() - 100);
-      
-        const minDateStr = minAllowedDate.toISOString().slice(0, 10);
-      
-        if (form.closing_date < minDateStr) {
-          alert(
-            `Only admins can set a closing date earlier than ${minDateStr}`
-          );
-          return;
-        }
-      }
-
-      /* ADDED VALIDATION: Check if recurrence data is valid */
-  if (recurrence.enabled && !isValid) {
-    alert("The recurrence rule is invalid. Please check the dates and frequency settings.");
+  if (
+    !form.title ||
+    !form.owner ||
+    !form.requester ||
+    !form.assigned_date ||
+    !form.initial_deadline
+  ) {
+    alert("Please fill all required fields");
     return;
   }
 
-    const normalizedClosingDate =
+  if (form.closing_date && role !== "admin") {
+    const today = new Date();
+    const minAllowedDate = new Date();
+    minAllowedDate.setDate(today.getDate() - 100);
+
+    const minDateStr = minAllowedDate.toISOString().slice(0, 10);
+
+    if (form.closing_date < minDateStr) {
+      alert(
+        `Only admins can set a closing date earlier than ${minDateStr}`
+      );
+      return;
+    }
+  }
+
+  if (recurrence.enabled && !isValid) {
+    alert("Invalid recurrence settings");
+    return;
+  }
+
+  if (!permissions?.manage_users && form.owner_id !== user.id) {
+    alert("You are not allowed to assign tasks to this user.");
+    return;
+  }
+
+  // enforce team for non-admins
+  const teamValue = permissions?.manage_users ? form.team : myTeam;
+
+  const normalizedClosingDate =
     form.closing_date === "" ? null : form.closing_date;
 
-    const formForStatus = {
-  ...form,
-  closing_date: normalizedClosingDate
-};
+  // =========================
+  // 🚀 START LOADING
+  // =========================
+  setIsSubmitting(true);
 
-
-    const buildRecurrenceRule = (recurrence) => {
-      if (!recurrence.enabled) return null;
-    
-      if (recurrence.frequency === "weekly") {
-        return {
-          frequency: "weekly",
-          weekdays: recurrence.weekly.weekdays
-        };
-      }
-    
-      if (recurrence.frequency === "monthly") {
-        return {
-          frequency: "monthly",
-          ...recurrence.monthly
-        };
-      }
-    
-      return null;
+  try {
+    // =========================
+    // 📦 PAYLOAD
+    // =========================
+    const payload = {
+      title: form.title,
+      owner: form.owner,
+      owner_id: form.owner_id,
+      created_by: user.id,
+      team: teamValue,
+      requester: form.requester,
+      recurrence_type: recurrence.enabled
+        ? recurrence.frequency
+        : "Non-Recurring",
+      recurrence_rule: recurrence.enabled
+        ? JSON.stringify({
+            frequency: recurrence.frequency,
+            ...(recurrence.frequency === "weekly" ||
+            recurrence.frequency === "biweekly"
+              ? { weekdays: recurrence.weekly.weekdays }
+              : recurrence.monthly)
+          })
+        : null,
+      assigned_date: form.assigned_date,
+      initial_deadline: form.initial_deadline,
+      new_deadline: form.new_deadline || null,
+      closing_date: normalizedClosingDate,
+      comments: form.comments || null
     };
 
-      // 🚫 Double protection: backend-level guard
-      if (!permissions?.manage_users && form.owner_id !== user.id) {
-        alert("You are not allowed to assign tasks to this user.");
-        return;
+    // =========================
+    // ✏️ UPDATE
+    // =========================
+    if (isEditing) {
+      const updatePayload = { ...payload };
+      delete updatePayload.owner_id;
+
+      if (editSeries && form.recurrence_group_id) {
+        const { error } = await supabase
+          .from("tasks")
+          .update(updatePayload)
+          .eq("recurrence_group_id", form.recurrence_group_id);
+
+        if (error) throw error;
+
+      } else {
+        const { error } = await supabase
+          .from("tasks")
+          .update(updatePayload)
+          .eq("id", form.id);
+
+        if (error) throw error;
       }
+    }
 
-    if (!permissions?.manage_users) {
-          form.team = myTeam;
-        }
-        setIsSubmitting(true);
-    try{
-        const payload = {
-          title: form.title,
-          owner: form.owner,
-          owner_id: form.owner_id, // for security
-          created_by: user.id,   // 
-
-          team: form.team,
-          requester: form.requester,
-          recurrence_type: recurrence.enabled
-            ? recurrence.frequency
-            : "Non-Recurring",
-        recurrence_rule: recurrence.enabled
-          ? JSON.stringify({
-              frequency: recurrence.frequency,
-              ...(recurrence.frequency === "weekly" ||
-              recurrence.frequency === "biweekly"
-                ? { weekdays: recurrence.weekly.weekdays }
-                : recurrence.monthly)
-            })
-          : null,
-
-
-          assigned_date: form.assigned_date,
-          initial_deadline: form.initial_deadline,
-          new_deadline: form.new_deadline || null,
-          closing_date: normalizedClosingDate,
-          comments: form.comments || null
-        };
-
-    
-
-if (isEditing) {
-  
-  // 🔐 Never allow owner_id to change on update
-  const updatePayload = { ...payload };
-  delete updatePayload.owner_id;
-  
-  if (editSeries && form.recurrence_group_id) {
-    // 🔁 UPDATE ALL IN SERIES
-    const { error } = await supabase
-      .from("tasks")
-      .update(payload)
-      .eq("recurrence_group_id", form.recurrence_group_id);
-
-    if (error) throw error;
-  } else {
-    // ✏️ UPDATE SINGLE TASK
-    const { error } = await supabase
-      .from("tasks")
-      .update(payload)
-      .eq("id", form.id);
-
-    if (error) {
-      alert("Update failed");
-    }          
-  }
-}
-
- else {
-      // --------------------------------
-      // SAVE TASK (single or recurring)
-      // --------------------------------
-
-        // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
-
-          if (!recurrence.enabled) {
-        
-          
-            const { error } = await supabase
-              .from("tasks")
-              .insert(payload);
-          
-            if (error) {
-              console.error("Insert failed:", error);
-              alert(`Insert failed:\n\n${error.message}`);
-            }
-            
-            // ✅ Call Edge Function properly
-            try {
-              const { data, error } = await supabase.functions.invoke(
-                "send-task-email",
-                {
-                  body: {
-                    task: payload,
-                    creator_id: user.id,
-                  },
-                }
-              );
-          
-              if (error) {
-                console.error("Email function error:", error);
-              }
-            } catch (err) {
-              console.error("Email failed but task was created:", err);
-            }
-
-
-          }
-
-
-                       
-          // 🔁 RECURRING TASK — DATE-BASED
-          if (recurrence.enabled) {
-            if (!isValid) {
-              alert("Please complete recurrence settings");
-              return;
-            }
-          
-            if (!recurrence.startDate || !recurrence.endDate) {
-              alert("Please select a recurrence date range (From / To)");
-              return;
-            }
-
-            
-            if (occurrences.length === 0) {
-              alert("No occurrences generated");
-              return;
-            }
-          
-            const firstDate = occurrences[0];
-            const nextDate = occurrences.length > 1 ? occurrences[1] : null;
-          
-            const recurringPayload = {
-              ...payload,
-              initial_deadline: firstDate,
-              next_occurrence_date: nextDate,
-              recurrence_group_id: crypto.randomUUID()
-            };
-          
-            // ✅ CORRECT PLACE FOR LOG
-            console.log("🚀 INSERT PAYLOAD (Recurring)", recurringPayload);
-          
-            const { error } = await supabase
-              .from("tasks")
-              .insert(recurringPayload);
-          
-            if (error) {
-              console.group("🚨 Supabase Insert Error (Recurring)");
-              console.error("Message:", error.message);
-              console.error("Details:", error.details);
-              console.error("Hint:", error.hint);
-              console.error("Code:", error.code);
-              console.groupEnd();
-              alert("Failed to create recurring task. Check console for details.");
-              return;
-            }
-          
-          }
-
-
-
-
-     
- else {
+    // =========================
+    // ➕ CREATE
+    // =========================
+    else {
+      if (!recurrence.enabled) {
+        // SINGLE TASK
         const { error } = await supabase
           .from("tasks")
           .insert(payload);
-      
-        if (error) {
-          console.error(error);
-          alert("Insert failed");
-          return;
+
+        if (error) throw error;
+
+        // 📧 EMAIL (non-blocking)
+        try {
+          await supabase.functions.invoke("send-task-email", {
+            body: {
+              task: payload,
+              creator_id: user.id
+            }
+          });
+        } catch (emailErr) {
+          console.warn("Email failed (non-blocking):", emailErr);
         }
+
+      } else {
+        // 🔁 RECURRING TASK
+
+        if (!recurrence.startDate || !recurrence.endDate) {
+          throw new Error("Missing recurrence date range");
+        }
+
+        if (!occurrences.length) {
+          throw new Error("No occurrences generated");
+        }
+
+        const firstDate = occurrences[0];
+        const nextDate = occurrences[1] || null;
+
+        const recurringPayload = {
+          ...payload,
+          initial_deadline: firstDate,
+          next_occurrence_date: nextDate,
+          recurrence_group_id: crypto.randomUUID()
+        };
+
+        const { error } = await supabase
+          .from("tasks")
+          .insert(recurringPayload);
+
+        if (error) throw error;
       }
-}
+    }
 
-
+    // =========================
+    // ✅ SUCCESS CLEANUP
+    // =========================
     setForm(emptyTask);
     setIsEditing(false);
     await reload();
 
-          } catch (err) {
-    console.error(err);
-    alert("Something went wrong");
+  } catch (err) {
+    console.error("❌ saveTask error:", err);
+    alert(err.message || "Something went wrong");
 
   } finally {
-    // 🔥 ALWAYS RUNS
+    // =========================
+    // 🔁 ALWAYS RESET
+    // =========================
     setIsSubmitting(false);
   }
 };
-/*
-     if (!isEditing) {
-  resetTableFilters(); // only clear filters on Create
-}
-
-     
-     setFilters({
-  owners: [],
-  teams: [],
-  statuses: [],
-  recurrence_types: [],
-  assigned_from: "",
-  assigned_to: "",
-  deadline_from: "",
-  deadline_to: "",
-  closing_from: "",
-  closing_to: "",
-  today: false
-});
-*/
-  };
 
   /* DELETE TASK */
     const deleteTask = async (task, deleteFuture = false) => {
