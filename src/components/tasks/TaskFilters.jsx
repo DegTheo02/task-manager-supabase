@@ -7,7 +7,8 @@ export default function TaskFilters({
   TEAMS,
   REQUESTERS,
   STATUSES,
-  resetTableFilters
+  resetTableFilters,
+  filterKey
 }) {
   return (
 
