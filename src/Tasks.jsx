@@ -1,19 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import { getTasks, createTask, updateTask, deleteTask } from "./services/taskService";
-import { fetchTasks,  createNewTask,  updateExistingTask,  removeTask} from "./api/tasksApi";
-import Navbar from "./Navbar";
 import { useSearchParams } from "react-router-dom";
 
 import { useRecurrenceEngine } from "./hooks/useRecurrenceEngine";
-
-import MonthlyRuleSelector from "./components/MonthlyRuleSelector";
-
 import { useAuth } from "./context/AuthContext";
 import TaskForm from "./components/tasks/TaskForm";
 import TaskFilters from "./components/tasks/TaskFilters";
 import TaskTable from "./components/tasks/TaskTable";
-
+import { useTasks } from "./hooks/useTasks";
 
 
 
@@ -66,9 +60,26 @@ export default function Tasks() {
 
   
   const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
-  const [tasks, setTasks] = useState([]);
+  const [filters, setFilters] = useState(() => {
+  const saved = sessionStorage.getItem("tasksFilters");
+    return saved ? JSON.parse(saved) : {
+    owners: [],
+    teams: [],
+    requesters: [],
+    statuses: [],
+    recurrence_types: [],
+    search: "",
+    assigned_from: "",
+    assigned_to: "",
+    deadline_from: "",
+    deadline_to: "",
+    closing_from: "",
+    closing_to: "",
+    today: false
+    };
+  });
+  const { tasks, loading, reload } = useTasks(filters);
   const [owners, setOwners] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filterKey, setFilterKey] = useState(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,25 +115,6 @@ export default function Tasks() {
     : { background: "white", color: "black" };
 
   /* FILTERS */
-const [filters, setFilters] = useState(() => {
-  const saved = sessionStorage.getItem("tasksFilters");
-  return saved ? JSON.parse(saved) : {
-  owners: [],
-  teams: [],
-  requesters: [],
-  statuses: [],
-  recurrence_types: [],
-  search: "",
-  assigned_from: "",
-  assigned_to: "",
-  deadline_from: "",
-  deadline_to: "",
-  closing_from: "",
-  closing_to: "",
-  today: false
-  };
-});
-
 console.log("Current role:", role);
   useEffect(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
@@ -220,20 +212,6 @@ const emptyTask = {
     });
 
   /* LOAD DATA */
-const loadTasks = async () => {
-  try {
-    setLoading(true);
-
-const { tasks } = await fetchTasks(filters, 0, 5000);
-setTasks(tasks);
-    
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setIsSubmitting(false);
-    setLoading(false);
-  }
-};
 
   
     const loadOwners = async () => {
@@ -269,11 +247,6 @@ setTasks(tasks);
       }
     };
 
-
-  
-    useEffect(() => {
-      loadTasks();
-    }, []);
     
     useEffect(() => {
       loadOwners();
@@ -390,7 +363,7 @@ const bV =
     if (!user) {
     alert("Authentication error. Please login again.");
     return;
-            }
+    }
 
     if (
       !form.title ||
@@ -403,7 +376,7 @@ const bV =
       alert("Please fill all required fields");
       return;
     }
-
+    
     // 🚫 Restrict old closing dates for non-admins
       if (form.closing_date && role !== "admin") {
         const today = new Date();
@@ -416,6 +389,7 @@ const bV =
           alert(
             `Only admins can set a closing date earlier than ${minDateStr}`
           );
+          return;
         }
       }
 
@@ -463,7 +437,8 @@ const bV =
     if (!permissions?.manage_users) {
           form.team = myTeam;
         }
-  setIsSubmitting(true);
+        setIsSubmitting(true);
+    try{
         const payload = {
           title: form.title,
           owner: form.owner,
@@ -508,10 +483,7 @@ if (isEditing) {
       .update(payload)
       .eq("recurrence_group_id", form.recurrence_group_id);
 
-    if (error) {
-      alert("Failed to update series");
-      return;
-    }
+    if (error) throw error;
   } else {
     // ✏️ UPDATE SINGLE TASK
     const { error } = await supabase
@@ -521,16 +493,10 @@ if (isEditing) {
 
     if (error) {
       alert("Update failed");
-      setIsSubmitting(false);   // ✅ add this
-      return;
-    }
-      setForm(emptyTask);
-      setIsEditing(false);
-      await loadTasks();
-      setIsSubmitting(false);     // ✅ VERY IMPORTANT
-      return;                     // ✅ stop execution
+    }          
   }
 }
+
  else {
       // --------------------------------
       // SAVE TASK (single or recurring)
@@ -539,8 +505,7 @@ if (isEditing) {
         // 🚫 NON-RECURRING TASK — ALWAYS SINGLE INSERT
 
           if (!recurrence.enabled) {
-            if (isSubmitting) return;
-           
+        
           
             const { error } = await supabase
               .from("tasks")
@@ -549,10 +514,8 @@ if (isEditing) {
             if (error) {
               console.error("Insert failed:", error);
               alert(`Insert failed:\n\n${error.message}`);
-              setIsSubmitting(false);
-              return;
             }
-           setIsSubmitting(true);
+            
             // ✅ Call Edge Function properly
             try {
               const { data, error } = await supabase.functions.invoke(
@@ -571,11 +534,8 @@ if (isEditing) {
             } catch (err) {
               console.error("Email failed but task was created:", err);
             }
-          
-            setForm(emptyTask);
-            await loadTasks();
-            setIsSubmitting(false);
-            return;
+
+
           }
 
 
@@ -626,9 +586,6 @@ if (isEditing) {
               return;
             }
           
-            loadTasks();
-            setForm(emptyTask);
-            return;
           }
 
 
@@ -651,8 +608,17 @@ if (isEditing) {
 
     setForm(emptyTask);
     setIsEditing(false);
-    loadTasks();
+    await reload();
 
+          } catch (err) {
+    console.error(err);
+    alert("Something went wrong");
+
+  } finally {
+    // 🔥 ALWAYS RUNS
+    setIsSubmitting(false);
+  }
+};
 /*
      if (!isEditing) {
   resetTableFilters(); // only clear filters on Create
@@ -696,7 +662,7 @@ if (isEditing) {
         await supabase.from("tasks").delete().eq("id", task.id);
       }
     
-      loadTasks();
+      await reload();
     };
 
 
@@ -838,7 +804,6 @@ return (
       th={th}
       td={td}
     />
-      )}
     </div>
   );
 }
