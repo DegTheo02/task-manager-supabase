@@ -12,7 +12,7 @@ import MonthlyRuleSelector from "./components/MonthlyRuleSelector";
 import { useAuth } from "./context/AuthContext";
 import TaskForm from "./components/tasks/TaskForm";
 import TaskFilters from "./components/tasks/TaskFilters";
-
+import TaskTable from "./components/tasks/TaskTable";
 
 
 
