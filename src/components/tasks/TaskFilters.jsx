@@ -195,3 +195,20 @@
           </div>
 
         </div>
+
+
+const filterBar = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+  marginBottom: 20
+};
+
+
+const filterItem = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 13,
+  fontWeight: 600
+};
