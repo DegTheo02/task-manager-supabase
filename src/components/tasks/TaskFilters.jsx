@@ -1,4 +1,17 @@
-      <div style={filterBar} key={filterKey}>
+import React from "react";
+
+export default function TaskFilters({
+  filters,
+  setFilters,
+  owners,
+  TEAMS,
+  REQUESTERS,
+  STATUSES,
+  resetTableFilters
+}) {
+  return (
+
+<div style={filterBar} key={filterKey}>
          {/* FILTER BAR */}
          {/* Search */}
          <div style={filterItem}>
@@ -195,6 +208,8 @@
           </div>
 
         </div>
+        );
+}
 
 
 const filterBar = {
