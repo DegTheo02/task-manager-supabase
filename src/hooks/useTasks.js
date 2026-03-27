@@ -8,7 +8,7 @@ export function useTasks(filters) {
   const loadTasks = async () => {
     try {
       setLoading(true);
-      const { tasks } = await fetchTasks(filters, 0, 50);
+      const { tasks } = await fetchTasks(filters, 0, 5000);
       setTasks(tasks);
     } catch (err) {
       console.error(err);
