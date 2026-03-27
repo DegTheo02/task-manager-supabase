@@ -78,7 +78,7 @@ export default function Tasks() {
     today: false
     };
   });
-  const { tasks, loading, reload } = useTasks(filters);
+  const { tasks, loading, hasMore, loadMore, reload } = useTasks(filters);
   const [owners, setOwners] = useState([]);
   const [filterKey, setFilterKey] = useState(0);
 
@@ -354,6 +354,22 @@ const bV =
   const arrow = key =>
     sortConfig.key === key ? (sortConfig.direction === "asc" ? " ↑" : " ↓") : "";
 
+  // 🔥 INFINITE SCROLL
+useEffect(() => {
+  const handleScroll = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop + 200 >=
+      document.documentElement.offsetHeight
+    ) {
+      if (!loading && hasMore) {
+        loadMore();
+      }
+    }
+  };
+
+  window.addEventListener("scroll", handleScroll);
+  return () => window.removeEventListener("scroll", handleScroll);
+}, [loading, hasMore, loadMore]);
 
   
   /* SAVE TASK */
