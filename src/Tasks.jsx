@@ -184,8 +184,9 @@ useEffect(() => {
 const emptyTask = {
   id: null,
   title: "",
-  owner_id: "",
-  owner: "",
+  owner_id: "",        // single-owner (used for editing existing rows)
+  owner: "",           // single-owner label (used for editing)
+  owner_ids: [],       // ✅ NEW — multi-owner selection (used on create)
   team: "",
   requester: "",
   status: "",
@@ -261,7 +262,8 @@ const emptyTask = {
     setForm(f => ({
       ...f,
       owner_id: user.id,
-      owner: currentOwner?.owner_label || ""
+      owner: currentOwner?.owner_label || "",
+      owner_ids: [user.id]                          // ✅ NEW — seed multi-select
     }));
   }
 }, [user, permissions, owners]);
@@ -384,15 +386,28 @@ useEffect(() => {
     return;
   }
 
+  // Common required fields (owner is checked separately below)
   if (
     !form.title ||
-    !form.owner ||
     !form.requester ||
     !form.assigned_date ||
     !form.initial_deadline
   ) {
     alert("Please fill all required fields");
     return;
+  }
+
+  // ✅ Owner validation differs between CREATE and EDIT
+  if (isEditing) {
+    if (!form.owner || !form.owner_id) {
+      alert("Please select an owner");
+      return;
+    }
+  } else {
+    if (!form.owner_ids || form.owner_ids.length === 0) {
+      alert("Please select at least one owner");
+      return;
+    }
   }
 
   if (form.closing_date && role !== "admin") {
@@ -415,13 +430,22 @@ useEffect(() => {
     return;
   }
 
-  if (!permissions?.manage_users && form.owner_id !== user.id) {
-    alert("You are not allowed to assign tasks to this user.");
-    return;
+  // ✅ Permission guard differs between CREATE and EDIT
+  if (!permissions?.manage_users) {
+    if (isEditing) {
+      if (form.owner_id !== user.id) {
+        alert("You are not allowed to assign tasks to this user.");
+        return;
+      }
+    } else {
+      const onlySelf =
+        form.owner_ids.length === 1 && form.owner_ids[0] === user.id;
+      if (!onlySelf) {
+        alert("You can only assign tasks to yourself.");
+        return;
+      }
+    }
   }
-
-  // enforce team for non-admins
-  const teamValue = permissions?.manage_users ? form.team : myTeam;
 
   const normalizedClosingDate =
     form.closing_date === "" ? null : form.closing_date;
@@ -433,14 +457,12 @@ useEffect(() => {
 
   try {
     // =========================
-    // 📦 PAYLOAD
+    // 📦 BASE PAYLOAD (owner/team set per-row below on create,
+    //                  or from form on edit)
     // =========================
-    const payload = {
+    const basePayload = {
       title: form.title,
-      owner: form.owner,
-      owner_id: form.owner_id,
       created_by: user.id,
-      team: teamValue,
       requester: form.requester,
       recurrence_type: recurrence.enabled
         ? recurrence.frequency
@@ -462,11 +484,17 @@ useEffect(() => {
     };
 
     // =========================
-    // ✏️ UPDATE
+    // ✏️ UPDATE (single-owner edit)
     // =========================
     if (isEditing) {
-      const updatePayload = { ...payload };
-      delete updatePayload.owner_id;
+      const teamValue = permissions?.manage_users ? form.team : myTeam;
+
+      const updatePayload = {
+        ...basePayload,
+        owner: form.owner,
+        team: teamValue
+        // owner_id intentionally omitted — owner can't be reassigned via edit
+      };
 
       if (editSeries && form.recurrence_group_id) {
         const { error } = await supabase
@@ -487,55 +515,85 @@ useEffect(() => {
     }
 
     // =========================
-    // ➕ CREATE
+    // ➕ CREATE — fan out one task row per selected owner
     // =========================
     else {
-      if (!recurrence.enabled) {
-        // SINGLE TASK
-        const { error } = await supabase
-          .from("tasks")
-          .insert(payload);
+      let createdCount = 0;
 
-        if (error) throw error;
+      for (const ownerId of form.owner_ids) {
+        const ownerProfile = owners.find(o => o.id === ownerId);
+        if (!ownerProfile) continue;
 
-        // 📧 EMAIL (non-blocking)
-        try {
-          await supabase.functions.invoke("send-task-email", {
-            body: {
-              task: payload,
-              creator_id: user.id
-            }
-          });
-        } catch (emailErr) {
-          console.warn("Email failed (non-blocking):", emailErr);
-        }
+        // Determine team for THIS owner (admin uses owner's real team,
+        // non-admin is locked to their own team)
+        const ownerTeam = permissions?.manage_users
+          ? (OWNER_TEAM_MAP[ownerProfile.owner_label] ||
+             ownerProfile.team ||
+             "")
+          : myTeam;
 
-      } else {
-        // 🔁 RECURRING TASK
-
-        if (!recurrence.startDate || !recurrence.endDate) {
-          throw new Error("Missing recurrence date range");
-        }
-
-        if (!occurrences.length) {
-          throw new Error("No occurrences generated");
-        }
-
-        const firstDate = occurrences[0];
-        const nextDate = occurrences[1] || null;
-
-        const recurringPayload = {
-          ...payload,
-          initial_deadline: firstDate,
-          next_occurrence_date: nextDate,
-          recurrence_group_id: crypto.randomUUID()
+        const ownerPayload = {
+          ...basePayload,
+          owner: ownerProfile.owner_label,
+          owner_id: ownerId,
+          team: ownerTeam
         };
 
-        const { error } = await supabase
-          .from("tasks")
-          .insert(recurringPayload);
+        if (!recurrence.enabled) {
+          // SINGLE TASK (per owner)
+          const { error } = await supabase
+            .from("tasks")
+            .insert(ownerPayload);
 
-        if (error) throw error;
+          if (error) throw error;
+
+          // 📧 EMAIL (non-blocking, per owner)
+          try {
+            await supabase.functions.invoke("send-task-email", {
+              body: {
+                task: ownerPayload,
+                creator_id: user.id
+              }
+            });
+          } catch (emailErr) {
+            console.warn("Email failed (non-blocking):", emailErr);
+          }
+        } else {
+          // 🔁 RECURRING TASK (per owner — independent series)
+          if (!recurrence.startDate || !recurrence.endDate) {
+            throw new Error("Missing recurrence date range");
+          }
+          if (!occurrences.length) {
+            throw new Error("No occurrences generated");
+          }
+
+          const firstDate = occurrences[0];
+          const nextDate = occurrences[1] || null;
+
+          const recurringPayload = {
+            ...ownerPayload,
+            initial_deadline: firstDate,
+            next_occurrence_date: nextDate,
+            recurrence_group_id: crypto.randomUUID()  // own series per owner
+          };
+
+          const { error } = await supabase
+            .from("tasks")
+            .insert(recurringPayload);
+
+          if (error) throw error;
+        }
+
+        createdCount++;
+      }
+
+      if (createdCount === 0) {
+        throw new Error("No tasks were created. Please check your selection.");
+      }
+
+      if (createdCount > 1) {
+        // Friendly heads-up only when fan-out actually happened
+        console.log(`✅ Created ${createdCount} tasks`);
       }
     }
 
@@ -590,7 +648,8 @@ useEffect(() => {
 
   setForm({
     ...normalized,
-    comments: task.comments || ""
+    comments: task.comments || "",
+    owner_ids: task.owner_id ? [task.owner_id] : []   // ✅ NEW — single-owner on edit
   });
 
   // ✅ Restore recurrence state
