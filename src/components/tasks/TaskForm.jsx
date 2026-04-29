@@ -1,8 +1,207 @@
-import React from "react";
-import Select from "react-select";
+import React, { useState, useEffect, useRef } from "react";
 import MonthlyRuleSelector from "../MonthlyRuleSelector";
 import { REQUESTERS } from "../../constants/taskConstants";
 
+
+/* ============================================================
+   OWNER MULTI-DROPDOWN (checkbox style — matches Filters.jsx)
+============================================================ */
+function OwnerMultiDropdown({
+  owners,
+  selectedIds,
+  onChange,
+  permissions,
+  user,
+  disabled,
+  dark
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = e => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const isDark = dark?.background === "#000";
+
+  const toggleOne = (ownerId, checked) => {
+    // Non-admin guard — locked to self
+    if (!permissions?.manage_users && ownerId !== user.id) {
+      alert("You can only assign tasks to yourself.");
+      return;
+    }
+
+    const next = checked
+      ? [...selectedIds, ownerId]
+      : selectedIds.filter(id => id !== ownerId);
+
+    onChange(next);
+  };
+
+  const toggleAll = checked => {
+    if (!permissions?.manage_users) {
+      // Non-admin: "All" just means themselves
+      onChange(checked ? [user.id] : []);
+      return;
+    }
+    onChange(checked ? owners.map(o => o.id) : []);
+  };
+
+  const allSelected =
+    owners.length > 0 && selectedIds.length === owners.length;
+
+  // Closed-state label
+  let triggerLabel = "Select owner(s)";
+  if (selectedIds.length > 0) {
+    if (allSelected) {
+      triggerLabel = "All selected";
+    } else if (selectedIds.length === 1) {
+      const only = owners.find(o => o.id === selectedIds[0]);
+      triggerLabel = only ? only.owner_label : "1 selected";
+    } else {
+      triggerLabel = `${selectedIds.length} selected`;
+    }
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+      {/* TRIGGER */}
+      <div
+        onClick={() => !disabled && setOpen(o => !o)}
+        style={{
+          ...formInput,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: disabled ? "not-allowed" : "pointer",
+          background: isDark ? "#000" : "#fff",
+          color: isDark ? "#fff" : "#000",
+          opacity: disabled ? 0.6 : 1
+        }}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            color:
+              selectedIds.length === 0
+                ? isDark
+                  ? "#888"
+                  : "#9CA3AF"
+                : "inherit"
+          }}
+        >
+          {triggerLabel}
+        </span>
+        <span style={{ marginLeft: 6, opacity: 0.6 }}>▾</span>
+      </div>
+
+      {/* DROPDOWN PANEL */}
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "110%",
+            left: 0,
+            minWidth: "100%",
+            maxHeight: 260,
+            overflowY: "auto",
+            background: isDark ? "#111" : "#fff",
+            color: isDark ? "#fff" : "#000",
+            border: isDark ? "1px solid #333" : "1px solid #D1D5DB",
+            borderRadius: 6,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            zIndex: 1000,
+            padding: 4
+          }}
+        >
+          {/* SELECT ALL — admins only */}
+          {permissions?.manage_users && owners.length > 1 && (
+            <label
+              style={{
+                ...rowStyle(isDark),
+                fontWeight: 600,
+                borderBottom: isDark
+                  ? "1px solid #333"
+                  : "1px solid #E5E7EB"
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={e => toggleAll(e.target.checked)}
+              />
+              <span>All</span>
+            </label>
+          )}
+
+          {/* INDIVIDUAL OWNERS */}
+          {owners.map(o => {
+            const checked = selectedIds.includes(o.id);
+            const lockedOut =
+              !permissions?.manage_users && o.id !== user.id;
+
+            return (
+              <label
+                key={o.id}
+                style={{
+                  ...rowStyle(isDark),
+                  opacity: lockedOut ? 0.4 : 1,
+                  cursor: lockedOut ? "not-allowed" : "pointer"
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={lockedOut}
+                  onChange={e => toggleOne(o.id, e.target.checked)}
+                />
+                <span>{o.owner_label}</span>
+              </label>
+            );
+          })}
+
+          {owners.length === 0 && (
+            <div
+              style={{
+                padding: "8px 12px",
+                fontSize: 13,
+                opacity: 0.7
+              }}
+            >
+              No owners available
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const rowStyle = isDark => ({
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "6px 10px",
+  fontSize: 14,
+  cursor: "pointer",
+  borderRadius: 4,
+  userSelect: "none"
+});
+
+
+/* ============================================================
+   TASK FORM
+============================================================ */
 export default function TaskForm({
   form,
   setForm,
@@ -20,48 +219,16 @@ export default function TaskForm({
   dark
 }) {
 
-  /* -------- OWNER OPTIONS / VALUE -------- */
-  const ownerOptions = owners.map(o => ({
-    value: o.id,
-    label: o.owner_label,
-    team: o.team
-  }));
+  /* -------- OWNER CHANGE HANDLER (CREATE / multi) --------
+     Maintains both the multi-value field (owner_ids) AND the legacy
+     single-owner fields (owner / owner_id / team) off the FIRST
+     selection so any downstream code that still reads them keeps
+     working (validation, recurrence engine, etc.). */
+  const handleOwnerIdsChange = ids => {
+    const first = ids[0]
+      ? owners.find(o => o.id === ids[0])
+      : null;
 
-  // For multi-select (create): mirror form.owner_ids
-  // For single-select (edit):  mirror form.owner_id
-  const selectedOwnerValue = isEditing
-    ? ownerOptions.find(opt => opt.value === form.owner_id) || null
-    : (form.owner_ids || [])
-        .map(id => ownerOptions.find(opt => opt.value === id))
-        .filter(Boolean);
-
-  /* -------- OWNER CHANGE HANDLER -------- */
-  const handleOwnerChange = selected => {
-    // react-select returns array (multi) or object (single)
-    const arr = Array.isArray(selected)
-      ? selected
-      : selected
-      ? [selected]
-      : [];
-
-    const ids = arr.map(s => s.value);
-
-    // Non-admin guard: can only assign to themselves
-    if (!permissions?.manage_users) {
-      const onlySelf =
-        ids.length === 0 ||
-        (ids.length === 1 && ids[0] === user.id);
-
-      if (!onlySelf) {
-        alert("You can only assign tasks to yourself.");
-        return;
-      }
-    }
-
-    // Maintain legacy single-owner fields off the FIRST selection so any
-    // downstream code that still reads form.owner / form.owner_id / form.team
-    // keeps working (recurrence engine, validation, etc.)
-    const first = arr[0];
     const firstTeam = first
       ? (role === "manager" ? first.team : myTeam)
       : "";
@@ -69,9 +236,32 @@ export default function TaskForm({
     setForm(f => ({
       ...f,
       owner_ids: ids,
-      owner_id: first?.value || "",
-      owner: first?.label || "",
+      owner_id: first?.id || "",
+      owner: first?.owner_label || "",
       team: firstTeam
+    }));
+  };
+
+  /* -------- EDIT MODE: single-owner change --------
+     Edit form keeps the original native <select> behaviour so an
+     admin can reassign one task without falling into multi-select UX. */
+  const handleSingleOwnerChange = e => {
+    const selectedOwnerId = e.target.value;
+
+    if (!permissions?.manage_users && selectedOwnerId !== user.id) {
+      alert("You can only assign tasks to yourself.");
+      return;
+    }
+
+    const selectedOwner = owners.find(o => o.id === selectedOwnerId);
+    if (!selectedOwner) return;
+
+    setForm(f => ({
+      ...f,
+      owner_id: selectedOwnerId,
+      owner: selectedOwner.owner_label,
+      owner_ids: [selectedOwnerId],
+      team: role === "manager" ? selectedOwner.team : myTeam
     }));
   };
 
@@ -114,27 +304,36 @@ export default function TaskForm({
           </label>
 
           
-            <label style={formLabel}>
-              Owner{isEditing ? " *" : "(s) *"}
-              <Select
-                isMulti={!isEditing}
-                isClearable={false}
-                placeholder={isEditing ? "Select owner" : "Select owner(s)…"}
-                options={ownerOptions}
-                value={selectedOwnerValue}
-                isOptionDisabled={opt =>
-                  // Non-admin users can only select themselves.
-                  // (`owners` list is already filtered for them, but
-                  //  belt-and-braces in case extras leak in.)
-                  !permissions?.manage_users && opt.value !== user.id
-                }
-                onChange={handleOwnerChange}
-                styles={ownerSelectStyles}
-                menuPortalTarget={
-                  typeof document !== "undefined" ? document.body : null
-                }
+          {/* ============= OWNER ============= */}
+          <label style={formLabel}>
+            {isEditing ? "Owner *" : "Owner(s) *"}
+
+            {isEditing ? (
+              // EDIT MODE — single native select (same as before)
+              <select
+                style={{ ...formInput, appearance: "none" }}
+                value={form.owner_id}
+                onChange={handleSingleOwnerChange}
+              >
+                <option value="">Select owner</option>
+                {owners.map(o => (
+                  <option key={o.id} value={o.id}>
+                    {o.owner_label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              // CREATE MODE — multi-checkbox dropdown
+              <OwnerMultiDropdown
+                owners={owners}
+                selectedIds={form.owner_ids || []}
+                onChange={handleOwnerIdsChange}
+                permissions={permissions}
+                user={user}
+                dark={dark}
               />
-            </label>
+            )}
+          </label>
 
 
           <label style={formLabel}>
@@ -460,30 +659,4 @@ const formInput = {
   borderRadius: 4,
   height: 36,
   boxSizing: "border-box"
-};
-
-/* react-select styling — keeps the control aligned with the
-   surrounding native inputs (36px min height, same border radius).
-   The control will grow taller when several owners are selected,
-   which is fine because the form row uses `alignItems: "end"`. */
-const ownerSelectStyles = {
-  control: (base, state) => ({
-    ...base,
-    minHeight: 36,
-    borderColor: "#D1D5DB",
-    boxShadow: state.isFocused ? "0 0 0 1px #0EA5A8" : "none",
-    "&:hover": { borderColor: "#9CA3AF" }
-  }),
-  valueContainer: base => ({
-    ...base,
-    padding: "2px 6px"
-  }),
-  multiValue: base => ({
-    ...base,
-    background: "#E0F2F1"
-  }),
-  menuPortal: base => ({
-    ...base,
-    zIndex: 9999
-  })
 };
