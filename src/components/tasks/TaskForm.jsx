@@ -1,4 +1,5 @@
 import React from "react";
+import Select from "react-select";
 import MonthlyRuleSelector from "../MonthlyRuleSelector";
 import { REQUESTERS } from "../../constants/taskConstants";
 
@@ -18,6 +19,62 @@ export default function TaskForm({
   WEEKDAYS,
   dark
 }) {
+
+  /* -------- OWNER OPTIONS / VALUE -------- */
+  const ownerOptions = owners.map(o => ({
+    value: o.id,
+    label: o.owner_label,
+    team: o.team
+  }));
+
+  // For multi-select (create): mirror form.owner_ids
+  // For single-select (edit):  mirror form.owner_id
+  const selectedOwnerValue = isEditing
+    ? ownerOptions.find(opt => opt.value === form.owner_id) || null
+    : (form.owner_ids || [])
+        .map(id => ownerOptions.find(opt => opt.value === id))
+        .filter(Boolean);
+
+  /* -------- OWNER CHANGE HANDLER -------- */
+  const handleOwnerChange = selected => {
+    // react-select returns array (multi) or object (single)
+    const arr = Array.isArray(selected)
+      ? selected
+      : selected
+      ? [selected]
+      : [];
+
+    const ids = arr.map(s => s.value);
+
+    // Non-admin guard: can only assign to themselves
+    if (!permissions?.manage_users) {
+      const onlySelf =
+        ids.length === 0 ||
+        (ids.length === 1 && ids[0] === user.id);
+
+      if (!onlySelf) {
+        alert("You can only assign tasks to yourself.");
+        return;
+      }
+    }
+
+    // Maintain legacy single-owner fields off the FIRST selection so any
+    // downstream code that still reads form.owner / form.owner_id / form.team
+    // keeps working (recurrence engine, validation, etc.)
+    const first = arr[0];
+    const firstTeam = first
+      ? (role === "manager" ? first.team : myTeam)
+      : "";
+
+    setForm(f => ({
+      ...f,
+      owner_ids: ids,
+      owner_id: first?.value || "",
+      owner: first?.label || "",
+      team: firstTeam
+    }));
+  };
+
   return (
       <div style={{ ...formBox, ...dark }}>
         <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
@@ -58,45 +115,25 @@ export default function TaskForm({
 
           
             <label style={formLabel}>
-              Owner *
-              <select
-                  style={{
-                    ...formInput,
-                    appearance: "none"
-                  }}
-                value={form.owner_id}
-                onChange={e => {
-                  const selectedOwnerId = e.target.value;
-                
-                  if (!permissions?.manage_users && selectedOwnerId !== user.id) {
-                    alert("You can only assign tasks to yourself.");
-                    return;
-                  }
-                
-                  const selectedOwner = owners.find(
-                    o => o.id === selectedOwnerId
-                  );
-                
-                  if (!selectedOwner) return;
-                
-                  setForm(f => ({
-                    ...f,
-                    owner_id: selectedOwnerId,               // ✅ VERY IMPORTANT
-                    owner: selectedOwner.owner_label,        // ✅ string, not object
-                    team: role === "manager"
-                      ? selectedOwner.team                  // ✅ correct team
-                      : myTeam
-                  }));
-                }}
-
-              >
-                <option value="">Select owner</option>
-                {owners.map(o => (
-                  <option key={o.id} value={o.id}>
-                    {o.owner_label}
-                  </option>
-                ))}
-              </select>   
+              Owner{isEditing ? " *" : "(s) *"}
+              <Select
+                isMulti={!isEditing}
+                isClearable={false}
+                placeholder={isEditing ? "Select owner" : "Select owner(s)…"}
+                options={ownerOptions}
+                value={selectedOwnerValue}
+                isOptionDisabled={opt =>
+                  // Non-admin users can only select themselves.
+                  // (`owners` list is already filtered for them, but
+                  //  belt-and-braces in case extras leak in.)
+                  !permissions?.manage_users && opt.value !== user.id
+                }
+                onChange={handleOwnerChange}
+                styles={ownerSelectStyles}
+                menuPortalTarget={
+                  typeof document !== "undefined" ? document.body : null
+                }
+              />
             </label>
 
 
@@ -382,7 +419,13 @@ export default function TaskForm({
             cursor: isSubmitting ? "not-allowed" : "pointer"
           }}
         >
-          {isSubmitting ? "Creating..." : isEditing ? "Update Task" : "Create Task"}
+          {isSubmitting
+            ? "Creating..."
+            : isEditing
+            ? "Update Task"
+            : (form.owner_ids?.length > 1
+                ? `Create ${form.owner_ids.length} Tasks`
+                : "Create Task")}
         </button>
     </div>
   );
@@ -417,4 +460,30 @@ const formInput = {
   borderRadius: 4,
   height: 36,
   boxSizing: "border-box"
+};
+
+/* react-select styling — keeps the control aligned with the
+   surrounding native inputs (36px min height, same border radius).
+   The control will grow taller when several owners are selected,
+   which is fine because the form row uses `alignItems: "end"`. */
+const ownerSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 36,
+    borderColor: "#D1D5DB",
+    boxShadow: state.isFocused ? "0 0 0 1px #0EA5A8" : "none",
+    "&:hover": { borderColor: "#9CA3AF" }
+  }),
+  valueContainer: base => ({
+    ...base,
+    padding: "2px 6px"
+  }),
+  multiValue: base => ({
+    ...base,
+    background: "#E0F2F1"
+  }),
+  menuPortal: base => ({
+    ...base,
+    zIndex: 9999
+  })
 };
