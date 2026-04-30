@@ -73,7 +73,7 @@ function OwnerMultiDropdown({
 
   return (
     <div ref={ref} style={{ position: "relative", width: "100%" }}>
-      {/* TRIGGER */}
+      {/* TRIGGER — always white to match the other form inputs */}
       <div
         onClick={() => !disabled && setOpen(o => !o)}
         style={{
@@ -82,8 +82,8 @@ function OwnerMultiDropdown({
           alignItems: "center",
           justifyContent: "space-between",
           cursor: disabled ? "not-allowed" : "pointer",
-          background: isDark ? "#000" : "#fff",
-          color: isDark ? "#fff" : "#000",
+          background: "#fff",
+          color: "#000",
           opacity: disabled ? 0.6 : 1
         }}
       >
@@ -92,12 +92,7 @@ function OwnerMultiDropdown({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            color:
-              selectedIds.length === 0
-                ? isDark
-                  ? "#888"
-                  : "#9CA3AF"
-                : "inherit"
+            color: selectedIds.length === 0 ? "#9CA3AF" : "inherit"
           }}
         >
           {triggerLabel}
@@ -105,7 +100,7 @@ function OwnerMultiDropdown({
         <span style={{ marginLeft: 6, opacity: 0.6 }}>▾</span>
       </div>
 
-      {/* DROPDOWN PANEL */}
+      {/* DROPDOWN PANEL — follows dark mode */}
       {open && (
         <div
           style={{
