@@ -591,8 +591,7 @@ export default function TaskForm({
              style={{
                ...formInput,
                minHeight: 30,
-               resize: "vertical",
-               resize: "horizontal"
+               resize: "both"
              }}
              value={form.comments}
              onChange={e =>
