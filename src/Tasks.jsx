@@ -9,9 +9,6 @@ import TaskFilters from "./components/tasks/TaskFilters";
 import TaskTable from "./components/tasks/TaskTable";
 import { useTasks } from "./hooks/useTasks";
 
-
-
-
 import {
   STATUSES,
   OWNERS,
@@ -26,8 +23,6 @@ import {
 /* ----------------------------------
    CONSTANTS
 ---------------------------------- */
-
-
 const toISODate = value => {
   if (!value) return "";
   return value.slice(0, 10); // works for ISO strings & timestamps
@@ -52,30 +47,28 @@ const WEEKDAYS = [
 ];
 
 
-
 /* ----------------------------------
    TASKS PAGE
 ---------------------------------- */
 export default function Tasks() {
 
-  
-  const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
+  const { user, fullName, permissions, team: myTeam, ownerLabel, role } = useAuth();
   const [filters, setFilters] = useState(() => {
-  const saved = sessionStorage.getItem("tasksFilters");
+    const saved = sessionStorage.getItem("tasksFilters");
     return saved ? JSON.parse(saved) : {
-    owners: [],
-    teams: [],
-    requesters: [],
-    statuses: [],
-    recurrence_types: [],
-    search: "",
-    assigned_from: "",
-    assigned_to: "",
-    deadline_from: "",
-    deadline_to: "",
-    closing_from: "",
-    closing_to: "",
-    today: false
+      owners: [],
+      teams: [],
+      requesters: [],
+      statuses: [],
+      recurrence_types: [],
+      search: "",
+      assigned_from: "",
+      assigned_to: "",
+      deadline_from: "",
+      deadline_to: "",
+      closing_from: "",
+      closing_to: "",
+      today: false
     };
   });
   const { tasks, loading, hasMore, loadMore, reload } = useTasks(filters);
@@ -83,9 +76,8 @@ export default function Tasks() {
   const [filterKey, setFilterKey] = useState(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const [editSeries, setEditSeries] = useState(false);
-  
+
   const [searchParams] = useSearchParams();
 
   const statusesParam = searchParams.get("statuses");
@@ -95,8 +87,6 @@ export default function Tasks() {
   const ownersParam = searchParams.get("owners");
   const teamsParam = searchParams.get("teams");
   const requestersParam = searchParams.get("requesters");
-
-
 
 
   /* DARK MODE */
@@ -114,181 +104,167 @@ export default function Tasks() {
     ? { background: "#000", color: "white" }
     : { background: "white", color: "black" };
 
+
   /* FILTERS */
-console.log("Current role:", role);
+  console.log("Current role:", role);
   useEffect(() => {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
 
-useEffect(() => {
-  // Only apply URL filters if at least one param exists
-  if (
-    status ||
-    statusesParam ||
-    dateFrom ||
-    dateTo ||
-    ownersParam ||
-    teamsParam ||
+  useEffect(() => {
+    if (
+      status ||
+      statusesParam ||
+      dateFrom ||
+      dateTo ||
+      ownersParam ||
+      teamsParam ||
+      requestersParam
+    ) {
+      setFilters(f => ({
+        ...f,
+        statuses: statusesParam
+          ? statusesParam.split(",")
+          : status
+          ? [status]
+          : f.statuses,
+        deadline_from: dateFrom || f.deadline_from,
+        deadline_to: dateTo || f.deadline_to,
+        owners: ownersParam ? ownersParam.split(",") : f.owners,
+        teams: teamsParam ? teamsParam.split(",") : f.teams,
+        requesters: requestersParam
+          ? requestersParam.split(",")
+          : f.requesters
+      }));
+    }
+  }, [
+    status,
+    statusesParam,
+    dateFrom,
+    dateTo,
+    ownersParam,
+    teamsParam,
     requestersParam
-  ) {
-    setFilters(f => ({
-      ...f,
-      statuses: statusesParam
-        ? statusesParam.split(",")
-        : status
-        ? [status]
-        : f.statuses,
-      deadline_from: dateFrom || f.deadline_from,
-      deadline_to: dateTo || f.deadline_to,
-      owners: ownersParam ? ownersParam.split(",") : f.owners,
-      teams: teamsParam ? teamsParam.split(",") : f.teams,
-      requesters: requestersParam
-        ? requestersParam.split(",")
-        : f.requesters
-    }));
-  }
-}, [
-  status,
-  statusesParam,
-  dateFrom,
-  dateTo,
-  ownersParam,
-  teamsParam,
-  requestersParam
-]);
+  ]);
 
 
-
-
-  
-  
   const resetTableFilters = () => {
-  setFilters({
-    owners: [],
-    teams: [],
-    requesters: [],
-    statuses: [],
-    deadline_from: "",
-    deadline_to: "",
-    closing_from: "",
-    closing_to: "",
-    today: false
-  });
-
-  // force re-render of filter controls
-  setFilterKey(k => k + 1);
-};
+    setFilters({
+      owners: [],
+      teams: [],
+      requesters: [],
+      statuses: [],
+      deadline_from: "",
+      deadline_to: "",
+      closing_from: "",
+      closing_to: "",
+      today: false
+    });
+    setFilterKey(k => k + 1);
+  };
 
 
   /* FORM */
-const emptyTask = {
-  id: null,
-  title: "",
-  owner_id: "",        // single-owner (used for editing existing rows)
-  owner: "",           // single-owner label (used for editing)
-  owner_ids: [],       // ✅ NEW — multi-owner selection (used on create)
-  team: "",
-  requester: "",
-  status: "",
-  recurrence_type: "Non-Recurring",
-  assigned_date: "",
-  initial_deadline: "",
-  new_deadline: "",
-  closing_date: "",
-  comments: ""
-};
-
+  const emptyTask = {
+    id: null,
+    title: "",
+    owner_id: "",
+    owner: "",
+    owner_ids: [],
+    team: "",
+    requester: "",
+    status: "",
+    recurrence_type: "Non-Recurring",
+    assigned_date: "",
+    initial_deadline: "",
+    new_deadline: "",
+    closing_date: "",
+    comments: ""
+  };
 
   const [form, setForm] = useState(emptyTask);
   const [isEditing, setIsEditing] = useState(false);
 
-    /*RECURRENCE ENGINE*/
-      const {
-      recurrence,
-      setRecurrence,
-      occurrences,
-      isValid
-    } = useRecurrenceEngine({
-      startDate: form.initial_deadline
-    });
+  /* RECURRENCE ENGINE */
+  const {
+    recurrence,
+    setRecurrence,
+    occurrences
+  } = useRecurrenceEngine({
+    startDate: form.initial_deadline
+  });
+
 
   /* LOAD DATA */
+  const loadOwners = async () => {
+    if (!user) return;
 
-  
-    const loadOwners = async () => {
-      if (!user) return;
-    
-      let q = supabase
+    let q = supabase
+      .from("profiles")
+      .select("id, owner_label, team")
+      .order("owner_label");
+
+    if (role === "user") {
+      q = q.eq("id", user.id);
+    }
+
+    if (role === "manager") {
+      const { data: myProfile } = await supabase
         .from("profiles")
-        .select("id, owner_label, team")
-        .order("owner_label");
-    
-      // 👤 USER → only themselves
-      if (role === "user") {
-        q = q.eq("id", user.id);
-      }
-    
-      // 👔 MANAGER → only their team
-      if (role === "manager") {
-        const { data: myProfile } = await supabase
-          .from("profiles")
-          .select("team")
-          .eq("id", user.id)
-          .maybeSingle();
-    
-        if (myProfile?.team) {
-          q = q.eq("team", myProfile.team);
-        }
-      }
-    
-      const { data, error } = await q;
-    
-      if (!error) {
-        setOwners(data || []);
-      }
-    };
+        .select("team")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    
-    useEffect(() => {
-      loadOwners();
-    }, [user, role]);
+      if (myProfile?.team) {
+        q = q.eq("team", myProfile.team);
+      }
+    }
 
+    const { data, error } = await q;
+
+    if (!error) {
+      setOwners(data || []);
+    }
+  };
+
+  useEffect(() => {
+    loadOwners();
+  }, [user, role]);
 
 
   useEffect(() => {
-  if (user && !permissions?.manage_users) {
-    const currentOwner = owners.find(o => o.id === user.id);
+    if (user && !permissions?.manage_users) {
+      const currentOwner = owners.find(o => o.id === user.id);
 
-    setForm(f => ({
-      ...f,
-      owner_id: user.id,
-      owner: currentOwner?.owner_label || "",
-      owner_ids: [user.id]                          // ✅ NEW — seed multi-select
-    }));
-  }
-}, [user, permissions, owners]);
+      setForm(f => ({
+        ...f,
+        owner_id: user.id,
+        owner: currentOwner?.owner_label || "",
+        owner_ids: [user.id]
+      }));
+    }
+  }, [user, permissions, owners]);
 
-  
+
   /* FILTER + TODAY LOGIC */
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
 
-       if (filters.search &&
+      if (filters.search &&
         !t.title.toLowerCase().includes(filters.search.toLowerCase()))
         return false;
 
       if (filters.owners.length && !filters.owners.includes(t.owner))
         return false;
-       
+
       if (filters.teams.length && !filters.teams.includes(t.team))
         return false;
 
-      if (  filters.requesters.length &&  !filters.requesters.includes(t.requester)) 
+      if (filters.requesters.length && !filters.requesters.includes(t.requester))
         return false;
 
       if (filters.statuses.length && !filters.statuses.includes(t.status))
         return false;
-
 
       const deadline = t.new_deadline || t.initial_deadline;
 
@@ -306,7 +282,6 @@ const emptyTask = {
       if (filters.closing_to && (!closing || closing > filters.closing_to))
         return false;
 
-
       if (filters.today) {
         const today = new Date().toISOString().slice(0, 10);
         if (deadline !== today) return false;
@@ -315,6 +290,7 @@ const emptyTask = {
       return true;
     });
   }, [tasks, filters]);
+
 
   /* SORTING LOGIC */
   const [sortConfig, setSortConfig] = useState({
@@ -327,14 +303,14 @@ const emptyTask = {
 
     return [...filteredTasks].sort((a, b) => {
       const aV =
-  sortConfig.key === "status"
-    ? a.status
-    : a[sortConfig.key] || "";
+        sortConfig.key === "status"
+          ? a.status
+          : a[sortConfig.key] || "";
 
-const bV =
-  sortConfig.key === "status"
-    ? b.status
-    : b[sortConfig.key] || "";
+      const bV =
+        sortConfig.key === "status"
+          ? b.status
+          : b[sortConfig.key] || "";
 
       if (sortConfig.direction === "asc") return aV > bV ? 1 : -1;
       return aV < bV ? 1 : -1;
@@ -356,433 +332,390 @@ const bV =
   const arrow = key =>
     sortConfig.key === key ? (sortConfig.direction === "asc" ? " ↑" : " ↓") : "";
 
-  // 🔥 INFINITE SCROLL
-useEffect(() => {
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop + 200 >=
-      document.documentElement.offsetHeight
-    ) {
-      if (!loading && hasMore) {
-        loadMore();
+
+  /* INFINITE SCROLL */
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop + 200 >=
+        document.documentElement.offsetHeight
+      ) {
+        if (!loading && hasMore) {
+          loadMore();
+        }
       }
-    }
-  };
-
-  window.addEventListener("scroll", handleScroll);
-  return () => window.removeEventListener("scroll", handleScroll);
-}, [loading, hasMore, loadMore]);
-
-  
-  /* SAVE TASK */
-  const saveTask = async () => {
-  if (isSubmitting) return;
-
-  // =========================
-  // ✅ VALIDATION (OUTSIDE TRY)
-  // =========================
-  if (!user) {
-    alert("Authentication error. Please login again.");
-    return;
-  }
-
-  // Common required fields (owner is checked separately below)
-  if (
-    !form.title ||
-    !form.requester ||
-    !form.assigned_date ||
-    !form.initial_deadline
-  ) {
-    alert("Please fill all required fields");
-    return;
-  }
-
-  // ✅ Owner validation differs between CREATE and EDIT
-  if (isEditing) {
-    if (!form.owner || !form.owner_id) {
-      alert("Please select an owner");
-      return;
-    }
-  } else {
-    if (!form.owner_ids || form.owner_ids.length === 0) {
-      alert("Please select at least one owner");
-      return;
-    }
-  }
-
-  if (form.closing_date && role !== "admin") {
-    const today = new Date();
-    const minAllowedDate = new Date();
-    minAllowedDate.setDate(today.getDate() - 100);
-
-    const minDateStr = minAllowedDate.toISOString().slice(0, 10);
-
-    if (form.closing_date < minDateStr) {
-      alert(
-        `Only admins can set a closing date earlier than ${minDateStr}`
-      );
-      return;
-    }
-  }
-
-  if (recurrence.enabled && !isValid) {
-    alert("Invalid recurrence settings");
-    return;
-  }
-
-  // ✅ Permission guard differs between CREATE and EDIT
-  if (!permissions?.manage_users) {
-    if (isEditing) {
-      if (form.owner_id !== user.id) {
-        alert("You are not allowed to assign tasks to this user.");
-        return;
-      }
-    } else {
-      const onlySelf =
-        form.owner_ids.length === 1 && form.owner_ids[0] === user.id;
-      if (!onlySelf) {
-        alert("You can only assign tasks to yourself.");
-        return;
-      }
-    }
-  }
-
-  const normalizedClosingDate =
-    form.closing_date === "" ? null : form.closing_date;
-
-  // =========================
-  // 🚀 START LOADING
-  // =========================
-  setIsSubmitting(true);
-
-  try {
-    // =========================
-    // 📦 BASE PAYLOAD (owner/team set per-row below on create,
-    //                  or from form on edit)
-    // =========================
-    const basePayload = {
-      title: form.title,
-      created_by: user.id,
-      requester: form.requester,
-      recurrence_type: recurrence.enabled
-        ? recurrence.frequency
-        : "Non-Recurring",
-      recurrence_rule: recurrence.enabled
-        ? JSON.stringify({
-            frequency: recurrence.frequency,
-            ...(recurrence.frequency === "weekly" ||
-            recurrence.frequency === "biweekly"
-              ? { weekdays: recurrence.weekly.weekdays }
-              : recurrence.monthly)
-          })
-        : null,
-      assigned_date: form.assigned_date,
-      initial_deadline: form.initial_deadline,
-      new_deadline: form.new_deadline || null,
-      closing_date: normalizedClosingDate,
-      comments: form.comments || null
     };
 
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, hasMore, loadMore]);
+
+
+  /* SAVE TASK */
+  const saveTask = async () => {
+    if (isSubmitting) return;
+
     // =========================
-    // ✏️ UPDATE (single-owner edit)
+    // ✅ VALIDATION
+    // Field-presence validation now lives inline inside <TaskForm />
+    // (handleSubmit there blocks this call when fields are missing).
+    // Only auth + policy + authorization checks remain here.
     // =========================
-    if (isEditing) {
-      const teamValue = permissions?.manage_users ? form.team : myTeam;
+    if (!user) {
+      alert("Authentication error. Please login again.");
+      return;
+    }
 
-      const updatePayload = {
-        ...basePayload,
-        owner: form.owner,
-        team: teamValue
-        // owner_id intentionally omitted — owner can't be reassigned via edit
-      };
+    if (form.closing_date && role !== "admin") {
+      const today = new Date();
+      const minAllowedDate = new Date();
+      minAllowedDate.setDate(today.getDate() - 100);
 
-      if (editSeries && form.recurrence_group_id) {
-        const { error } = await supabase
-          .from("tasks")
-          .update(updatePayload)
-          .eq("recurrence_group_id", form.recurrence_group_id);
+      const minDateStr = minAllowedDate.toISOString().slice(0, 10);
 
-        if (error) throw error;
-
-      } else {
-        const { error } = await supabase
-          .from("tasks")
-          .update(updatePayload)
-          .eq("id", form.id);
-
-        if (error) throw error;
+      if (form.closing_date < minDateStr) {
+        alert(
+          `Only admins can set a closing date earlier than ${minDateStr}`
+        );
+        return;
       }
     }
 
-    // =========================
-    // ➕ CREATE — fan out one task row per selected owner
-    // =========================
-    else {
-      let createdCount = 0;
-
-      for (const ownerId of form.owner_ids) {
-        const ownerProfile = owners.find(o => o.id === ownerId);
-        if (!ownerProfile) continue;
-
-        // Determine team for THIS owner (admin uses owner's real team,
-        // non-admin is locked to their own team)
-        const ownerTeam = permissions?.manage_users
-          ? (OWNER_TEAM_MAP[ownerProfile.owner_label] ||
-             ownerProfile.team ||
-             "")
-          : myTeam;
-
-        const ownerPayload = {
-          ...basePayload,
-          owner: ownerProfile.owner_label,
-          owner_id: ownerId,
-          team: ownerTeam
-        };
-
-        if (!recurrence.enabled) {
-          // SINGLE TASK (per owner)
-          const { error } = await supabase
-            .from("tasks")
-            .insert(ownerPayload);
-
-          if (error) throw error;
-
-          // 📧 EMAIL (non-blocking, per owner)
-          try {
-            await supabase.functions.invoke("send-task-email", {
-              body: {
-                task: ownerPayload,
-                creator_id: user.id
-              }
-            });
-          } catch (emailErr) {
-            console.warn("Email failed (non-blocking):", emailErr);
-          }
-        } else {
-          // 🔁 RECURRING TASK (per owner — independent series)
-          if (!recurrence.startDate || !recurrence.endDate) {
-            throw new Error("Missing recurrence date range");
-          }
-          if (!occurrences.length) {
-            throw new Error("No occurrences generated");
-          }
-
-          const firstDate = occurrences[0];
-          const nextDate = occurrences[1] || null;
-
-          const recurringPayload = {
-            ...ownerPayload,
-            initial_deadline: firstDate,
-            next_occurrence_date: nextDate,
-            recurrence_group_id: crypto.randomUUID()  // own series per owner
-          };
-
-          const { error } = await supabase
-            .from("tasks")
-            .insert(recurringPayload);
-
-          if (error) throw error;
-        }
-
-        createdCount++;
-      }
-
-      if (createdCount === 0) {
-        throw new Error("No tasks were created. Please check your selection.");
-      }
-
-      if (createdCount > 1) {
-        // Friendly heads-up only when fan-out actually happened
-        console.log(`✅ Created ${createdCount} tasks`);
-      }
-    }
-
-    // =========================
-    // ✅ SUCCESS CLEANUP
-    // =========================
-    setForm(emptyTask);
-    setIsEditing(false);
-    await reload();
-
-  } catch (err) {
-    console.error("❌ saveTask error:", err);
-    alert(err.message || "Something went wrong");
-
-  } finally {
-    // =========================
-    // 🔁 ALWAYS RESET
-    // =========================
-    setIsSubmitting(false);
-  }
-};
-
-  /* DELETE TASK */
-    const deleteTask = async (task, deleteFuture = false) => {
-      if (!window.confirm("Confirm delete?")) return;
-    
-      if (deleteFuture && task.recurrence_group_id) {
-        const cutoff = task.new_deadline || task.initial_deadline;
-    
-        const { error } = await supabase
-          .from("tasks")
-          .delete()
-          .eq("recurrence_group_id", task.recurrence_group_id)
-          .gte("initial_deadline", cutoff);
-    
-        if (error) {
-          alert("Failed to delete future occurrences");
+    // Authorization guard differs between CREATE and EDIT
+    if (!permissions?.manage_users) {
+      if (isEditing) {
+        if (form.owner_id !== user.id) {
+          alert("You are not allowed to assign tasks to this user.");
           return;
         }
       } else {
-        await supabase.from("tasks").delete().eq("id", task.id);
+        const onlySelf =
+          form.owner_ids.length === 1 && form.owner_ids[0] === user.id;
+        if (!onlySelf) {
+          alert("You can only assign tasks to yourself.");
+          return;
+        }
       }
-    
-      await reload();
-    };
+    }
 
+    const normalizedClosingDate =
+      form.closing_date === "" ? null : form.closing_date;
+
+    // =========================
+    // 🚀 START LOADING
+    // =========================
+    setIsSubmitting(true);
+
+    try {
+      // =========================
+      // 📦 BASE PAYLOAD
+      // =========================
+      const basePayload = {
+        title: form.title,
+        created_by: user.id,
+        requester: form.requester,
+        recurrence_type: recurrence.enabled
+          ? recurrence.frequency
+          : "Non-Recurring",
+        recurrence_rule: recurrence.enabled
+          ? JSON.stringify({
+              frequency: recurrence.frequency,
+              ...(recurrence.frequency === "weekly" ||
+              recurrence.frequency === "biweekly"
+                ? { weekdays: recurrence.weekly.weekdays }
+                : recurrence.monthly)
+            })
+          : null,
+        assigned_date: form.assigned_date,
+        initial_deadline: form.initial_deadline,
+        new_deadline: form.new_deadline || null,
+        closing_date: normalizedClosingDate,
+        comments: form.comments || null
+      };
+
+      // =========================
+      // ✏️ UPDATE
+      // =========================
+      if (isEditing) {
+        const teamValue = permissions?.manage_users ? form.team : myTeam;
+
+        const updatePayload = {
+          ...basePayload,
+          owner: form.owner,
+          team: teamValue
+        };
+
+        if (editSeries && form.recurrence_group_id) {
+          const { error } = await supabase
+            .from("tasks")
+            .update(updatePayload)
+            .eq("recurrence_group_id", form.recurrence_group_id);
+
+          if (error) throw error;
+
+        } else {
+          const { error } = await supabase
+            .from("tasks")
+            .update(updatePayload)
+            .eq("id", form.id);
+
+          if (error) throw error;
+        }
+      }
+
+      // =========================
+      // ➕ CREATE — fan out one task row per selected owner
+      // =========================
+      else {
+        let createdCount = 0;
+
+        for (const ownerId of form.owner_ids) {
+          const ownerProfile = owners.find(o => o.id === ownerId);
+          if (!ownerProfile) continue;
+
+          const ownerTeam = permissions?.manage_users
+            ? (OWNER_TEAM_MAP[ownerProfile.owner_label] ||
+               ownerProfile.team ||
+               "")
+            : myTeam;
+
+          const ownerPayload = {
+            ...basePayload,
+            owner: ownerProfile.owner_label,
+            owner_id: ownerId,
+            team: ownerTeam
+          };
+
+          if (!recurrence.enabled) {
+            const { error } = await supabase
+              .from("tasks")
+              .insert(ownerPayload);
+
+            if (error) throw error;
+
+            try {
+              await supabase.functions.invoke("send-task-email", {
+                body: {
+                  task: ownerPayload,
+                  creator_id: user.id
+                }
+              });
+            } catch (emailErr) {
+              console.warn("Email failed (non-blocking):", emailErr);
+            }
+          } else {
+            if (!recurrence.startDate || !recurrence.endDate) {
+              throw new Error("Missing recurrence date range");
+            }
+            if (!occurrences.length) {
+              throw new Error("No occurrences generated");
+            }
+
+            const firstDate = occurrences[0];
+            const nextDate = occurrences[1] || null;
+
+            const recurringPayload = {
+              ...ownerPayload,
+              initial_deadline: firstDate,
+              next_occurrence_date: nextDate,
+              recurrence_group_id: crypto.randomUUID()
+            };
+
+            const { error } = await supabase
+              .from("tasks")
+              .insert(recurringPayload);
+
+            if (error) throw error;
+          }
+
+          createdCount++;
+        }
+
+        if (createdCount === 0) {
+          throw new Error("No tasks were created. Please check your selection.");
+        }
+
+        if (createdCount > 1) {
+          console.log(`✅ Created ${createdCount} tasks`);
+        }
+      }
+
+      // =========================
+      // ✅ SUCCESS CLEANUP
+      // =========================
+      setForm(emptyTask);
+      setIsEditing(false);
+      await reload();
+
+    } catch (err) {
+      console.error("❌ saveTask error:", err);
+      alert(err.message || "Something went wrong");
+
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  /* DELETE TASK */
+  const deleteTask = async (task, deleteFuture = false) => {
+    if (!window.confirm("Confirm delete?")) return;
+
+    if (deleteFuture && task.recurrence_group_id) {
+      const cutoff = task.new_deadline || task.initial_deadline;
+
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("recurrence_group_id", task.recurrence_group_id)
+        .gte("initial_deadline", cutoff);
+
+      if (error) {
+        alert("Failed to delete future occurrences");
+        return;
+      }
+    } else {
+      await supabase.from("tasks").delete().eq("id", task.id);
+    }
+
+    await reload();
+  };
 
 
   const editTask = (task, editSeries = false) => {
+    const normalized = normalizeTaskDates(task);
 
-  const normalized = normalizeTaskDates(task);
+    setForm({
+      ...normalized,
+      comments: task.comments || "",
+      owner_ids: task.owner_id ? [task.owner_id] : []
+    });
 
-  setForm({
-    ...normalized,
-    comments: task.comments || "",
-    owner_ids: task.owner_id ? [task.owner_id] : []   // ✅ NEW — single-owner on edit
-  });
+    if (task.recurrence_type && task.recurrence_type !== "Non-Recurring") {
 
-  // ✅ Restore recurrence state
-  if (task.recurrence_type && task.recurrence_type !== "Non-Recurring") {
+      let parsedRule = null;
 
-    let parsedRule = null;
+      try {
+        parsedRule = task.recurrence_rule
+          ? JSON.parse(task.recurrence_rule)
+          : null;
+      } catch (e) {
+        console.error("Failed to parse recurrence_rule:", e);
+      }
 
-    try {
-      parsedRule = task.recurrence_rule
-        ? JSON.parse(task.recurrence_rule)
-        : null;
-    } catch (e) {
-      console.error("Failed to parse recurrence_rule:", e);
+      setRecurrence({
+        enabled: true,
+        frequency: task.recurrence_type,
+        weekly: {
+          weekdays: parsedRule?.weekdays || []
+        },
+        monthly: parsedRule?.frequency === "monthly"
+          ? parsedRule
+          : null,
+        startDate: task.initial_deadline || "",
+        endDate: task.next_occurrence_date || ""
+      });
+
+    } else {
+      setRecurrence({
+        enabled: false,
+        frequency: "weekly",
+        weekly: { weekdays: [] },
+        monthly: null,
+        startDate: "",
+        endDate: ""
+      });
     }
 
-    setRecurrence({
-      enabled: true,
-      frequency: task.recurrence_type,
-      weekly: {
-        weekdays: parsedRule?.weekdays || []
-      },
-      monthly: parsedRule?.frequency === "monthly"
-        ? parsedRule
-        : null,
-      startDate: task.initial_deadline || "",
-      endDate: task.next_occurrence_date || ""
-    });
+    setIsEditing(true);
+    setEditSeries(editSeries);
 
-  } else {
-    // Non-recurring
-    setRecurrence({
-      enabled: false,
-      frequency: "weekly",
-      weekly: { weekdays: [] },
-      monthly: null,
-      startDate: "",
-      endDate: ""
-    });
-  }
-
-  setIsEditing(true);
-  setEditSeries(editSeries);
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-};
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
 
   /* ----------------------------------
      RENDER
   ---------------------------------- */
-return (
-  <div style={{ padding: 20, ...dark }}>
+  return (
+    <div style={{ padding: 20, ...dark }}>
 
-    {/* STICKY BAR */}
-    <div style={stickyBar(darkMode)}>
-     
-
-      <div style={{ paddingTop: 10 }}>
-        <button
-          style={{
-            padding: "8px 16px",
-            borderRadius: 6,
-            border: "none",
-            background: "#444",
-            color: "white",
-            cursor: "pointer"
-          }}
-          onClick={toggleDarkMode}
-        >
-          {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
-        </button>
+      {/* STICKY BAR */}
+      <div style={stickyBar(darkMode)}>
+        <div style={{ paddingTop: 10 }}>
+          <button
+            style={{
+              padding: "8px 16px",
+              borderRadius: 6,
+              border: "none",
+              background: "#444",
+              color: "white",
+              cursor: "pointer"
+            }}
+            onClick={toggleDarkMode}
+          >
+            {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+          </button>
+        </div>
       </div>
-    </div>
 
-    <h1>Tasks</h1>
+      <h1>Tasks</h1>
 
-    
-    <TaskForm
-      form={form}
-      setForm={setForm}
-      owners={owners}
-      permissions={permissions}
-      user={user}
-      role={role}
-      myTeam={myTeam}
-      recurrence={recurrence}
-      setRecurrence={setRecurrence}
-      isEditing={isEditing}
-      isSubmitting={isSubmitting}
-      saveTask={saveTask}
-      WEEKDAYS={WEEKDAYS}
-      dark={dark}
-    />
-
+      <TaskForm
+        form={form}
+        setForm={setForm}
+        owners={owners}
+        permissions={permissions}
+        user={user}
+        role={role}
+        myTeam={myTeam}
+        recurrence={recurrence}
+        setRecurrence={setRecurrence}
+        isEditing={isEditing}
+        isSubmitting={isSubmitting}
+        saveTask={saveTask}
+        WEEKDAYS={WEEKDAYS}
+        dark={dark}
+      />
 
       {/* EXISTING TASKS */}
       <h2 style={{ marginTop: 100 }}>EXISTING TASKS</h2>
 
       {status && (
-      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
-      📊 Filtered from chart
-      </div>)}
+        <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
+          📊 Filtered from chart
+        </div>
+      )}
 
-    {/* FILTER BAR */}
-    <TaskFilters
-      filterKey={filterKey}
-      filters={filters}
-      setFilters={setFilters}
-      owners={owners}
-      TEAMS={TEAMS}
-      REQUESTERS={REQUESTERS}
-      STATUSES={STATUSES}
-      resetTableFilters={resetTableFilters}
+      <TaskFilters
+        filterKey={filterKey}
+        filters={filters}
+        setFilters={setFilters}
+        owners={owners}
+        TEAMS={TEAMS}
+        REQUESTERS={REQUESTERS}
+        STATUSES={STATUSES}
+        resetTableFilters={resetTableFilters}
       />
 
-      {/* TASK TABLE */}
-     <TaskTable
-      loading={loading}
-      sortedTasks={sortedTasks}
-      requestSort={requestSort}
-      arrow={arrow}
-      editTask={editTask}
-      deleteTask={deleteTask}
-      darkMode={darkMode}
-      dark={dark}
-      STATUS_COLORS={STATUS_COLORS}
-      table={table}
-      th={th}
-      td={td}
-    />
+      <TaskTable
+        loading={loading}
+        sortedTasks={sortedTasks}
+        requestSort={requestSort}
+        arrow={arrow}
+        editTask={editTask}
+        deleteTask={deleteTask}
+        darkMode={darkMode}
+        dark={dark}
+        STATUS_COLORS={STATUS_COLORS}
+        table={table}
+        th={th}
+        td={td}
+      />
     </div>
   );
 }
+
 
 /* ----------------------------------
    STYLES
@@ -812,7 +745,6 @@ const formInput = {
   boxSizing: "border-box"
 };
 
-
 const filterBar = {
   display: "flex",
   gap: 10,
@@ -826,7 +758,6 @@ const table = dark => ({
   tableLayout: "fixed",
   background: dark ? "#111" : "white"
 });
-
 
 const th = dark => ({
   border: dark ? "1px solid #333" : "1px solid #D1D5DB",
@@ -846,7 +777,6 @@ const td = dark => ({
   wordBreak: "break-word",
   verticalAlign: "top"
 });
-
 
 const stickyBar = dark => ({
   position: "sticky",
