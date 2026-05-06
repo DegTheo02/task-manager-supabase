@@ -235,7 +235,7 @@ export default function TaskForm({
     ? undefined
     : role === "manager"
       ? "Managers can only change the initial deadline for tasks in their own team."
-      : "Only managers (for their team) and admins can change the initial deadline.";
+      : "Discuss with your manager if you need to change the initial deadline";
 
 
   /* ============================================================
