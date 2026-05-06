@@ -4,6 +4,16 @@ import { REQUESTERS } from "../../constants/taskConstants";
 
 
 /* ============================================================
+   FIELD ERROR — inline error message under a field
+   Always reserves vertical space (non-breaking space fallback)
+   so layout doesn't jump when an error appears/disappears.
+============================================================ */
+function FieldError({ message }) {
+  return <div style={fieldErrorStyle}>{message || "\u00A0"}</div>;
+}
+
+
+/* ============================================================
    OWNER MULTI-DROPDOWN (checkbox style — matches Filters.jsx)
 ============================================================ */
 function OwnerMultiDropdown({
@@ -13,12 +23,12 @@ function OwnerMultiDropdown({
   permissions,
   user,
   disabled,
+  hasError,
   dark
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Close on outside click
   useEffect(() => {
     const handleClickOutside = e => {
       if (ref.current && !ref.current.contains(e.target)) {
@@ -33,7 +43,6 @@ function OwnerMultiDropdown({
   const isDark = dark?.background === "#000";
 
   const toggleOne = (ownerId, checked) => {
-    // Non-admin guard — locked to self
     if (!permissions?.manage_users && ownerId !== user.id) {
       alert("You can only assign tasks to yourself.");
       return;
@@ -48,7 +57,6 @@ function OwnerMultiDropdown({
 
   const toggleAll = checked => {
     if (!permissions?.manage_users) {
-      // Non-admin: "All" just means themselves
       onChange(checked ? [user.id] : []);
       return;
     }
@@ -58,7 +66,6 @@ function OwnerMultiDropdown({
   const allSelected =
     owners.length > 0 && selectedIds.length === owners.length;
 
-  // Closed-state label
   let triggerLabel = "Select owner(s)";
   if (selectedIds.length > 0) {
     if (allSelected) {
@@ -73,11 +80,12 @@ function OwnerMultiDropdown({
 
   return (
     <div ref={ref} style={{ position: "relative", width: "100%" }}>
-      {/* TRIGGER — always white to match the other form inputs */}
+      {/* TRIGGER — gets a red border when hasError is true */}
       <div
         onClick={() => !disabled && setOpen(o => !o)}
         style={{
           ...formInput,
+          ...(hasError && inputErrorStyle),
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -100,7 +108,6 @@ function OwnerMultiDropdown({
         <span style={{ marginLeft: 6, opacity: 0.6 }}>▾</span>
       </div>
 
-      {/* DROPDOWN PANEL — follows dark mode */}
       {open && (
         <div
           style={{
@@ -119,7 +126,6 @@ function OwnerMultiDropdown({
             padding: 4
           }}
         >
-          {/* SELECT ALL — admins only */}
           {permissions?.manage_users && owners.length > 1 && (
             <label
               style={{
@@ -139,7 +145,6 @@ function OwnerMultiDropdown({
             </label>
           )}
 
-          {/* INDIVIDUAL OWNERS */}
           {owners.map(o => {
             const checked = selectedIds.includes(o.id);
             const lockedOut =
@@ -214,11 +219,78 @@ export default function TaskForm({
   dark
 }) {
 
-  /* -------- OWNER CHANGE HANDLER (CREATE / multi) --------
-     Maintains both the multi-value field (owner_ids) AND the legacy
-     single-owner fields (owner / owner_id / team) off the FIRST
-     selection so any downstream code that still reads them keeps
-     working (validation, recurrence engine, etc.). */
+  /* ============================================================
+     INLINE VALIDATION
+  ============================================================ */
+  const [errors, setErrors] = useState({});
+
+  const clearError = field => {
+    setErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateForm = () => {
+    const e = {};
+
+    if (!form.title?.trim())     e.title = "Title is required";
+    if (!form.assigned_date)     e.assigned_date = "Assigned date is required";
+    if (!form.initial_deadline)  e.initial_deadline = "Initial deadline is required";
+    if (!form.requester)         e.requester = "Requester is required";
+
+    // Owner — different shape in edit vs create
+    if (isEditing) {
+      if (!form.owner_id) e.owner = "Please select an owner";
+    } else {
+      if (!form.owner_ids?.length) e.owner = "Please select at least one owner";
+    }
+
+    // Recurrence — only when enabled
+    if (recurrence.enabled) {
+      const isWeekly =
+        recurrence.frequency === "weekly" ||
+        recurrence.frequency === "biweekly";
+
+      if (isWeekly && !recurrence.weekly?.weekdays?.length) {
+        e.recurrence_weekdays = "Select at least one day";
+      }
+
+      if (recurrence.frequency === "monthly") {
+        if (!recurrence.monthly || !recurrence.monthly.type) {
+          e.recurrence_monthly = "Monthly rule is required";
+        }
+      }
+
+      if (!recurrence.startDate) e.recurrence_from = "Start date is required";
+      if (!recurrence.endDate)   e.recurrence_to   = "End date is required";
+
+      if (
+        recurrence.startDate &&
+        recurrence.endDate &&
+        recurrence.endDate < recurrence.startDate
+      ) {
+        e.recurrence_to = "End date must be after start date";
+      }
+    }
+
+    return e;
+  };
+
+  const handleSubmit = () => {
+    const next = validateForm();
+    setErrors(next);
+    if (Object.keys(next).length > 0) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    saveTask();
+  };
+
+
+  /* -------- OWNER CHANGE HANDLER (CREATE / multi) -------- */
   const handleOwnerIdsChange = ids => {
     const first = ids[0]
       ? owners.find(o => o.id === ids[0])
@@ -237,9 +309,7 @@ export default function TaskForm({
     }));
   };
 
-  /* -------- EDIT MODE: single-owner change --------
-     Edit form keeps the original native <select> behaviour so an
-     admin can reassign one task without falling into multi-select UX. */
+  /* -------- EDIT MODE: single-owner change -------- */
   const handleSingleOwnerChange = e => {
     const selectedOwnerId = e.target.value;
 
@@ -261,132 +331,144 @@ export default function TaskForm({
   };
 
   return (
-      <div style={{ ...formBox, ...dark }}>
-        <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
-      {/* NEW / EDIT TASK FORM */}
-        {/* 1 ROW LAYOUT */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(9, 1fr)",
-            gap: 20,
-            width: "100%",
-            alignItems: "end"
-          }}
-        >
-          {/* ROW 1 */}
-          <label style={formLabel}>
-            Title *
-            <input
-              style={formInput}
-              value={form.title}
-              onChange={e =>
-                setForm(f => ({ ...f, title: e.target.value }))
-              }
-            />
-          </label>
+    <div style={{ ...formBox, ...dark }}>
+      <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
 
-          <label style={formLabel}>
-            Assigned date *
-            <input
-              type="date"
-              style={formInput}
-              value={form.assigned_date}
-              onChange={e =>
-                setForm(f => ({ ...f, assigned_date: e.target.value }))
-              }
-            />
-          </label>
+      {/* GRID LAYOUT */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(9, 1fr)",
+          gap: 20,
+          width: "100%",
+          alignItems: "end"
+        }}
+      >
+        {/* ============ TITLE ============ */}
+        <label style={formLabel}>
+          Title *
+          <input
+            style={{ ...formInput, ...(errors.title && inputErrorStyle) }}
+            value={form.title}
+            onChange={e => {
+              clearError("title");
+              setForm(f => ({ ...f, title: e.target.value }));
+            }}
+          />
+          <FieldError message={errors.title} />
+        </label>
 
-          
-          {/* ============= OWNER ============= */}
-          <label style={formLabel}>
-            {isEditing ? "Owner *" : "Owner(s) *"}
+        {/* ============ ASSIGNED DATE ============ */}
+        <label style={formLabel}>
+          Assigned date *
+          <input
+            type="date"
+            style={{ ...formInput, ...(errors.assigned_date && inputErrorStyle) }}
+            value={form.assigned_date}
+            onChange={e => {
+              clearError("assigned_date");
+              setForm(f => ({ ...f, assigned_date: e.target.value }));
+            }}
+          />
+          <FieldError message={errors.assigned_date} />
+        </label>
 
-            {isEditing ? (
-              // EDIT MODE — single native select (same as before)
-              <select
-                style={{ ...formInput, appearance: "none" }}
-                value={form.owner_id}
-                onChange={handleSingleOwnerChange}
-              >
-                <option value="">Select owner</option>
-                {owners.map(o => (
-                  <option key={o.id} value={o.id}>
-                    {o.owner_label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              // CREATE MODE — multi-checkbox dropdown
-              <OwnerMultiDropdown
-                owners={owners}
-                selectedIds={form.owner_ids || []}
-                onChange={handleOwnerIdsChange}
-                permissions={permissions}
-                user={user}
-                dark={dark}
-              />
-            )}
-          </label>
+        {/* ============ OWNER ============ */}
+        <label style={formLabel}>
+          {isEditing ? "Owner *" : "Owner(s) *"}
 
-
-          <label style={formLabel}>
-            Requester *
+          {isEditing ? (
             <select
-              style={formInput}
-              value={form.requester}
-              required
-              onChange={e =>
-                setForm(f => ({
-                  ...f,
-                  requester: e.target.value,
-                  requester_other:
-                    e.target.value === "OTHER" ? f.requester_other : ""
-                }))
-              }
+              style={{
+                ...formInput,
+                appearance: "none",
+                ...(errors.owner && inputErrorStyle)
+              }}
+              value={form.owner_id}
+              onChange={e => {
+                clearError("owner");
+                handleSingleOwnerChange(e);
+              }}
             >
-              <option value="">Select requester</option>
-              {REQUESTERS.map(r => (
-                <option key={r} value={r}>{r}</option>
+              <option value="">Select owner</option>
+              {owners.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.owner_label}
+                </option>
               ))}
             </select>
-            </label>
-
-
-          <label style={formLabel}>
-            Initial deadline *
-            <input
-              type="date"
-              style={formInput}
-              value={form.initial_deadline}
-              onChange={e =>
-                setForm(f => ({
-                  ...f,
-                  initial_deadline: e.target.value
-                }))
-              }
+          ) : (
+            <OwnerMultiDropdown
+              owners={owners}
+              selectedIds={form.owner_ids || []}
+              onChange={ids => {
+                clearError("owner");
+                handleOwnerIdsChange(ids);
+              }}
+              permissions={permissions}
+              user={user}
+              hasError={!!errors.owner}
+              dark={dark}
             />
-          </label>
-      
+          )}
+          <FieldError message={errors.owner} />
+        </label>
 
-          <label style={formLabel}>
-            New deadline
-            <input
-              type="date"
-              style={formInput}
-              value={form.new_deadline}
-              onChange={e =>
-                setForm(f => ({ ...f, new_deadline: e.target.value }))
-              }
-            />
-          </label>
+        {/* ============ REQUESTER ============ */}
+        <label style={formLabel}>
+          Requester *
+          <select
+            style={{ ...formInput, ...(errors.requester && inputErrorStyle) }}
+            value={form.requester}
+            onChange={e => {
+              clearError("requester");
+              setForm(f => ({
+                ...f,
+                requester: e.target.value,
+                requester_other:
+                  e.target.value === "OTHER" ? f.requester_other : ""
+              }));
+            }}
+          >
+            <option value="">Select requester</option>
+            {REQUESTERS.map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <FieldError message={errors.requester} />
+        </label>
 
-              
+        {/* ============ INITIAL DEADLINE ============ */}
+        <label style={formLabel}>
+          Initial deadline *
+          <input
+            type="date"
+            style={{ ...formInput, ...(errors.initial_deadline && inputErrorStyle) }}
+            value={form.initial_deadline}
+            onChange={e => {
+              clearError("initial_deadline");
+              setForm(f => ({ ...f, initial_deadline: e.target.value }));
+            }}
+          />
+          <FieldError message={errors.initial_deadline} />
+        </label>
 
+        {/* ============ NEW DEADLINE (optional) ============ */}
+        <label style={formLabel}>
+          New deadline
+          <input
+            type="date"
+            style={formInput}
+            value={form.new_deadline}
+            onChange={e =>
+              setForm(f => ({ ...f, new_deadline: e.target.value }))
+            }
+          />
+          <FieldError message={null} />
+        </label>
 
-          
-          <label style={formLabel}>
+        {/* ============ RECURRING TASK CHECKBOX ============ */}
+        <label style={formLabel}>
           <input
             type="checkbox"
             checked={recurrence.enabled}
@@ -396,103 +478,41 @@ export default function TaskForm({
                 enabled: e.target.checked
               }))
             }
-          />  
+          />
           Recurring task
         </label>
 
-             {/* RECURRENCE FREQUENCY */}
-              {recurrence.enabled && (
-                <label style={formLabel}>
-                  Recurrence frequency
-                  <select
-                    style={formInput}
-                    value={recurrence.frequency}
-                      onChange={e =>
-                        setRecurrence(r => ({
-                          ...r,
-                          frequency: e.target.value,
-                          weekly: { weekdays: [] },
-                          monthly:
-                            e.target.value === "monthly"
-                              ? {
-                                  type: "day_of_month",
-                                  day: new Date(form.initial_deadline).getDate()
-                                }
-                              : null
-                        }))
-                      }
-
-                  >
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Bi-weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </label>
-              )}
-
-          
-          {/* ================= MONTHLY RECURRENCE BLOCK ================= */}
-                {recurrence.enabled && recurrence.frequency === "monthly" && (
-                  <div
-                    style={{
-                      gridColumn: "span 9",
-                      padding: 12,
-                      border: "1px dashed #999",
-                      borderRadius: 6
-                    }}
-                  >
-                    {/* Monthly rule selector (nth weekday / last weekday / day of month) */}
-                      <MonthlyRuleSelector
-                        value={recurrence.monthly}
-                        baseDate={form.initial_deadline}
-                        onChange={rule =>
-                          setRecurrence(r => ({
-                            ...r,
-                            monthly: rule
-                          }))
+        {/* ============ RECURRENCE FREQUENCY ============ */}
+        {recurrence.enabled && (
+          <label style={formLabel}>
+            Recurrence frequency
+            <select
+              style={formInput}
+              value={recurrence.frequency}
+              onChange={e =>
+                setRecurrence(r => ({
+                  ...r,
+                  frequency: e.target.value,
+                  weekly: { weekdays: [] },
+                  monthly:
+                    e.target.value === "monthly"
+                      ? {
+                          type: "day_of_month",
+                          day: new Date(form.initial_deadline).getDate()
                         }
-                      />
+                      : null
+                }))
+              }
+            >
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+        )}
 
-                
-                    {/* Date range for monthly recurrence */}
-                    <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-                      <label>
-                        From
-                        <input
-                          type="date"
-                          value={recurrence.startDate}
-                          onChange={e =>
-                            setRecurrence(r => ({
-                              ...r,
-                              startDate: e.target.value
-                            }))
-                          }
-                        />
-                      </label>
-                
-                      <label>
-                        To
-                        <input
-                          type="date"
-                          value={recurrence.endDate}
-                          onChange={e =>
-                            setRecurrence(r => ({
-                              ...r,
-                              endDate: e.target.value
-                            }))
-                          }
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
-  {/* ================= END MONTHLY RECURRENCE BLOCK ================= */}
-
-
-
-          { /*  START WEEKLY/BIWEEKLY FREQUENCY SELECTOR BLOCK   */}
-        {recurrence.enabled && (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") && (
-
+        {/* ============ MONTHLY RECURRENCE BLOCK ============ */}
+        {recurrence.enabled && recurrence.frequency === "monthly" && (
           <div
             style={{
               gridColumn: "span 9",
@@ -501,19 +521,73 @@ export default function TaskForm({
               borderRadius: 6
             }}
           >
-            <div style={{ marginBottom: 10, fontWeight: 700 }}>             
-                            
-              Repeat on
+            <MonthlyRuleSelector
+              value={recurrence.monthly}
+              baseDate={form.initial_deadline}
+              onChange={rule => {
+                clearError("recurrence_monthly");
+                setRecurrence(r => ({ ...r, monthly: rule }));
+              }}
+            />
+            <FieldError message={errors.recurrence_monthly} />
+
+            {/* Date range for monthly recurrence */}
+            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+              <label>
+                From *
+                <input
+                  type="date"
+                  style={errors.recurrence_from ? inputErrorStyle : undefined}
+                  value={recurrence.startDate}
+                  onChange={e => {
+                    clearError("recurrence_from");
+                    setRecurrence(r => ({ ...r, startDate: e.target.value }));
+                  }}
+                />
+                <FieldError message={errors.recurrence_from} />
+              </label>
+
+              <label>
+                To *
+                <input
+                  type="date"
+                  style={errors.recurrence_to ? inputErrorStyle : undefined}
+                  value={recurrence.endDate}
+                  onChange={e => {
+                    clearError("recurrence_to");
+                    setRecurrence(r => ({ ...r, endDate: e.target.value }));
+                  }}
+                />
+                <FieldError message={errors.recurrence_to} />
+              </label>
             </div>
-        
-            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+          </div>
+        )}
+        {/* ============ END MONTHLY RECURRENCE BLOCK ============ */}
+
+
+        {/* ============ WEEKLY/BIWEEKLY BLOCK ============ */}
+        {recurrence.enabled && (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") && (
+          <div
+            style={{
+              gridColumn: "span 9",
+              padding: 12,
+              border: "1px dashed #999",
+              borderRadius: 6
+            }}
+          >
+            <div style={{ marginBottom: 10, fontWeight: 700 }}>
+              Repeat on *
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
               {WEEKDAYS.map(d => (
                 <label key={d.value}>
                   <input
                     type="checkbox"
                     checked={recurrence.weekly.weekdays.includes(d.value)}
-
-                    onChange={() =>
+                    onChange={() => {
+                      clearError("recurrence_weekdays");
                       setRecurrence(r => ({
                         ...r,
                         weekly: {
@@ -522,109 +596,110 @@ export default function TaskForm({
                             ? r.weekly.weekdays.filter(x => x !== d.value)
                             : [...r.weekly.weekdays, d.value]
                         }
-                      }))
-                    }
-
-                    
+                      }));
+                    }}
                   />
                   {d.label}
                 </label>
               ))}
             </div>
-        
-            <div style={{ display: "flex", gap: 12 }}>
+            <FieldError message={errors.recurrence_weekdays} />
+
+            <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
               <label>
-                From
+                From *
                 <input
                   type="date"
-                    value={recurrence.startDate}
-                    onChange={e =>
-                      setRecurrence(r => ({
-                        ...r,
-                        startDate: e.target.value
-                      }))
-                    }
-
+                  style={errors.recurrence_from ? inputErrorStyle : undefined}
+                  value={recurrence.startDate}
+                  onChange={e => {
+                    clearError("recurrence_from");
+                    setRecurrence(r => ({ ...r, startDate: e.target.value }));
+                  }}
                 />
+                <FieldError message={errors.recurrence_from} />
               </label>
-        
+
               <label>
-                To
+                To *
                 <input
                   type="date"
-                    value={recurrence.endDate}
-                    onChange={e =>
-                      setRecurrence(r => ({
-                        ...r,
-                        endDate: e.target.value
-                      }))
-                    }
-
+                  style={errors.recurrence_to ? inputErrorStyle : undefined}
+                  value={recurrence.endDate}
+                  onChange={e => {
+                    clearError("recurrence_to");
+                    setRecurrence(r => ({ ...r, endDate: e.target.value }));
+                  }}
                 />
+                <FieldError message={errors.recurrence_to} />
               </label>
             </div>
           </div>
-        )}             
-          
-          <label style={formLabel}>
-            Closing Date
-            <input
-              type="date"
-              style={formInput}
-              value={form.closing_date || ""}
-              min={
-                role?.toLowerCase() !== "admin"
-                  ? new Date(Date.now() - 100 * 24 * 60 * 60 * 1000)
-                      .toISOString()
-                      .slice(0, 10)
-                  : undefined
-              }
-              onChange={e =>
-                setForm(f => ({ ...f, closing_date: e.target.value }))
-              }
-            />
-          </label>
-          
-          <label style={formLabel}>
-            Comments
-           <textarea
-             style={{
-               ...formInput,
-               minHeight: 30,
-               resize: "both"
-             }}
-             value={form.comments}
-             onChange={e =>
-               setForm(f => ({ ...f, comments: e.target.value }))
-             }
-             placeholder="Type your comment here…"
-           />
-         </label>
+        )}
+        {/* ============ END WEEKLY/BIWEEKLY BLOCK ============ */}
 
-        </div>
 
-          <button
-          onClick={saveTask}
-          disabled={isSubmitting}
-          style={{
-            marginTop: 10,
-            opacity: isSubmitting ? 0.6 : 1,
-            cursor: isSubmitting ? "not-allowed" : "pointer"
-          }}
-        >
-          {isSubmitting
-            ? "Creating..."
-            : isEditing
-            ? "Update Task"
-            : (form.owner_ids?.length > 1
-                ? `Create ${form.owner_ids.length} Tasks`
-                : "Create Task")}
-        </button>
+        {/* ============ CLOSING DATE (optional) ============ */}
+        <label style={formLabel}>
+          Closing Date
+          <input
+            type="date"
+            style={formInput}
+            value={form.closing_date || ""}
+            min={
+              role?.toLowerCase() !== "admin"
+                ? new Date(Date.now() - 100 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .slice(0, 10)
+                : undefined
+            }
+            onChange={e =>
+              setForm(f => ({ ...f, closing_date: e.target.value }))
+            }
+          />
+          <FieldError message={null} />
+        </label>
+
+        {/* ============ COMMENTS (optional) ============ */}
+        <label style={formLabel}>
+          Comments
+          <textarea
+            style={{
+              ...formInput,
+              minHeight: 30,
+              resize: "both"
+            }}
+            value={form.comments}
+            onChange={e =>
+              setForm(f => ({ ...f, comments: e.target.value }))
+            }
+            placeholder="Type your comment here…"
+          />
+          <FieldError message={null} />
+        </label>
+
+      </div>
+
+      <button
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+        style={{
+          marginTop: 10,
+          opacity: isSubmitting ? 0.6 : 1,
+          cursor: isSubmitting ? "not-allowed" : "pointer"
+        }}
+      >
+        {isSubmitting
+          ? "Creating..."
+          : isEditing
+          ? "Update Task"
+          : (form.owner_ids?.length > 1
+              ? `Create ${form.owner_ids.length} Tasks`
+              : "Create Task")}
+      </button>
     </div>
   );
 }
-
-
 
 
 /* ----------------------------------
@@ -653,4 +728,17 @@ const formInput = {
   borderRadius: 4,
   height: 36,
   boxSizing: "border-box"
+};
+
+const fieldErrorStyle = {
+  color: "#DC2626",
+  fontSize: 12,
+  marginTop: 4,
+  fontWeight: 500,
+  minHeight: 16   // reserves space so the layout doesn't jump
+};
+
+const inputErrorStyle = {
+  border: "1px solid #DC2626",
+  outline: "none"
 };
