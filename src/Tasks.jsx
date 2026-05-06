@@ -25,7 +25,7 @@ import {
 ---------------------------------- */
 const toISODate = value => {
   if (!value) return "";
-  return value.slice(0, 10); // works for ISO strings & timestamps
+  return value.slice(0, 10);
 };
 
 const normalizeTaskDates = task => ({
@@ -80,13 +80,25 @@ export default function Tasks() {
 
   const [searchParams] = useSearchParams();
 
-  const statusesParam = searchParams.get("statuses");
-  const status = searchParams.get("status");
-  const dateFrom = searchParams.get("date_from");
-  const dateTo = searchParams.get("date_to");
-  const ownersParam = searchParams.get("owners");
-  const teamsParam = searchParams.get("teams");
-  const requestersParam = searchParams.get("requesters");
+  /* URL → filters: read every supported param */
+  const statusesParam        = searchParams.get("statuses");
+  const status               = searchParams.get("status");
+  const ownersParam          = searchParams.get("owners");
+  const teamsParam           = searchParams.get("teams");
+  const requestersParam      = searchParams.get("requesters");
+  const recurrenceTypesParam = searchParams.get("recurrence_types");
+
+  /* Date params: explicit names + legacy `date_from`/`date_to` (DailyTaskVolume) */
+  const dateFrom     = searchParams.get("date_from");
+  const dateTo       = searchParams.get("date_to");
+  const deadlineFrom = searchParams.get("deadline_from");
+  const deadlineTo   = searchParams.get("deadline_to");
+  const assignedFrom = searchParams.get("assigned_from");
+  const assignedTo   = searchParams.get("assigned_to");
+  const closingFrom  = searchParams.get("closing_from");
+  const closingTo    = searchParams.get("closing_to");
+
+  const searchParam  = searchParams.get("search");
 
 
   /* DARK MODE */
@@ -111,40 +123,52 @@ export default function Tasks() {
     sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
   }, [filters]);
 
+  /* Apply URL params on mount / when params change */
   useEffect(() => {
-    if (
-      status ||
-      statusesParam ||
-      dateFrom ||
-      dateTo ||
-      ownersParam ||
-      teamsParam ||
-      requestersParam
-    ) {
-      setFilters(f => ({
-        ...f,
-        statuses: statusesParam
-          ? statusesParam.split(",")
-          : status
-          ? [status]
-          : f.statuses,
-        deadline_from: dateFrom || f.deadline_from,
-        deadline_to: dateTo || f.deadline_to,
-        owners: ownersParam ? ownersParam.split(",") : f.owners,
-        teams: teamsParam ? teamsParam.split(",") : f.teams,
-        requesters: requestersParam
-          ? requestersParam.split(",")
-          : f.requesters
-      }));
-    }
+    const hasAny =
+      status || statusesParam ||
+      ownersParam || teamsParam || requestersParam || recurrenceTypesParam ||
+      dateFrom || dateTo ||
+      deadlineFrom || deadlineTo ||
+      assignedFrom || assignedTo ||
+      closingFrom || closingTo ||
+      searchParam;
+
+    if (!hasAny) return;
+
+    setFilters(f => ({
+      ...f,
+      statuses: statusesParam
+        ? statusesParam.split(",")
+        : status
+        ? [status]
+        : f.statuses,
+
+      owners:           ownersParam          ? ownersParam.split(",")          : f.owners,
+      teams:            teamsParam           ? teamsParam.split(",")           : f.teams,
+      requesters:       requestersParam      ? requestersParam.split(",")      : f.requesters,
+      recurrence_types: recurrenceTypesParam ? recurrenceTypesParam.split(",") : f.recurrence_types,
+
+      /* Explicit deadline_* wins; legacy date_from/date_to is the fallback */
+      deadline_from: deadlineFrom || dateFrom || f.deadline_from,
+      deadline_to:   deadlineTo   || dateTo   || f.deadline_to,
+
+      assigned_from: assignedFrom || f.assigned_from,
+      assigned_to:   assignedTo   || f.assigned_to,
+
+      closing_from:  closingFrom  || f.closing_from,
+      closing_to:    closingTo    || f.closing_to,
+
+      search:        searchParam  || f.search
+    }));
   }, [
-    status,
-    statusesParam,
-    dateFrom,
-    dateTo,
-    ownersParam,
-    teamsParam,
-    requestersParam
+    status, statusesParam,
+    ownersParam, teamsParam, requestersParam, recurrenceTypesParam,
+    dateFrom, dateTo,
+    deadlineFrom, deadlineTo,
+    assignedFrom, assignedTo,
+    closingFrom, closingTo,
+    searchParam
   ]);
 
 
@@ -355,12 +379,6 @@ export default function Tasks() {
   const saveTask = async () => {
     if (isSubmitting) return;
 
-    // =========================
-    // ✅ VALIDATION
-    // Field-presence validation now lives inline inside <TaskForm />
-    // (handleSubmit there blocks this call when fields are missing).
-    // Only auth + policy + authorization checks remain here.
-    // =========================
     if (!user) {
       alert("Authentication error. Please login again.");
       return;
@@ -381,7 +399,6 @@ export default function Tasks() {
       }
     }
 
-    // Authorization guard differs between CREATE and EDIT
     if (!permissions?.manage_users) {
       if (isEditing) {
         if (form.owner_id !== user.id) {
@@ -401,15 +418,9 @@ export default function Tasks() {
     const normalizedClosingDate =
       form.closing_date === "" ? null : form.closing_date;
 
-    // =========================
-    // 🚀 START LOADING
-    // =========================
     setIsSubmitting(true);
 
     try {
-      // =========================
-      // 📦 BASE PAYLOAD
-      // =========================
       const basePayload = {
         title: form.title,
         created_by: user.id,
@@ -433,9 +444,6 @@ export default function Tasks() {
         comments: form.comments || null
       };
 
-      // =========================
-      // ✏️ UPDATE
-      // =========================
       if (isEditing) {
         const teamValue = permissions?.manage_users ? form.team : myTeam;
 
@@ -463,9 +471,6 @@ export default function Tasks() {
         }
       }
 
-      // =========================
-      // ➕ CREATE — fan out one task row per selected owner
-      // =========================
       else {
         let createdCount = 0;
 
@@ -540,9 +545,6 @@ export default function Tasks() {
         }
       }
 
-      // =========================
-      // ✅ SUCCESS CLEANUP
-      // =========================
       setForm(emptyTask);
       setIsEditing(false);
       await reload();
@@ -681,7 +683,7 @@ export default function Tasks() {
       {/* EXISTING TASKS */}
       <h2 style={{ marginTop: 100 }}>EXISTING TASKS</h2>
 
-      {status && (
+      {(status || statusesParam) && (
         <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
           📊 Filtered from chart
         </div>
