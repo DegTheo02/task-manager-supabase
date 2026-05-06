@@ -3,6 +3,7 @@ import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 import TaskCalendar from "./TaskCalendar";
 import { useAuth } from "./context/AuthContext";
+import { openTasksWithFilters } from "./utils/buildTasksUrl";
 
 
 import {
@@ -61,17 +62,16 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
     );
   };
 
-    const toggleAll = () => {
-      if (allSelected) {
-        onChange([]);
-      } else {
-        const allValues = items.map(item =>
-          typeof item === "object" ? item.value : item
-        );
-        onChange(allValues);
-      }
-    };
-
+  const toggleAll = () => {
+    if (allSelected) {
+      onChange([]);
+    } else {
+      const allValues = items.map(item =>
+        typeof item === "object" ? item.value : item
+      );
+      onChange(allValues);
+    }
+  };
 
   useEffect(() => {
     const close = e => {
@@ -82,9 +82,6 @@ function MultiDropdown({ label, items = [], values, onChange, darkMode }) {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-
-  console.log("DROPDOWN ITEMS:", items);
-console.log("DROPDOWN VALUES:", values);
 
   return (
     <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
@@ -118,24 +115,23 @@ console.log("DROPDOWN VALUES:", values);
 
           <hr style={{ margin: "6px 0" }} />
 
-            {items.map(item => {
-              const label =
-                typeof item === "object" ? item.label : item;
-              const value =
-                typeof item === "object" ? item.value : item;
-            
-              return (
-                <label key={value} style={dropdownItem}>
-                  <input
-                    type="checkbox"
-                    checked={values.includes(value)}
-                    onChange={() => toggleItem(value)}
-                  />
-                  {label}
-                </label>
-              );
-            })}
+          {items.map(item => {
+            const itemLabel =
+              typeof item === "object" ? item.label : item;
+            const itemValue =
+              typeof item === "object" ? item.value : item;
 
+            return (
+              <label key={itemValue} style={dropdownItem}>
+                <input
+                  type="checkbox"
+                  checked={values.includes(itemValue)}
+                  onChange={() => toggleItem(itemValue)}
+                />
+                {itemLabel}
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
@@ -192,100 +188,99 @@ export default function DailyTaskVolume() {
   };
 
 
-      
-        useEffect(() => {
-        if (!user) return;
-      
-        const loadOwners = async () => {
-          let q = supabase
-            .from("profiles")
-            .select("id, owner_label, team");
-      
-          // 🔐 USER → only themselves
-          if (role === "user") {
-            q = q.eq("id", user.id);
-          }
-      
-          // 🔐 MANAGER → only their team
-          if (role === "manager") {
-            const { data: myProfile } = await supabase
-              .from("profiles")
-              .select("team")
-              .eq("id", user.id)
-              .maybeSingle();
-      
-            if (myProfile?.team) {
-              q = q.eq("team", myProfile.team);
-            }
-          }
-      
-          const { data } = await q;
-      
-          const owners = (data || []).map(p => ({
-            label: p.owner_label,
-            value: p.id
-          }));
-      
-          setOwnerOptions(owners);
-      
-          // 🔒 If user → auto lock to themselves
-          if (role === "user" && owners.length === 1) {
-            setFilters(f => ({
-              ...f,
-              owners: [owners[0].value]
-            }));
-          }
-        };
-      
-        loadOwners();
-      }, [user, role]);
+  /* ===============================
+     LOAD OWNERS
+  ================================ */
+  useEffect(() => {
+    if (!user) return;
+
+    const loadOwners = async () => {
+      let q = supabase
+        .from("profiles")
+        .select("id, owner_label, team");
+
+      // 🔐 USER → only themselves
+      if (role === "user") {
+        q = q.eq("id", user.id);
+      }
+
+      // 🔐 MANAGER → only their team
+      if (role === "manager") {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("team")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (myProfile?.team) {
+          q = q.eq("team", myProfile.team);
+        }
+      }
+
+      const { data } = await q;
+
+      const owners = (data || []).map(p => ({
+        label: p.owner_label,
+        value: p.id
+      }));
+
+      setOwnerOptions(owners);
+
+      // 🔒 If user → auto lock to themselves
+      if (role === "user" && owners.length === 1) {
+        setFilters(f => ({
+          ...f,
+          owners: [owners[0].value]
+        }));
+      }
+    };
+
+    loadOwners();
+  }, [user, role]);
 
   /* ===============================
      DATA LOAD
   ================================ */
-      useEffect(() => {
-        if (!user || !permissions) return;
-      
-        const load = async () => {
-          let q = supabase
-            .from("task_daily_status")
-            .select("status_day,status,owner,owner_id,team,requester");
-      
-          // 🔐 PERMISSION RESTRICTIONS
-                
-          // 🔐 USER → only own
-          if (role === "user") {
-            q = q.eq("owner_id", user.id);
-          }
-          
-          // 🔐 MANAGER → only team
-          if (role === "manager") {
-            const { data: myProfile } = await supabase
-              .from("profiles")
-              .select("team")
-              .eq("id", user.id)
-              .maybeSingle();
-          
-            if (myProfile?.team) {
-              q = q.eq("team", myProfile.team);
-            }
-          }
+  useEffect(() => {
+    if (!user || !permissions) return;
 
-      
-          // Filters
-          if (filters.owners.length) q = q.in("owner_id", filters.owners);
-          if (filters.teams.length) q = q.in("team", filters.teams);
-          if (filters.requesters.length) q = q.in("requester", filters.requesters);
-          if (filters.statuses.length) q = q.in("status", filters.statuses);
-          if (filters.date_from) q = q.gte("status_day", filters.date_from);
-          if (filters.date_to) q = q.lte("status_day", filters.date_to);
-      
-          const { data } = await q;
-          setRows(data || []);
-        };
-      
-        load();
-      }, [filters, user, permissions, role]);
+    const load = async () => {
+      let q = supabase
+        .from("task_daily_status")
+        .select("status_day,status,owner,owner_id,team,requester");
+
+      // 🔐 USER → only own
+      if (role === "user") {
+        q = q.eq("owner_id", user.id);
+      }
+
+      // 🔐 MANAGER → only team
+      if (role === "manager") {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("team")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (myProfile?.team) {
+          q = q.eq("team", myProfile.team);
+        }
+      }
+
+      // Filters
+      if (filters.owners.length) q = q.in("owner_id", filters.owners);
+      if (filters.teams.length) q = q.in("team", filters.teams);
+      if (filters.requesters.length) q = q.in("requester", filters.requesters);
+      if (filters.statuses.length) q = q.in("status", filters.statuses);
+      if (filters.date_from) q = q.gte("status_day", filters.date_from);
+      if (filters.date_to) q = q.lte("status_day", filters.date_to);
+
+      const { data } = await q;
+      setRows(data || []);
+    };
+
+    load();
+  }, [filters, user, permissions, role]);
 
 
   /* ===============================
@@ -315,6 +310,30 @@ export default function DailyTaskVolume() {
       }))
     };
   }, [rows]);
+
+
+  /* ===============================
+     NAVIGATION HELPERS
+  ================================ */
+
+  /**
+   * Build the filter overrides from the active filter UI:
+   * - owners → translate selected ids to owner_labels
+   *            (Tasks page expects labels, not ids/emails)
+   * - teams  → managers can't filter by team (locked to their own)
+   * - requesters → passed as-is
+   */
+  const baseOverridesFromFilters = () => {
+    const ownerLabels = ownerOptions
+      .filter(o => filters.owners.includes(o.value))
+      .map(o => o.label);
+
+    return {
+      owners: ownerLabels,
+      teams: role === "manager" ? [] : filters.teams,
+      requesters: filters.requesters
+    };
+  };
 
   /* ===============================
      RENDER
@@ -354,37 +373,29 @@ export default function DailyTaskVolume() {
             boxShadow: "0 2px 6px rgba(0,0,0,0.12)"
           }}
         >
+          <MultiDropdown
+            label="👤 Owner(s)"
+            items={ownerOptions}
+            values={filters.owners}
+            onChange={v => setFilters(f => ({ ...f, owners: v }))}
+            darkMode={darkMode}
+          />
 
+          {permissions?.view_all_tasks && (
             <MultiDropdown
-              label="👤 Owner(s)"
-              items={ownerOptions}
-              values={filters.owners}
-              onChange={v => setFilters(f => ({ ...f, owners: v }))}
+              label="🧩 Team(s)"
+              items={TEAMS}
+              values={filters.teams}
+              onChange={v => setFilters(f => ({ ...f, teams: v }))}
               darkMode={darkMode}
             />
-
-
-
-            {permissions?.view_all_tasks && (
-              <MultiDropdown
-                label="🧩 Team(s)"
-                items={TEAMS}
-                values={filters.teams}
-                onChange={v =>
-                  setFilters(f => ({ ...f, teams: v }))
-                }
-                darkMode={darkMode}
-              />
-            )}
-
+          )}
 
           <MultiDropdown
             label="📄 Requester(s)"
             items={REQUESTERS}
             values={filters.requesters}
-            onChange={v =>
-              setFilters(f => ({ ...f, requesters: v }))
-            }
+            onChange={v => setFilters(f => ({ ...f, requesters: v }))}
             darkMode={darkMode}
           />
 
@@ -392,9 +403,7 @@ export default function DailyTaskVolume() {
             label="📌 Status(es)"
             items={STATUSES}
             values={filters.statuses}
-            onChange={v =>
-              setFilters(f => ({ ...f, statuses: v }))
-            }
+            onChange={v => setFilters(f => ({ ...f, statuses: v }))}
             darkMode={darkMode}
           />
 
@@ -406,10 +415,7 @@ export default function DailyTaskVolume() {
                 style={filterDate}
                 value={filters.date_from}
                 onChange={e =>
-                  setFilters(f => ({
-                    ...f,
-                    date_from: e.target.value
-                  }))
+                  setFilters(f => ({ ...f, date_from: e.target.value }))
                 }
               />
               <input
@@ -417,10 +423,7 @@ export default function DailyTaskVolume() {
                 style={filterDate}
                 value={filters.date_to}
                 onChange={e =>
-                  setFilters(f => ({
-                    ...f,
-                    date_to: e.target.value
-                  }))
+                  setFilters(f => ({ ...f, date_to: e.target.value }))
                 }
               />
             </div>
@@ -441,37 +444,25 @@ export default function DailyTaskVolume() {
         </div>
       </div>
 
-       {/* CALENDAR */}
-          <TaskCalendar
-            rows={rows}
-            darkMode={darkMode}
-            statuses={filters.statuses}
-            onDayClick={(day, evt) => {
-            const params = new URLSearchParams({
-              status,
+      {/* CALENDAR */}
+      <TaskCalendar
+        rows={rows}
+        darkMode={darkMode}
+        statuses={filters.statuses}
+        onDayClick={(day, evt) => {
+          openTasksWithFilters(
+            navigate,
+            {},
+            {
+              ...baseOverridesFromFilters(),
+              statuses: filters.statuses, // currently selected statuses, if any
               date_from: day,
-              date_to: day,
-              owners: ownerOptions
-              .filter(o => filters.owners.includes(o.value))
-              .map(o => o.label)
-              .join(","),
-              teams:
-                role === "manager"
-                  ? ""
-                  : filters.teams.join(","),
-              requesters: filters.requesters.join(",")
-            });
-            
-                
-              const url = `/tasks?${params.toString()}`;
-    
-              evt.ctrlKey || evt.metaKey
-                ? window.open(url, "_blank")
-                : navigate(url);
-            }}
-          />
-
-
+              date_to: day
+            },
+            evt
+          );
+        }}
+      />
 
       {/* CHART */}
       <div
@@ -484,84 +475,73 @@ export default function DailyTaskVolume() {
           marginTop: 100
         }}
       >
-
         <Bar
-        data={chartData}
-        options={{
-          responsive: true,
-          maintainAspectRatio: false,
-      
-          onClick: (evt, elements) => {
-            if (!elements.length) return;
-      
-            const el = elements[0];
-            const day = chartData.days[el.index];
-            const status =
-              chartData.datasets[el.datasetIndex].label;
-      
-              const params = new URLSearchParams({
-                status,
-                date_from: day,
-                date_to: day,
-                owners:
-                  role === "user"
-                    ? user.email
-                    : ownerOptions
-                        .filter(o => filters.owners.includes(o.value))
-                        .map(o => o.label)
-                        .join(","),
-                teams:
-                  role === "manager"
-                    ? ""
-                    : filters.teams.join(","),
-                requesters: filters.requesters.join(",")
-              });
+          data={chartData}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
 
-      
-            const url = `/tasks?${params.toString()}`;
-      
-            evt.native.ctrlKey || evt.native.metaKey
-              ? window.open(url, "_blank")
-              : navigate(url);
-          },
-      
-          scales: {
-            x: { stacked: true },
-            y: { stacked: true, beginAtZero: true }
-          },
-      
-          plugins: {
-                      percentageLabelPlugin: {
-                       disabled: true    // ❌ DISABLE Percentage
-                                       },
-            datalabels: {
-              display: context =>
-                context.dataset.data[context.dataIndex] > 0,
-              color: "#fff",
-              font: { weight: "bold" },
-              formatter: value => value // 🔥 only absolute values
+            onClick: (evt, elements) => {
+              if (!elements.length) return;
+
+              const el = elements[0];
+              const day = chartData.days[el.index];
+              const status = chartData.datasets[el.datasetIndex].label;
+
+              openTasksWithFilters(
+                navigate,
+                {},
+                {
+                  ...baseOverridesFromFilters(),
+                  statuses: [status],
+                  date_from: day,
+                  date_to: day
+                },
+                evt
+              );
             },
-            tooltip: {
-              callbacks: {
-                label: context =>
-                  `${context.dataset.label}: ${context.raw}`
+
+            onHover: (evt, elements) => {
+              if (evt?.native?.target) {
+                evt.native.target.style.cursor = elements?.length
+                  ? "pointer"
+                  : "default";
               }
             },
-            legend: {
-              labels: {
-                color: darkMode ? "#fff" : "#000"
+
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, beginAtZero: true }
+            },
+
+            plugins: {
+              percentageLabelPlugin: { disabled: true },
+              datalabels: {
+                display: context =>
+                  context.dataset.data[context.dataIndex] > 0,
+                color: "#fff",
+                font: { weight: "bold" },
+                formatter: value => value
+              },
+              tooltip: {
+                callbacks: {
+                  label: context =>
+                    `${context.dataset.label}: ${context.raw}`
+                }
+              },
+              legend: {
+                labels: {
+                  color: darkMode ? "#fff" : "#000"
+                }
               }
             }
-          }
-        }}
-      />
-
-        
+          }}
+        />
       </div>
-        </div>
-      );
-    }
-     
+    </div>
+  );
+}
+
 
 /* ===============================
    STYLES
