@@ -220,6 +220,25 @@ export default function TaskForm({
 }) {
 
   /* ============================================================
+     EDIT GATES
+     Initial deadline can only be changed by:
+       - admins (any team)
+       - managers, but only for tasks in their own team
+     On CREATE, anyone allowed to create a task can set it.
+  ============================================================ */
+  const isAdmin = role === "admin";
+  const isManagerOfThisTeam = role === "manager" && form.team === myTeam;
+  const canEditInitialDeadline =
+    !isEditing || isAdmin || isManagerOfThisTeam;
+
+  const initialDeadlineLockMessage = canEditInitialDeadline
+    ? undefined
+    : role === "manager"
+      ? "Managers can only change the initial deadline for tasks in their own team."
+      : "Only managers (for their team) and admins can change the initial deadline.";
+
+
+  /* ============================================================
      INLINE VALIDATION
   ============================================================ */
   const [errors, setErrors] = useState({});
@@ -439,12 +458,24 @@ export default function TaskForm({
         </label>
 
         {/* ============ INITIAL DEADLINE ============ */}
+        {/* Locked on edit unless caller is admin or a manager of the
+            task's team. The disabled <input> still submits its current
+            value, and because that value is what was loaded from the DB,
+            the UPDATE payload becomes a no-op for this column. */}
         <label style={formLabel}>
           Initial deadline *
           <input
             type="date"
-            style={{ ...formInput, ...(errors.initial_deadline && inputErrorStyle) }}
+            style={{
+              ...formInput,
+              ...(errors.initial_deadline && inputErrorStyle),
+              ...(canEditInitialDeadline
+                ? null
+                : { opacity: 0.6, cursor: "not-allowed" })
+            }}
             value={form.initial_deadline}
+            disabled={!canEditInitialDeadline}
+            title={initialDeadlineLockMessage}
             onChange={e => {
               clearError("initial_deadline");
               setForm(f => ({ ...f, initial_deadline: e.target.value }));
