@@ -309,6 +309,41 @@ export default function TaskForm({
   };
 
 
+  /* ============================================================
+     RESET — wipes the form back to its empty/default state.
+     Only shown in CREATE mode; in EDIT mode the form is bound
+     to a specific task row (form.id), and clearing it would
+     leave the parent in an ambiguous "editing nothing" state.
+  ============================================================ */
+  const resetForm = () => {
+    setForm({
+      title: "",
+      assigned_date: "",
+      owner_id: "",
+      owner: "",
+      owner_ids: [],
+      team: "",
+      requester: "",
+      requester_other: "",
+      initial_deadline: "",
+      new_deadline: "",
+      closing_date: "",
+      comments: ""
+    });
+
+    setRecurrence({
+      enabled: false,
+      frequency: "weekly",
+      weekly: { weekdays: [] },
+      monthly: null,
+      startDate: "",
+      endDate: ""
+    });
+
+    setErrors({});
+  };
+
+
   /* -------- OWNER CHANGE HANDLER (CREATE / multi) -------- */
   const handleOwnerIdsChange = ids => {
     const first = ids[0]
@@ -711,23 +746,43 @@ export default function TaskForm({
 
       </div>
 
-      <button
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        style={{
-          marginTop: 10,
-          opacity: isSubmitting ? 0.6 : 1,
-          cursor: isSubmitting ? "not-allowed" : "pointer"
-        }}
-      >
-        {isSubmitting
-          ? "Creating..."
-          : isEditing
-          ? "Update Task"
-          : (form.owner_ids?.length > 1
-              ? `Create ${form.owner_ids.length} Tasks`
-              : "Create Task")}
-      </button>
+      {/* ============ ACTION BUTTONS ============ */}
+      <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          style={{
+            opacity: isSubmitting ? 0.6 : 1,
+            cursor: isSubmitting ? "not-allowed" : "pointer"
+          }}
+        >
+          {isSubmitting
+            ? "Creating..."
+            : isEditing
+            ? "Update Task"
+            : (form.owner_ids?.length > 1
+                ? `Create ${form.owner_ids.length} Tasks`
+                : "Create Task")}
+        </button>
+
+        {/* Reset is only meaningful in CREATE mode — see resetForm comment. */}
+        {!isEditing && (
+          <button
+            type="button"
+            onClick={resetForm}
+            disabled={isSubmitting}
+            style={{
+              background: "#E5E7EB",
+              color: "#111827",
+              border: "1px solid #D1D5DB",
+              opacity: isSubmitting ? 0.6 : 1,
+              cursor: isSubmitting ? "not-allowed" : "pointer"
+            }}
+          >
+            Reset
+          </button>
+        )}
+      </div>
     </div>
   );
 }
