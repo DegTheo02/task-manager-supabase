@@ -444,26 +444,6 @@ export default function DailyTaskVolume() {
         </div>
       </div>
 
-      {/* CALENDAR */}
-      <TaskCalendar
-        rows={rows}
-        darkMode={darkMode}
-        statuses={filters.statuses}
-        onDayClick={(day, evt) => {
-          openTasksWithFilters(
-            navigate,
-            {},
-            {
-              ...baseOverridesFromFilters(),
-              statuses: filters.statuses, // currently selected statuses, if any
-              date_from: day,
-              date_to: day
-            },
-            evt
-          );
-        }}
-      />
-
       {/* CHART */}
       <div
         style={{
@@ -471,8 +451,8 @@ export default function DailyTaskVolume() {
           background: darkMode ? "#111" : "#fff",
           borderRadius: 10,
           padding: 12,
-          marginBottom: 40,
-          marginTop: 100
+          marginTop: 20,
+          marginBottom: 40
         }}
       >
         <Bar
@@ -535,6 +515,28 @@ export default function DailyTaskVolume() {
                 }
               }
             }
+          }}
+        />
+      </div>
+
+      {/* CALENDAR */}
+      <div style={{ marginTop: 40 }}>
+        <TaskCalendar
+          rows={rows}
+          darkMode={darkMode}
+          statuses={filters.statuses}
+          onDayClick={(day, evt) => {
+            openTasksWithFilters(
+              navigate,
+              {},
+              {
+                ...baseOverridesFromFilters(),
+                statuses: filters.statuses, // currently selected statuses, if any
+                date_from: day,
+                date_to: day
+              },
+              evt
+            );
           }}
         />
       </div>
