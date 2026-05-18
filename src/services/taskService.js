@@ -1,3 +1,4 @@
+// src/services/taskService.js
 import { supabase } from "../supabaseClient";
 
 /* ==============================
@@ -45,11 +46,21 @@ export async function getTasks(filters = {}, page = 0, limit = 50) {
   if (filters.assigned_to)
     query = query.lte("assigned_date", filters.assigned_to);
 
-  if (filters.deadline_from)
-    query = query.gte("initial_deadline", filters.deadline_from);
+  /* DEADLINE RANGE
+     Effective deadline = new_deadline when set, else initial_deadline.
+     Implemented as: (new_deadline OP value) OR (new_deadline IS NULL AND initial_deadline OP value)
+  */
+  if (filters.deadline_from) {
+    query = query.or(
+      `new_deadline.gte.${filters.deadline_from},and(new_deadline.is.null,initial_deadline.gte.${filters.deadline_from})`
+    );
+  }
 
-  if (filters.deadline_to)
-    query = query.lte("initial_deadline", filters.deadline_to);
+  if (filters.deadline_to) {
+    query = query.or(
+      `new_deadline.lte.${filters.deadline_to},and(new_deadline.is.null,initial_deadline.lte.${filters.deadline_to})`
+    );
+  }
 
   query = query.range(page * limit, page * limit + limit - 1);
 
