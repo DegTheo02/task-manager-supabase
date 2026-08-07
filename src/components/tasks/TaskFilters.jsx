@@ -4,6 +4,7 @@ export default function TaskFilters({
   filters,
   setFilters,
   owners,
+  creatorOptions = [],
   TEAMS,
   REQUESTERS,
   STATUSES,
@@ -20,7 +21,7 @@ export default function TaskFilters({
            <input
              type="text"
              placeholder="Search title…"
-             value={filters.search}
+             value={filters.search || ""}
              onChange={e =>
                setFilters(f => ({ ...f, search: e.target.value }))
              }
@@ -34,7 +35,7 @@ export default function TaskFilters({
             <select
               multiple
               size={1}
-              value={filters.owners}
+              value={filters.owners || []}
               onChange={e =>
                 setFilters(f => ({
                   ...f,
@@ -57,7 +58,7 @@ export default function TaskFilters({
         <select
           multiple
           size={1}
-          value={filters.teams}
+          value={filters.teams || []}
           onChange={e =>
             setFilters(f => ({
               ...f,
@@ -77,7 +78,7 @@ export default function TaskFilters({
           <select
             multiple
             size={1}
-            value={filters.requesters}
+            value={filters.requesters || []}
             onChange={e =>
               setFilters(f => ({
                 ...f,
@@ -92,13 +93,35 @@ export default function TaskFilters({
         </div>
 
 
+        {/* Created By — options are derived from the rows currently loaded,
+            so the list always respects RLS and the user's other filters. */}
+        <div style={filterItem}>
+          <span>🖊 Created By</span>
+          <select
+            multiple
+            size={1}
+            value={filters.creators || []}
+            onChange={e =>
+              setFilters(f => ({
+                ...f,
+                creators: [...e.target.selectedOptions].map(o => o.value)
+              }))
+            }
+          >
+            {creatorOptions.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+
           {/* Status */}
           <div style={filterItem}>
             <span>📌 Status</span>
             <select
               multiple
               size={1}
-              value={filters.statuses}
+              value={filters.statuses || []}
               onChange={e =>
                 setFilters(f => ({
                   ...f,
@@ -117,7 +140,7 @@ export default function TaskFilters({
             <span>⏳ Deadline Range</span>
             <input
               type="date"
-              value={filters.deadline_from}
+              value={filters.deadline_from || ""}
               onChange={e =>
                 setFilters(f => ({ 
                   ...f, 
@@ -131,7 +154,7 @@ export default function TaskFilters({
             <span>&nbsp;</span>
             <input
               type="date"
-              value={filters.deadline_to}
+              value={filters.deadline_to || ""}
               onChange={e =>
                 setFilters(f => ({ 
                   ...f, 
@@ -145,7 +168,7 @@ export default function TaskFilters({
             <span>✅ Closing Range</span>
             <input
               type="date"
-              value={filters.closing_from}
+              value={filters.closing_from || ""}
               onChange={e =>
                 setFilters(f => ({ 
                   ...f, 
@@ -159,7 +182,7 @@ export default function TaskFilters({
             <span>&nbsp;</span>
             <input
               type="date"
-              value={filters.closing_to}
+              value={filters.closing_to || ""}
               onChange={e =>
                 setFilters(f => ({ 
                   ...f, 
