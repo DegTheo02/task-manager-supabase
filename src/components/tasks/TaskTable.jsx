@@ -48,8 +48,12 @@ export default function TaskTable({
               </th>
 
               
-              <th style={{ ...th(darkMode), width: "10%" }}>
-                Requester
+              {/* was not sortable, though th() already renders a pointer cursor */}
+              <th
+                style={{ ...th(darkMode), width: "10%" }}
+                onClick={() => requestSort("requester")}
+              >
+                Requester{arrow("requester")}
               </th>
 
 
@@ -90,11 +94,14 @@ export default function TaskTable({
               >
                 Closing Date{arrow("closing_date")}
               </th>
+
+              {/* FIX: key is creator_name (the view's text column), not "creator".
+                  "creator" is undefined on every row, so every pair tied. */}
               <th
-              style={{ ...th(darkMode), width: "7%" }}
-              onClick={() => requestSort("creator")}
+                style={{ ...th(darkMode), width: "7%" }}
+                onClick={() => requestSort("creator_name")}
               >
-                Created by
+                Created by{arrow("creator_name")}
               </th>
               
               <th style={{ ...th(darkMode), width: "20%" }}>Comments</th>
@@ -130,7 +137,7 @@ export default function TaskTable({
                 <td style={td(darkMode)}>{t.initial_deadline}</td>
                 <td style={td(darkMode)}>{t.new_deadline}</td>
                 <td style={td(darkMode)}>{t.closing_date || "–"}</td>
-                <td style={{ ...td(darkMode), fontSize: "10px" , textAlign: "center"}}>{t.creator_name}</td>
+                <td style={{ ...td(darkMode), fontSize: "10px" , textAlign: "center"}}>{t.creator_name || "–"}</td>
 
                 <td style={{ ...td(darkMode), fontSize: "12px" , textAlign: "left", whiteSpace: "pre-wrap"}}>{ t.comments }</td>
 
