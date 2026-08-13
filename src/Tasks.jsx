@@ -80,6 +80,65 @@ const DATE_KEYS = [
   "closing_date"
 ];
 
+/* Fields that belong to ONE occurrence, never to the whole series.
+   Fanning these out across a recurrence_group_id collapses every occurrence
+   onto the same date and trips the partial unique index
+   (recurrence_group_id, initial_deadline) — see SERIES_UNIQ below. */
+const OCCURRENCE_FIELDS = [
+  "assigned_date",
+  "initial_deadline",
+  "new_deadline",
+  "closing_date"
+];
+
+/* Name of the partial unique index guarding one-occurrence-per-date:
+   CREATE UNIQUE INDEX tasks_series_occurrence_uniq
+     ON tasks (recurrence_group_id, initial_deadline)
+     WHERE recurrence_group_id IS NOT NULL;                                */
+const SERIES_UNIQ = "tasks_series_occurrence_uniq";
+
+/* Turn a raw Postgres error into something a user can act on.
+   RLS can hide a conflicting sibling row from a non-admin, so the client-side
+   pre-check isn't always able to catch the clash first — this is the backstop. */
+const friendlyDbError = err => {
+  const msg = String(err?.message || "");
+
+  if (msg.includes(SERIES_UNIQ) || err?.code === "23505") {
+    return (
+      "Another occurrence of this recurring series already uses that initial " +
+      "deadline. Two occurrences of the same series can't share a date — " +
+      "pick a different date, or edit that occurrence directly."
+    );
+  }
+
+  return msg || "Something went wrong";
+};
+
+/* Stable, comparable fingerprint of a recurrence rule.
+   Supabase returns jsonb columns ALREADY PARSED, while the form builds the
+   rule as a JSON string — so both shapes have to be accepted here. */
+const ruleSignature = rule => {
+  let obj = rule;
+
+  if (typeof rule === "string") {
+    try {
+      obj = JSON.parse(rule);
+    } catch {
+      return "";
+    }
+  }
+
+  if (!obj || typeof obj !== "object") return "";
+
+  return Object.keys(obj)
+    .sort()
+    .map(k => {
+      const v = obj[k];
+      return `${k}=${Array.isArray(v) ? [...v].sort().join("|") : v}`;
+    })
+    .join(";");
+};
+
 
 
 /* ----------------------------------
@@ -442,6 +501,61 @@ useEffect(() => {
 }, [loading, hasMore, loadMore]);
 
   
+  /* ----------------------------------
+     RE-POINT A SERIES AFTER A CADENCE CHANGE
+
+     Exactly one row per series is the "head": the one carrying a non-null
+     next_occurrence_date. The cron reads that pointer, materialises the
+     occurrence, then advances it. Change the frequency and the rule updates
+     everywhere, but the pointer still sits on the old schedule.
+
+     `occurrences` comes from useRecurrenceEngine and already reflects the
+     frequency / weekdays / monthly rule currently shown in the form, across
+     the From→To window in the "Repeat on" box — so no recurrence maths is
+     duplicated here.
+  ---------------------------------- */
+  const repointSeriesHead = async groupId => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const nextDate = (occurrences || []).find(d => d > today) || null;
+
+    if (!nextDate) {
+      alert(
+        "The new frequency was saved, but the schedule has no dates left in " +
+        "the future.\n\nExtend the 'To' date in the Repeat on box past today " +
+        "and save again — otherwise no new occurrences will be generated."
+      );
+      return;
+    }
+
+    const { data: head, error: headErr } = await supabase
+      .from("tasks")
+      .select("id, next_occurrence_date")
+      .eq("recurrence_group_id", groupId)
+      .not("next_occurrence_date", "is", null)
+      .limit(1);
+
+    if (headErr) {
+      console.warn("Could not locate series head:", headErr);
+      return;
+    }
+
+    // No head means the series has already run its course — nothing to move.
+    if (!head?.length) return;
+
+    if (head[0].next_occurrence_date === nextDate) return;
+
+    const { error: ptrErr } = await supabase
+      .from("tasks")
+      .update({ next_occurrence_date: nextDate })
+      .eq("id", head[0].id);
+
+    if (ptrErr) {
+      console.warn("Could not re-point series head:", ptrErr);
+    }
+  };
+
+
   /* SAVE TASK */
   const saveTask = async () => {
   if (isSubmitting) return;
@@ -564,13 +678,87 @@ useEffect(() => {
         // owner_id intentionally omitted — owner can't be reassigned via edit
       };
 
-      if (editSeries && form.recurrence_group_id) {
-        const { error } = await supabase
+      // An edit must never re-stamp the creator. basePayload sets created_by
+      // for the CREATE path; leaving it in here rewrote "Created By" to
+      // whoever last touched the task (and, on a series edit, across every
+      // occurrence at once).
+      delete updatePayload.created_by;
+
+      // ---------------------------------------------------------------
+      // 🛡️ COLLISION PRE-CHECK
+      // Catch a date clash with a sibling occurrence BEFORE Postgres does,
+      // so the user gets a sentence instead of a constraint name.
+      // ---------------------------------------------------------------
+      if (form.recurrence_group_id && form.initial_deadline) {
+        const { data: clash, error: clashErr } = await supabase
           .from("tasks")
-          .update(updatePayload)
+          .select("id")
+          .eq("recurrence_group_id", form.recurrence_group_id)
+          .eq("initial_deadline", form.initial_deadline)
+          .neq("id", form.id)
+          .limit(1);
+
+        // A failed check is not a failed save — fall through and let the
+        // database have the final word (friendlyDbError handles it).
+        if (!clashErr && clash?.length) {
+          throw new Error(
+            `Another occurrence of this recurring series already falls on ` +
+            `${form.initial_deadline}. Two occurrences of the same series ` +
+            `can't share an initial deadline — pick a different date, or ` +
+            `edit that occurrence directly.`
+          );
+        }
+      }
+
+      if (editSeries && form.recurrence_group_id) {
+        // -------------------------------------------------------------
+        // SERIES-WIDE FIELDS
+        // Everything that is genuinely shared by every occurrence.
+        // The date fields are stripped: writing one date onto N rows
+        // violates tasks_series_occurrence_uniq the moment N > 1.
+        // -------------------------------------------------------------
+        const seriesPayload = { ...updatePayload };
+        OCCURRENCE_FIELDS.forEach(k => delete seriesPayload[k]);
+
+        const { error: seriesErr } = await supabase
+          .from("tasks")
+          .update(seriesPayload)
           .eq("recurrence_group_id", form.recurrence_group_id);
 
-        if (error) throw error;
+        if (seriesErr) throw seriesErr;
+
+        // -------------------------------------------------------------
+        // PER-OCCURRENCE FIELDS
+        // The dates on screen belong to the row the user actually opened.
+        // -------------------------------------------------------------
+        const occurrencePayload = {};
+        OCCURRENCE_FIELDS.forEach(k => {
+          occurrencePayload[k] = updatePayload[k];
+        });
+
+        const { error: rowErr } = await supabase
+          .from("tasks")
+          .update(occurrencePayload)
+          .eq("id", form.id);
+
+        if (rowErr) throw rowErr;
+
+        // -------------------------------------------------------------
+        // CADENCE CHANGE → move the series pointer
+        // The rule now says "biweekly" on every row, but the head row's
+        // next_occurrence_date still points at the old rhythm, so the cron
+        // would keep firing weekly. Only re-point when the rule really
+        // changed — re-pointing on an unrelated edit could skip an
+        // occurrence the cron hasn't generated yet.
+        // -------------------------------------------------------------
+        const cadenceChanged =
+          form.recurrence_type !== updatePayload.recurrence_type ||
+          ruleSignature(form.recurrence_rule) !==
+            ruleSignature(updatePayload.recurrence_rule);
+
+        if (cadenceChanged) {
+          await repointSeriesHead(form.recurrence_group_id);
+        }
 
       } else {
         const { error } = await supabase
@@ -674,7 +862,7 @@ useEffect(() => {
 
   } catch (err) {
     console.error("❌ saveTask error:", err);
-    alert(err.message || "Something went wrong");
+    alert(friendlyDbError(err));
 
   } finally {
     // =========================
@@ -743,7 +931,12 @@ useEffect(() => {
         ? parsedRule
         : null,
       startDate: task.initial_deadline || "",
-      endDate: task.next_occurrence_date || ""
+      // Leaf occurrences (generated by the cron) carry next_occurrence_date
+      // NULL. Seeding endDate from it left the "To" box empty, which made
+      // isValid false and blocked the save with "Invalid recurrence settings".
+      // Falling back to this row's own deadline keeps the form valid; the user
+      // extends it only when they actually want to reshape the schedule.
+      endDate: task.next_occurrence_date || task.initial_deadline || ""
     });
 
   } else {
