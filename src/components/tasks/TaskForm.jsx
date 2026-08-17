@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import MonthlyRuleSelector from "../MonthlyRuleSelector";
 import { REQUESTERS } from "../../constants/taskConstants";
+import {
+  canAssignTo,
+  assignableOwners,
+  assignmentDeniedMessage,
+  teamForAssignment
+} from "../../utils/ownerAssignment";
 
 /* Read the day-of-month (1–31) straight from a "YYYY-MM-DD" string.
    We deliberately avoid `new Date(str).getDate()` here: that parses the
@@ -16,13 +22,17 @@ const dayFromISO = iso => {
 
 /* ============================================================
    OWNER MULTI-DROPDOWN (checkbox style — matches Filters.jsx)
+
+   Selectability now comes from the shared assignment policy
+   (utils/ownerAssignment) instead of an inline manage_users check,
+   so a manager sees their whole team as pickable — which is what
+   the RLS INSERT policy has always allowed.
 ============================================================ */
 function OwnerMultiDropdown({
   owners,
   selectedIds,
   onChange,
-  permissions,
-  user,
+  assignCtx,
   disabled,
   dark
 }) {
@@ -43,10 +53,15 @@ function OwnerMultiDropdown({
 
   const isDark = dark?.background === "#000";
 
+  /* Everyone this actor is actually permitted to pick. */
+  const pickable = useMemo(
+    () => assignableOwners(assignCtx),
+    [assignCtx]
+  );
+
   const toggleOne = (ownerId, checked) => {
-    // Non-admin guard — locked to self
-    if (!permissions?.manage_users && ownerId !== user.id) {
-      alert("You can only assign tasks to yourself.");
+    if (!canAssignTo(ownerId, assignCtx)) {
+      alert(assignmentDeniedMessage(assignCtx));
       return;
     }
 
@@ -57,17 +72,14 @@ function OwnerMultiDropdown({
     onChange(next);
   };
 
+  /* "All" means all PICKABLE owners — for a manager that's their team,
+     for a plain user it collapses to just themselves. */
   const toggleAll = checked => {
-    if (!permissions?.manage_users) {
-      // Non-admin: "All" just means themselves
-      onChange(checked ? [user.id] : []);
-      return;
-    }
-    onChange(checked ? owners.map(o => o.id) : []);
+    onChange(checked ? pickable.map(o => o.id) : []);
   };
 
   const allSelected =
-    owners.length > 0 && selectedIds.length === owners.length;
+    pickable.length > 0 && selectedIds.length === pickable.length;
 
   // Closed-state label
   let triggerLabel = "Select owner(s)";
@@ -130,8 +142,9 @@ function OwnerMultiDropdown({
             padding: 4
           }}
         >
-          {/* SELECT ALL — admins only */}
-          {permissions?.manage_users && owners.length > 1 && (
+          {/* SELECT ALL — shown whenever there's more than one pickable
+              owner (admins, and now managers with a team) */}
+          {pickable.length > 1 && (
             <label
               style={{
                 ...rowStyle(isDark),
@@ -153,8 +166,7 @@ function OwnerMultiDropdown({
           {/* INDIVIDUAL OWNERS */}
           {owners.map(o => {
             const checked = selectedIds.includes(o.id);
-            const lockedOut =
-              !permissions?.manage_users && o.id !== user.id;
+            const lockedOut = !canAssignTo(o.id, assignCtx);
 
             return (
               <label
@@ -225,6 +237,16 @@ export default function TaskForm({
   dark
 }) {
 
+  /* -------- ASSIGNMENT CONTEXT --------
+     Bundled once and handed to the policy helpers, so the dropdowns
+     and saveTask() are answering the same question from the same
+     inputs. Memoised because OwnerMultiDropdown derives its pickable
+     list from it. */
+  const assignCtx = useMemo(
+    () => ({ owners, permissions, role, user, myTeam }),
+    [owners, permissions, role, user, myTeam]
+  );
+
   /* -------- KEEP MONTHLY "DAY OF MONTH" IN SYNC WITH DEADLINE --------
      monthly.day is otherwise snapshotted only at the moment "Monthly" (or
      the "Same day each month" radio) is picked. If the Initial deadline is
@@ -263,33 +285,50 @@ export default function TaskForm({
      Maintains both the multi-value field (owner_ids) AND the legacy
      single-owner fields (owner / owner_id / team) off the FIRST
      selection so any downstream code that still reads them keeps
-     working (validation, recurrence engine, etc.). */
-  const handleOwnerIdsChange = ids => {
-    const first = ids[0]
-      ? owners.find(o => o.id === ids[0])
-      : null;
+     working (validation, recurrence engine, etc.).
 
-    const firstTeam = first
-      ? (role === "manager" ? first.team : myTeam)
-      : "";
+     Team now comes from teamForAssignment(), which follows the OWNER
+     for admins and stays locked to the actor's own team otherwise. The
+     old expression (`role === "manager" ? first.team : myTeam`) had the
+     admin branch backwards — it stamped the admin's own team on a task
+     being created for someone else. */
+  const handleOwnerIdsChange = ids => {
+    // Defensive: never let a non-assignable id through, even if a
+    // checkbox somehow fired while disabled.
+    const allowed = ids.filter(id => canAssignTo(id, assignCtx));
+
+    const first = allowed[0]
+      ? owners.find(o => o.id === allowed[0])
+      : null;
 
     setForm(f => ({
       ...f,
-      owner_ids: ids,
+      owner_ids: allowed,
       owner_id: first?.id || "",
       owner: first?.owner_label || "",
-      team: firstTeam
+      team: first ? teamForAssignment(first, assignCtx, f.team) : ""
     }));
   };
 
   /* -------- EDIT MODE: single-owner change --------
-     Edit form keeps the original native <select> behaviour so an
-     admin can reassign one task without falling into multi-select UX. */
+     Edit form keeps the original native <select> behaviour so one task
+     can be reassigned without falling into multi-select UX.
+
+     Reassignment is now open to managers within their own team, not
+     just manage_users holders. The write side (Tasks.jsx) re-checks
+     with the same helper and actually persists owner_id — previously
+     it dropped it, so only the display label moved and the row stayed
+     invisible to its new owner. */
   const handleSingleOwnerChange = e => {
     const selectedOwnerId = e.target.value;
 
-    if (!permissions?.manage_users && selectedOwnerId !== user.id) {
-      alert("You can only assign tasks to yourself.");
+    if (!selectedOwnerId) {
+      setForm(f => ({ ...f, owner_id: "", owner: "", owner_ids: [] }));
+      return;
+    }
+
+    if (!canAssignTo(selectedOwnerId, assignCtx)) {
+      alert(assignmentDeniedMessage(assignCtx));
       return;
     }
 
@@ -301,7 +340,7 @@ export default function TaskForm({
       owner_id: selectedOwnerId,
       owner: selectedOwner.owner_label,
       owner_ids: [selectedOwnerId],
-      team: role === "manager" ? selectedOwner.team : myTeam
+      team: teamForAssignment(selectedOwner, assignCtx, f.team)
     }));
   };
 
@@ -349,18 +388,30 @@ export default function TaskForm({
             {isEditing ? "Owner *" : "Owner(s) *"}
 
             {isEditing ? (
-              // EDIT MODE — single native select (same as before)
+              // EDIT MODE — single native select.
+              // Options the actor can't assign to are disabled rather
+              // than hidden, so the current owner of a task still
+              // renders correctly even if they're out of scope.
               <select
                 style={{ ...formInput, appearance: "none" }}
-                value={form.owner_id}
+                value={form.owner_id || ""}
                 onChange={handleSingleOwnerChange}
               >
                 <option value="">Select owner</option>
-                {owners.map(o => (
-                  <option key={o.id} value={o.id}>
-                    {o.owner_label}
-                  </option>
-                ))}
+                {owners.map(o => {
+                  const lockedOut =
+                    !canAssignTo(o.id, assignCtx) && o.id !== form.owner_id;
+
+                  return (
+                    <option
+                      key={o.id}
+                      value={o.id}
+                      disabled={lockedOut}
+                    >
+                      {o.owner_label}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               // CREATE MODE — multi-checkbox dropdown
@@ -368,8 +419,7 @@ export default function TaskForm({
                 owners={owners}
                 selectedIds={form.owner_ids || []}
                 onChange={handleOwnerIdsChange}
-                permissions={permissions}
-                user={user}
+                assignCtx={assignCtx}
                 dark={dark}
               />
             )}
@@ -658,7 +708,7 @@ export default function TaskForm({
           }}
         >
           {isSubmitting
-            ? "Creating..."
+            ? (isEditing ? "Updating..." : "Creating...")
             : isEditing
             ? "Update Task"
             : (form.owner_ids?.length > 1
