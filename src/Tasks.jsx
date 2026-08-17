@@ -1,726 +1,1114 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import MonthlyRuleSelector from "../MonthlyRuleSelector";
-import { REQUESTERS } from "../../constants/taskConstants";
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "./supabaseClient";
+import { useSearchParams } from "react-router-dom";
+
+import { useRecurrenceEngine } from "./hooks/useRecurrenceEngine";
+import { useAuth } from "./context/AuthContext";
+import TaskForm from "./components/tasks/TaskForm";
+import TaskFilters from "./components/tasks/TaskFilters";
+import TaskTable from "./components/tasks/TaskTable";
+import { useTasks } from "./hooks/useTasks";
 import {
+  OWNER_SCOPE,
+  ownerScopeFor,
   canAssignTo,
-  assignableOwners,
   assignmentDeniedMessage,
   teamForAssignment
-} from "../../utils/ownerAssignment";
+} from "./utils/ownerAssignment";
 
-/* Read the day-of-month (1–31) straight from a "YYYY-MM-DD" string.
-   We deliberately avoid `new Date(str).getDate()` here: that parses the
-   string as UTC midnight and then reads the LOCAL day, which is off by one
-   for some timezones. Reading the day component directly is timezone-proof
-   and never returns NaN. Returns null when the date is empty/invalid. */
-const dayFromISO = iso => {
-  if (!iso || typeof iso !== "string") return null;
-  const day = Number(iso.split("-")[2]);
-  return Number.isInteger(day) && day >= 1 && day <= 31 ? day : null;
+
+
+
+import {
+  STATUSES,
+  OWNERS,
+  TEAMS,
+  STATUS_COLORS,
+  RECURRENCE_TYPES,
+  REQUESTERS
+} from "./constants/taskConstants";
+
+
+/* ----------------------------------
+   CONSTANTS
+---------------------------------- */
+
+
+const toISODate = value => {
+  if (!value) return "";
+  return value.slice(0, 10); // works for ISO strings & timestamps
 };
 
+const normalizeTaskDates = task => ({
+  ...task,
+  assigned_date: toISODate(task.assigned_date),
+  initial_deadline: toISODate(task.initial_deadline),
+  new_deadline: toISODate(task.new_deadline),
+  closing_date: toISODate(task.closing_date)
+});
 
-/* ============================================================
-   OWNER MULTI-DROPDOWN (checkbox style — matches Filters.jsx)
+const WEEKDAYS = [
+  { label: "Sun", value: 0 },
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 }
+];
 
-   Selectability now comes from the shared assignment policy
-   (utils/ownerAssignment) instead of an inline manage_users check,
-   so a manager sees their whole team as pickable — which is what
-   the RLS INSERT policy has always allowed.
-============================================================ */
-function OwnerMultiDropdown({
-  owners,
-  selectedIds,
-  onChange,
-  assignCtx,
-  disabled,
-  dark
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+/* Single source of truth for the filter shape.
+   Anything restored from sessionStorage is merged OVER this, so a filter key
+   added in a later release can never come back undefined for a returning user. */
+const DEFAULT_FILTERS = {
+  owners: [],
+  teams: [],
+  requesters: [],
+  creators: [],
+  statuses: [],
+  recurrence_types: [],
+  search: "",
+  assigned_from: "",
+  assigned_to: "",
+  deadline_from: "",
+  deadline_to: "",
+  closing_from: "",
+  closing_to: "",
+  today: false
+};
 
-  // Close on outside click
-  useEffect(() => {
-    const handleClickOutside = e => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+/* Columns holding ISO date strings (YYYY-MM-DD) — these sort correctly as
+   plain text, so they skip localeCompare's numeric collation. */
+const DATE_KEYS = [
+  "assigned_date",
+  "initial_deadline",
+  "new_deadline",
+  "closing_date"
+];
 
-  const isDark = dark?.background === "#000";
+/* Fields that belong to ONE occurrence, never to the whole series.
+   Fanning these out across a recurrence_group_id collapses every occurrence
+   onto the same date and trips the partial unique index
+   (recurrence_group_id, initial_deadline) — see SERIES_UNIQ below. */
+const OCCURRENCE_FIELDS = [
+  "assigned_date",
+  "initial_deadline",
+  "new_deadline",
+  "closing_date"
+];
 
-  /* Everyone this actor is actually permitted to pick. */
-  const pickable = useMemo(
-    () => assignableOwners(assignCtx),
-    [assignCtx]
-  );
+/* Name of the partial unique index guarding one-occurrence-per-date:
+   CREATE UNIQUE INDEX tasks_series_occurrence_uniq
+     ON tasks (recurrence_group_id, initial_deadline)
+     WHERE recurrence_group_id IS NOT NULL;                                */
+const SERIES_UNIQ = "tasks_series_occurrence_uniq";
 
-  const toggleOne = (ownerId, checked) => {
-    if (!canAssignTo(ownerId, assignCtx)) {
-      alert(assignmentDeniedMessage(assignCtx));
-      return;
-    }
+/* Turn a raw Postgres error into something a user can act on.
+   RLS can hide a conflicting sibling row from a non-admin, so the client-side
+   pre-check isn't always able to catch the clash first — this is the backstop. */
+const friendlyDbError = err => {
+  const msg = String(err?.message || "");
 
-    const next = checked
-      ? [...selectedIds, ownerId]
-      : selectedIds.filter(id => id !== ownerId);
+  if (msg.includes(SERIES_UNIQ) || err?.code === "23505") {
+    return (
+      "Another occurrence of this recurring series already uses that initial " +
+      "deadline. Two occurrences of the same series can't share a date — " +
+      "pick a different date, or edit that occurrence directly."
+    );
+  }
 
-    onChange(next);
-  };
+  return msg || "Something went wrong";
+};
 
-  /* "All" means all PICKABLE owners — for a manager that's their team,
-     for a plain user it collapses to just themselves. */
-  const toggleAll = checked => {
-    onChange(checked ? pickable.map(o => o.id) : []);
-  };
+/* Stable, comparable fingerprint of a recurrence rule.
+   Supabase returns jsonb columns ALREADY PARSED, while the form builds the
+   rule as a JSON string — so both shapes have to be accepted here. */
+const ruleSignature = rule => {
+  let obj = rule;
 
-  const allSelected =
-    pickable.length > 0 && selectedIds.length === pickable.length;
-
-  // Closed-state label
-  let triggerLabel = "Select owner(s)";
-  if (selectedIds.length > 0) {
-    if (allSelected) {
-      triggerLabel = "All selected";
-    } else if (selectedIds.length === 1) {
-      const only = owners.find(o => o.id === selectedIds[0]);
-      triggerLabel = only ? only.owner_label : "1 selected";
-    } else {
-      triggerLabel = `${selectedIds.length} selected`;
+  if (typeof rule === "string") {
+    try {
+      obj = JSON.parse(rule);
+    } catch {
+      return "";
     }
   }
 
-  return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
-      {/* TRIGGER — always white to match the other form inputs */}
-      <div
-        onClick={() => !disabled && setOpen(o => !o)}
-        style={{
-          ...formInput,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: disabled ? "not-allowed" : "pointer",
-          background: "#fff",
-          color: "#000",
-          opacity: disabled ? 0.6 : 1
-        }}
-      >
-        <span
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: selectedIds.length === 0 ? "#9CA3AF" : "inherit"
-          }}
-        >
-          {triggerLabel}
-        </span>
-        <span style={{ marginLeft: 6, opacity: 0.6 }}>▾</span>
-      </div>
+  if (!obj || typeof obj !== "object") return "";
 
-      {/* DROPDOWN PANEL — follows dark mode */}
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "110%",
-            left: 0,
-            minWidth: "100%",
-            maxHeight: 260,
-            overflowY: "auto",
-            background: isDark ? "#111" : "#fff",
-            color: isDark ? "#fff" : "#000",
-            border: isDark ? "1px solid #333" : "1px solid #D1D5DB",
-            borderRadius: 6,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            zIndex: 1000,
-            padding: 4
-          }}
-        >
-          {/* SELECT ALL — shown whenever there's more than one pickable
-              owner (admins, and now managers with a team) */}
-          {pickable.length > 1 && (
-            <label
-              style={{
-                ...rowStyle(isDark),
-                fontWeight: 600,
-                borderBottom: isDark
-                  ? "1px solid #333"
-                  : "1px solid #E5E7EB"
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={e => toggleAll(e.target.checked)}
-              />
-              <span>All</span>
-            </label>
-          )}
+  return Object.keys(obj)
+    .sort()
+    .map(k => {
+      const v = obj[k];
+      return `${k}=${Array.isArray(v) ? [...v].sort().join("|") : v}`;
+    })
+    .join(";");
+};
 
-          {/* INDIVIDUAL OWNERS */}
-          {owners.map(o => {
-            const checked = selectedIds.includes(o.id);
-            const lockedOut = !canAssignTo(o.id, assignCtx);
 
-            return (
-              <label
-                key={o.id}
-                style={{
-                  ...rowStyle(isDark),
-                  opacity: lockedOut ? 0.4 : 1,
-                  cursor: lockedOut ? "not-allowed" : "pointer"
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={lockedOut}
-                  onChange={e => toggleOne(o.id, e.target.checked)}
-                />
-                <span>{o.owner_label}</span>
-              </label>
-            );
-          })}
 
-          {owners.length === 0 && (
-            <div
-              style={{
-                padding: "8px 12px",
-                fontSize: 13,
-                opacity: 0.7
-              }}
-            >
-              No owners available
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+/* ----------------------------------
+   TASKS PAGE
+---------------------------------- */
+export default function Tasks() {
+
+  
+  const { user, fullName, permissions,team: myTeam, ownerLabel, role } = useAuth();
+  const [filters, setFilters] = useState(() => {
+    const saved = sessionStorage.getItem("tasksFilters");
+    if (!saved) return { ...DEFAULT_FILTERS };
+
+    try {
+      // Merge over defaults — a session saved before `creators` existed would
+      // otherwise leave filters.creators undefined and throw on first render.
+      return { ...DEFAULT_FILTERS, ...JSON.parse(saved) };
+    } catch {
+      return { ...DEFAULT_FILTERS };
+    }
+  });
+  const { tasks, loading, hasMore, loadMore, reload } = useTasks(filters);
+  const [owners, setOwners] = useState([]);
+  const [filterKey, setFilterKey] = useState(0);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [editSeries, setEditSeries] = useState(false);
+  
+  const [searchParams] = useSearchParams();
+
+  const statusesParam = searchParams.get("statuses");
+  const status = searchParams.get("status");
+  const dateFrom = searchParams.get("date_from");
+  const dateTo = searchParams.get("date_to");
+  const ownersParam = searchParams.get("owners");
+  const teamsParam = searchParams.get("teams");
+  const requestersParam = searchParams.get("requesters");
+
+
+
+
+  /* DARK MODE */
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem("tasksDarkMode") === "true"
   );
-}
 
-const rowStyle = isDark => ({
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "6px 10px",
-  fontSize: 14,
-  cursor: "pointer",
-  borderRadius: 4,
-  userSelect: "none"
-});
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem("tasksDarkMode", next);
+  };
+
+  const dark = darkMode
+    ? { background: "#000", color: "white" }
+    : { background: "white", color: "black" };
+
+  /* FILTERS */
+console.log("Current role:", role);
+  useEffect(() => {
+    sessionStorage.setItem("tasksFilters", JSON.stringify(filters));
+  }, [filters]);
+
+useEffect(() => {
+  // Only apply URL filters if at least one param exists
+  if (
+    status ||
+    statusesParam ||
+    dateFrom ||
+    dateTo ||
+    ownersParam ||
+    teamsParam ||
+    requestersParam
+  ) {
+    setFilters(f => ({
+      ...f,
+      statuses: statusesParam
+        ? statusesParam.split(",")
+        : status
+        ? [status]
+        : f.statuses,
+      deadline_from: dateFrom || f.deadline_from,
+      deadline_to: dateTo || f.deadline_to,
+      owners: ownersParam ? ownersParam.split(",") : f.owners,
+      teams: teamsParam ? teamsParam.split(",") : f.teams,
+      requesters: requestersParam
+        ? requestersParam.split(",")
+        : f.requesters
+    }));
+  }
+}, [
+  status,
+  statusesParam,
+  dateFrom,
+  dateTo,
+  ownersParam,
+  teamsParam,
+  requestersParam
+]);
 
 
-/* ============================================================
-   TASK FORM
-============================================================ */
-export default function TaskForm({
-  form,
-  setForm,
-  owners,
-  permissions,
-  user,
-  role,
-  myTeam,
-  recurrence,
-  setRecurrence,
-  isEditing,
-  isSubmitting,
-  saveTask,
-  WEEKDAYS,
-  dark
-}) {
 
-  /* -------- ASSIGNMENT CONTEXT --------
-     Bundled once and handed to the policy helpers, so the dropdowns
-     and saveTask() are answering the same question from the same
-     inputs. Memoised because OwnerMultiDropdown derives its pickable
-     list from it. */
+
+  
+  
+  const resetTableFilters = () => {
+    // Reset every key. The old version omitted search / recurrence_types /
+    // assigned_*, which left them undefined and flipped the search box to an
+    // uncontrolled input after each Reset.
+    setFilters({ ...DEFAULT_FILTERS });
+
+    // force re-render of filter controls
+    setFilterKey(k => k + 1);
+  };
+
+
+  /* FORM */
+const emptyTask = {
+  id: null,
+  title: "",
+  owner_id: "",        // single-owner (used for editing existing rows)
+  owner: "",           // single-owner label (used for editing)
+  owner_ids: [],       // ✅ NEW — multi-owner selection (used on create)
+  team: "",
+  requester: "",
+  status: "",
+  recurrence_type: "Non-Recurring",
+  assigned_date: "",
+  initial_deadline: "",
+  new_deadline: "",
+  closing_date: "",
+  comments: ""
+};
+
+
+  const [form, setForm] = useState(emptyTask);
+  const [isEditing, setIsEditing] = useState(false);
+
+    /*RECURRENCE ENGINE*/
+      const {
+      recurrence,
+      setRecurrence,
+      occurrences,
+      isValid
+    } = useRecurrenceEngine({
+      startDate: form.initial_deadline
+    });
+
+  /* LOAD DATA */
+
+  
+    const loadOwners = async () => {
+      if (!user) return;
+    
+      let q = supabase
+        .from("profiles")
+        .select("id, owner_label, team")
+        .order("owner_label");
+    
+      // 👤 USER → only themselves
+      if (role === "user") {
+        q = q.eq("id", user.id);
+      }
+    
+      // 👔 MANAGER → only their team
+      if (role === "manager") {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("team")
+          .eq("id", user.id)
+          .maybeSingle();
+    
+        if (myProfile?.team) {
+          q = q.eq("team", myProfile.team);
+        }
+      }
+    
+      const { data, error } = await q;
+    
+      if (!error) {
+        setOwners(data || []);
+      }
+    };
+
+    
+    useEffect(() => {
+      loadOwners();
+    }, [user, role]);
+
+
+  /* ----------------------------------
+     ASSIGNMENT CONTEXT
+
+     The exact same inputs TaskForm hands to its owner dropdowns, so the
+     guard in saveTask() and the guard in the UI can never drift apart.
+     The policy itself lives in utils/ownerAssignment.
+  ---------------------------------- */
   const assignCtx = useMemo(
     () => ({ owners, permissions, role, user, myTeam }),
     [owners, permissions, role, user, myTeam]
   );
 
-  /* -------- KEEP MONTHLY "DAY OF MONTH" IN SYNC WITH DEADLINE --------
-     monthly.day is otherwise snapshotted only at the moment "Monthly" (or
-     the "Same day each month" radio) is picked. If the Initial deadline is
-     empty then — or is changed afterward — the day goes stale (NaN/null).
-     That breaks two things:
-       1) the local occurrence engine generates zero occurrences, and
-       2) recurrence_rule is saved with "day": null, so the monthly cron
-          (computeNextOccurrence) bails out and the series never rolls.
-     This effect re-derives the day from the deadline whenever it changes. */
+
+  /* SEED THE OWNER FOR PEOPLE WHO CAN ONLY EVER PICK THEMSELVES.
+     Two changes from the old version:
+       • scoped to SELF — managers may now pick teammates, so pinning them
+         to themselves would fight their own dropdown;
+       • skipped while editing — this effect re-runs on every `owners`
+         refresh, and mid-edit that silently snapped the owner back to the
+         actor, undoing a reassignment before it was ever saved. */
   useEffect(() => {
-    if (
-      !recurrence.enabled ||
-      recurrence.frequency !== "monthly" ||
-      recurrence.monthly?.type !== "day_of_month"
-    ) {
-      return;
-    }
+    if (!user || isEditing) return;
+    if (ownerScopeFor(assignCtx) !== OWNER_SCOPE.SELF) return;
 
-    const day = dayFromISO(form.initial_deadline);
-    if (day && day !== recurrence.monthly.day) {
-      setRecurrence(r => ({
-        ...r,
-        monthly: { ...r.monthly, day }
-      }));
-    }
-  }, [
-    form.initial_deadline,
-    recurrence.enabled,
-    recurrence.frequency,
-    recurrence.monthly?.type,
-    recurrence.monthly?.day,
-    setRecurrence
-  ]);
-
-  /* -------- OWNER CHANGE HANDLER (CREATE / multi) --------
-     Maintains both the multi-value field (owner_ids) AND the legacy
-     single-owner fields (owner / owner_id / team) off the FIRST
-     selection so any downstream code that still reads them keeps
-     working (validation, recurrence engine, etc.).
-
-     Team now comes from teamForAssignment(), which follows the OWNER
-     for admins and stays locked to the actor's own team otherwise. The
-     old expression (`role === "manager" ? first.team : myTeam`) had the
-     admin branch backwards — it stamped the admin's own team on a task
-     being created for someone else. */
-  const handleOwnerIdsChange = ids => {
-    // Defensive: never let a non-assignable id through, even if a
-    // checkbox somehow fired while disabled.
-    const allowed = ids.filter(id => canAssignTo(id, assignCtx));
-
-    const first = allowed[0]
-      ? owners.find(o => o.id === allowed[0])
-      : null;
+    const currentOwner = owners.find(o => o.id === user.id);
 
     setForm(f => ({
       ...f,
-      owner_ids: allowed,
-      owner_id: first?.id || "",
-      owner: first?.owner_label || "",
-      team: first ? teamForAssignment(first, assignCtx, f.team) : ""
+      owner_id: user.id,
+      owner: currentOwner?.owner_label || "",
+      owner_ids: [user.id]
     }));
+  }, [user, isEditing, assignCtx, owners]);
+
+  
+  /* FILTER + TODAY LOGIC */
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(t => {
+
+       if (filters.search &&
+        !t.title.toLowerCase().includes(filters.search.toLowerCase()))
+        return false;
+
+      if (filters.owners.length && !filters.owners.includes(t.owner))
+        return false;
+       
+      if (filters.teams.length && !filters.teams.includes(t.team))
+        return false;
+
+      if (  filters.requesters.length &&  !filters.requesters.includes(t.requester)) 
+        return false;
+
+      /* CREATED BY — matches on creator_name from the tasks_with_creator view */
+      const selectedCreators = filters.creators || [];
+      if (selectedCreators.length && !selectedCreators.includes(t.creator_name))
+        return false;
+
+      if (filters.statuses.length && !filters.statuses.includes(t.status))
+        return false;
+
+
+      const deadline = t.new_deadline || t.initial_deadline;
+
+      if (filters.deadline_from && deadline < filters.deadline_from)
+        return false;
+
+      if (filters.deadline_to && deadline > filters.deadline_to)
+        return false;
+
+      const closing = t.closing_date;
+
+      if (filters.closing_from && (!closing || closing < filters.closing_from))
+        return false;
+
+      if (filters.closing_to && (!closing || closing > filters.closing_to))
+        return false;
+
+
+      if (filters.today) {
+        const today = new Date().toISOString().slice(0, 10);
+        if (deadline !== today) return false;
+      }
+
+      return true;
+    });
+  }, [tasks, filters]);
+
+  /* CREATED-BY OPTIONS
+     Derived from the rows actually loaded, so the list automatically respects
+     RLS — you only ever see creators whose tasks you're allowed to read.
+     Currently-selected values are folded back in so a selection can never
+     disappear from the list when another filter narrows the result set. */
+  const creatorOptions = useMemo(() => {
+    const names = new Set();
+
+    tasks.forEach(t => {
+      if (t.creator_name) names.add(t.creator_name);
+    });
+
+    (filters.creators || []).forEach(c => names.add(c));
+
+    return [...names].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" })
+    );
+  }, [tasks, filters.creators]);
+
+  /* SORTING LOGIC */
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: null
+  });
+
+  const sortedTasks = useMemo(() => {
+    const { key, direction } = sortConfig;
+    if (!key || !direction) return filteredTasks;
+
+    const dir = direction === "asc" ? 1 : -1;
+
+    const valueOf = t => {
+      const v = t?.[key];
+      return v === undefined || v === null ? "" : v;
+    };
+
+    return [...filteredTasks].sort((a, b) => {
+      const aV = valueOf(a);
+      const bV = valueOf(b);
+
+      // Blanks sink to the bottom in BOTH directions, so flipping the arrow
+      // never buries the populated rows under a wall of empty cells.
+      const aBlank = aV === "";
+      const bBlank = bV === "";
+      if (aBlank && bBlank) return 0;
+      if (aBlank) return 1;
+      if (bBlank) return -1;
+
+      let cmp;
+
+      if (DATE_KEYS.includes(key)) {
+        cmp = aV < bV ? -1 : aV > bV ? 1 : 0;
+      } else if (typeof aV === "number" && typeof bV === "number") {
+        cmp = aV - bV;
+      } else {
+        // Case- and accent-insensitive, and — unlike `>` — returns 0 on a tie.
+        cmp = String(aV).localeCompare(String(bV), undefined, {
+          sensitivity: "base",
+          numeric: true
+        });
+      }
+
+      if (cmp !== 0) return cmp * dir;
+
+      // Deterministic tie-break so equal values hold a stable order instead of
+      // being reshuffled on every re-render.
+      return String(a.id).localeCompare(String(b.id));
+    });
+  }, [filteredTasks, sortConfig]);
+
+  const requestSort = key => {
+    setSortConfig(prev =>
+      prev.key === key
+        ? prev.direction === "asc"
+          ? { key, direction: "desc" }
+          : prev.direction === "desc"
+          ? { key: null, direction: null }
+          : { key, direction: "asc" }
+        : { key, direction: "asc" }
+    );
   };
 
-  /* -------- EDIT MODE: single-owner change --------
-     Edit form keeps the original native <select> behaviour so one task
-     can be reassigned without falling into multi-select UX.
+  const arrow = key => {
+    if (sortConfig.key !== key || !sortConfig.direction) return "";
+    return sortConfig.direction === "asc" ? " ↑" : " ↓";
+  };
 
-     Reassignment is now open to managers within their own team, not
-     just manage_users holders. The write side (Tasks.jsx) re-checks
-     with the same helper and actually persists owner_id — previously
-     it dropped it, so only the display label moved and the row stayed
-     invisible to its new owner. */
-  const handleSingleOwnerChange = e => {
-    const selectedOwnerId = e.target.value;
+  // 🔥 INFINITE SCROLL
+useEffect(() => {
+  const handleScroll = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop + 200 >=
+      document.documentElement.offsetHeight
+    ) {
+      if (!loading && hasMore) {
+        loadMore();
+      }
+    }
+  };
 
-    if (!selectedOwnerId) {
-      setForm(f => ({ ...f, owner_id: "", owner: "", owner_ids: [] }));
+  window.addEventListener("scroll", handleScroll);
+  return () => window.removeEventListener("scroll", handleScroll);
+}, [loading, hasMore, loadMore]);
+
+  
+  /* ----------------------------------
+     RE-POINT A SERIES AFTER A CADENCE CHANGE
+
+     Exactly one row per series is the "head": the one carrying a non-null
+     next_occurrence_date. The cron reads that pointer, materialises the
+     occurrence, then advances it. Change the frequency and the rule updates
+     everywhere, but the pointer still sits on the old schedule.
+
+     `occurrences` comes from useRecurrenceEngine and already reflects the
+     frequency / weekdays / monthly rule currently shown in the form, across
+     the From→To window in the "Repeat on" box — so no recurrence maths is
+     duplicated here.
+  ---------------------------------- */
+  const repointSeriesHead = async groupId => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const nextDate = (occurrences || []).find(d => d > today) || null;
+
+    if (!nextDate) {
+      alert(
+        "The new frequency was saved, but the schedule has no dates left in " +
+        "the future.\n\nExtend the 'To' date in the Repeat on box past today " +
+        "and save again — otherwise no new occurrences will be generated."
+      );
       return;
     }
 
-    if (!canAssignTo(selectedOwnerId, assignCtx)) {
+    const { data: head, error: headErr } = await supabase
+      .from("tasks")
+      .select("id, next_occurrence_date")
+      .eq("recurrence_group_id", groupId)
+      .not("next_occurrence_date", "is", null)
+      .limit(1);
+
+    if (headErr) {
+      console.warn("Could not locate series head:", headErr);
+      return;
+    }
+
+    // No head means the series has already run its course — nothing to move.
+    if (!head?.length) return;
+
+    if (head[0].next_occurrence_date === nextDate) return;
+
+    const { error: ptrErr } = await supabase
+      .from("tasks")
+      .update({ next_occurrence_date: nextDate })
+      .eq("id", head[0].id);
+
+    if (ptrErr) {
+      console.warn("Could not re-point series head:", ptrErr);
+    }
+  };
+
+
+  /* SAVE TASK */
+  const saveTask = async () => {
+  if (isSubmitting) return;
+
+  // =========================
+  // ✅ VALIDATION (OUTSIDE TRY)
+  // =========================
+  if (!user) {
+    alert("Authentication error. Please login again.");
+    return;
+  }
+
+  // Common required fields (owner is checked separately below)
+  if (
+    !form.title ||
+    !form.requester ||
+    !form.assigned_date ||
+    !form.initial_deadline
+  ) {
+    alert("Please fill all required fields");
+    return;
+  }
+
+  // ✅ Owner validation differs between CREATE and EDIT
+  if (isEditing) {
+    if (!form.owner || !form.owner_id) {
+      alert("Please select an owner");
+      return;
+    }
+  } else {
+    if (!form.owner_ids || form.owner_ids.length === 0) {
+      alert("Please select at least one owner");
+      return;
+    }
+  }
+
+  if (form.closing_date && role !== "admin") {
+    const today = new Date();
+    const minAllowedDate = new Date();
+    minAllowedDate.setDate(today.getDate() - 100);
+
+    const minDateStr = minAllowedDate.toISOString().slice(0, 10);
+
+    if (form.closing_date < minDateStr) {
+      alert(
+        `Only admins can set a closing date earlier than ${minDateStr}`
+      );
+      return;
+    }
+  }
+
+  if (recurrence.enabled && !isValid) {
+    alert("Invalid recurrence settings");
+    return;
+  }
+
+  // ✅ Permission guard — ONE rule, shared with the form's dropdowns.
+  //    Admins: anyone. Managers: their own team. Everyone else: themselves.
+  //    This is the UX layer; the server-side backstop for a *new* owner_id
+  //    (a BEFORE UPDATE OF owner_id trigger) is still outstanding.
+  if (isEditing) {
+    if (!canAssignTo(form.owner_id, assignCtx)) {
       alert(assignmentDeniedMessage(assignCtx));
       return;
     }
+  } else {
+    const denied = (form.owner_ids || []).filter(
+      id => !canAssignTo(id, assignCtx)
+    );
 
-    const selectedOwner = owners.find(o => o.id === selectedOwnerId);
-    if (!selectedOwner) return;
+    if (denied.length) {
+      alert(assignmentDeniedMessage(assignCtx));
+      return;
+    }
+  }
 
-    setForm(f => ({
-      ...f,
-      owner_id: selectedOwnerId,
-      owner: selectedOwner.owner_label,
-      owner_ids: [selectedOwnerId],
-      team: teamForAssignment(selectedOwner, assignCtx, f.team)
-    }));
-  };
+  const normalizedClosingDate =
+    form.closing_date === "" ? null : form.closing_date;
 
-  return (
-      <div style={{ ...formBox, ...dark }}>
-        <h2>{isEditing ? "Edit Task" : "New Task"}</h2>
-      {/* NEW / EDIT TASK FORM */}
-        {/* 1 ROW LAYOUT */}
-        <div
+  // =========================
+  // 🚀 START LOADING
+  // =========================
+  setIsSubmitting(true);
+
+  try {
+    // =========================
+    // 📦 BASE PAYLOAD (owner/team set per-row below on create,
+    //                  or from form on edit)
+    // =========================
+    const basePayload = {
+      title: form.title,
+      created_by: user.id,
+      requester: form.requester,
+      recurrence_type: recurrence.enabled
+        ? recurrence.frequency
+        : "Non-Recurring",
+      recurrence_rule: recurrence.enabled
+        ? JSON.stringify({
+            frequency: recurrence.frequency,
+            ...(recurrence.frequency === "weekly" ||
+            recurrence.frequency === "biweekly"
+              ? { weekdays: recurrence.weekly.weekdays }
+              : recurrence.monthly)
+          })
+        : null,
+      assigned_date: form.assigned_date,
+      initial_deadline: form.initial_deadline,
+      new_deadline: form.new_deadline || null,
+      closing_date: normalizedClosingDate,
+      comments: form.comments || null
+    };
+
+    // =========================
+    // ✏️ UPDATE (single-owner edit)
+    // =========================
+    if (isEditing) {
+      const selectedOwner = owners.find(o => o.id === form.owner_id);
+
+      const updatePayload = {
+        ...basePayload,
+
+        // owner_id is the column every RLS policy keys off. Writing only the
+        // `owner` label left it pointing at the previous owner, so a
+        // reassigned task LOOKED moved in the table while staying invisible —
+        // and uneditable — for the person it was supposedly moved to.
+        owner_id: form.owner_id,
+        owner: form.owner,
+
+        // Team follows the OWNER for admins; stays locked to the actor's own
+        // team for everyone else. The old expression used form.team for
+        // admins, which handleSingleOwnerChange had set to the ADMIN's team
+        // rather than the new owner's.
+        team: teamForAssignment(selectedOwner, assignCtx, form.team)
+      };
+
+      // An edit must never re-stamp the creator. basePayload sets created_by
+      // for the CREATE path; leaving it in here rewrote "Created By" to
+      // whoever last touched the task (and, on a series edit, across every
+      // occurrence at once).
+      delete updatePayload.created_by;
+
+      // ---------------------------------------------------------------
+      // 🛡️ COLLISION PRE-CHECK
+      // Catch a date clash with a sibling occurrence BEFORE Postgres does,
+      // so the user gets a sentence instead of a constraint name.
+      // ---------------------------------------------------------------
+      if (form.recurrence_group_id && form.initial_deadline) {
+        const { data: clash, error: clashErr } = await supabase
+          .from("tasks")
+          .select("id")
+          .eq("recurrence_group_id", form.recurrence_group_id)
+          .eq("initial_deadline", form.initial_deadline)
+          .neq("id", form.id)
+          .limit(1);
+
+        // A failed check is not a failed save — fall through and let the
+        // database have the final word (friendlyDbError handles it).
+        if (!clashErr && clash?.length) {
+          throw new Error(
+            `Another occurrence of this recurring series already falls on ` +
+            `${form.initial_deadline}. Two occurrences of the same series ` +
+            `can't share an initial deadline — pick a different date, or ` +
+            `edit that occurrence directly.`
+          );
+        }
+      }
+
+      if (editSeries && form.recurrence_group_id) {
+        // -------------------------------------------------------------
+        // SERIES-WIDE FIELDS
+        // Everything that is genuinely shared by every occurrence.
+        // The date fields are stripped: writing one date onto N rows
+        // violates tasks_series_occurrence_uniq the moment N > 1.
+        // -------------------------------------------------------------
+        const seriesPayload = { ...updatePayload };
+        OCCURRENCE_FIELDS.forEach(k => delete seriesPayload[k]);
+
+        // .select() is not cosmetic: an UPDATE that RLS refuses comes back
+        // with NO error and NO rows, so without it the UI cheerfully reports
+        // success while nothing moved — the same silent-failure class as the
+        // dropped owner_id.
+        const { data: seriesRows, error: seriesErr } = await supabase
+          .from("tasks")
+          .update(seriesPayload)
+          .eq("recurrence_group_id", form.recurrence_group_id)
+          .select("id");
+
+        if (seriesErr) throw seriesErr;
+
+        if (!seriesRows?.length) {
+          throw new Error(
+            "Nothing was updated — the database refused the write. You may " +
+            "not have permission to edit this series."
+          );
+        }
+
+        // -------------------------------------------------------------
+        // PER-OCCURRENCE FIELDS
+        // The dates on screen belong to the row the user actually opened.
+        // -------------------------------------------------------------
+        const occurrencePayload = {};
+        OCCURRENCE_FIELDS.forEach(k => {
+          occurrencePayload[k] = updatePayload[k];
+        });
+
+        const { data: rowRows, error: rowErr } = await supabase
+          .from("tasks")
+          .update(occurrencePayload)
+          .eq("id", form.id)
+          .select("id");
+
+        if (rowErr) throw rowErr;
+
+        if (!rowRows?.length) {
+          throw new Error(
+            "The series was updated, but this occurrence's dates were not — " +
+            "the database refused that write."
+          );
+        }
+
+        // -------------------------------------------------------------
+        // CADENCE CHANGE → move the series pointer
+        // The rule now says "biweekly" on every row, but the head row's
+        // next_occurrence_date still points at the old rhythm, so the cron
+        // would keep firing weekly. Only re-point when the rule really
+        // changed — re-pointing on an unrelated edit could skip an
+        // occurrence the cron hasn't generated yet.
+        // -------------------------------------------------------------
+        const cadenceChanged =
+          form.recurrence_type !== updatePayload.recurrence_type ||
+          ruleSignature(form.recurrence_rule) !==
+            ruleSignature(updatePayload.recurrence_rule);
+
+        if (cadenceChanged) {
+          await repointSeriesHead(form.recurrence_group_id);
+        }
+
+      } else {
+        const { data: updated, error } = await supabase
+          .from("tasks")
+          .update(updatePayload)
+          .eq("id", form.id)
+          .select("id");
+
+        if (error) throw error;
+
+        if (!updated?.length) {
+          throw new Error(
+            "Nothing was updated — the database refused the write. You may " +
+            "not have permission to edit this task."
+          );
+        }
+      }
+    }
+
+    // =========================
+    // ➕ CREATE — fan out one task row per selected owner
+    // =========================
+    else {
+      let createdCount = 0;
+
+      for (const ownerId of form.owner_ids) {
+        const ownerProfile = owners.find(o => o.id === ownerId);
+        if (!ownerProfile) continue;
+
+        // Team for THIS owner. Same helper the edit path and the form use, so
+        // a task created for someone lands on the same team it would land on
+        // if it were reassigned to them instead.
+        const ownerTeam = teamForAssignment(ownerProfile, assignCtx);
+
+        const ownerPayload = {
+          ...basePayload,
+          owner: ownerProfile.owner_label,
+          owner_id: ownerId,
+          team: ownerTeam
+        };
+
+        if (!recurrence.enabled) {
+          // SINGLE TASK (per owner)
+          const { error } = await supabase
+            .from("tasks")
+            .insert(ownerPayload);
+
+          if (error) throw error;
+
+          // 📧 EMAIL (non-blocking, per owner)
+          try {
+            await supabase.functions.invoke("send-task-email", {
+              body: {
+                task: ownerPayload,
+                creator_id: user.id
+              }
+            });
+          } catch (emailErr) {
+            console.warn("Email failed (non-blocking):", emailErr);
+          }
+        } else {
+          // 🔁 RECURRING TASK (per owner — independent series)
+          if (!recurrence.startDate || !recurrence.endDate) {
+            throw new Error("Missing recurrence date range");
+          }
+          if (!occurrences.length) {
+            throw new Error("No occurrences generated");
+          }
+
+          const firstDate = occurrences[0];
+          const nextDate = occurrences[1] || null;
+
+          const recurringPayload = {
+            ...ownerPayload,
+            initial_deadline: firstDate,
+            next_occurrence_date: nextDate,
+            recurrence_group_id: crypto.randomUUID()  // own series per owner
+          };
+
+          const { error } = await supabase
+            .from("tasks")
+            .insert(recurringPayload);
+
+          if (error) throw error;
+        }
+
+        createdCount++;
+      }
+
+      if (createdCount === 0) {
+        throw new Error("No tasks were created. Please check your selection.");
+      }
+
+      if (createdCount > 1) {
+        // Friendly heads-up only when fan-out actually happened
+        console.log(`✅ Created ${createdCount} tasks`);
+      }
+    }
+
+    // =========================
+    // ✅ SUCCESS CLEANUP
+    // =========================
+    setForm(emptyTask);
+    setIsEditing(false);
+    await reload();
+
+  } catch (err) {
+    console.error("❌ saveTask error:", err);
+    alert(friendlyDbError(err));
+
+  } finally {
+    // =========================
+    // 🔁 ALWAYS RESET
+    // =========================
+    setIsSubmitting(false);
+  }
+};
+
+  /* DELETE TASK */
+    const deleteTask = async (task, deleteFuture = false) => {
+      if (!window.confirm("Confirm delete?")) return;
+    
+      if (deleteFuture && task.recurrence_group_id) {
+        const cutoff = task.new_deadline || task.initial_deadline;
+    
+        const { error } = await supabase
+          .from("tasks")
+          .delete()
+          .eq("recurrence_group_id", task.recurrence_group_id)
+          .gte("initial_deadline", cutoff);
+    
+        if (error) {
+          alert("Failed to delete future occurrences");
+          return;
+        }
+      } else {
+        await supabase.from("tasks").delete().eq("id", task.id);
+      }
+    
+      await reload();
+    };
+
+
+
+  const editTask = (task, editSeries = false) => {
+
+  const normalized = normalizeTaskDates(task);
+
+  setForm({
+    ...normalized,
+    comments: task.comments || "",
+    owner_ids: task.owner_id ? [task.owner_id] : []   // ✅ NEW — single-owner on edit
+  });
+
+  // ✅ Restore recurrence state
+  if (task.recurrence_type && task.recurrence_type !== "Non-Recurring") {
+
+    let parsedRule = null;
+
+    try {
+      parsedRule = task.recurrence_rule
+        ? JSON.parse(task.recurrence_rule)
+        : null;
+    } catch (e) {
+      console.error("Failed to parse recurrence_rule:", e);
+    }
+
+    setRecurrence({
+      enabled: true,
+      frequency: task.recurrence_type,
+      weekly: {
+        weekdays: parsedRule?.weekdays || []
+      },
+      monthly: parsedRule?.frequency === "monthly"
+        ? parsedRule
+        : null,
+      startDate: task.initial_deadline || "",
+      // Leaf occurrences (generated by the cron) carry next_occurrence_date
+      // NULL. Seeding endDate from it left the "To" box empty, which made
+      // isValid false and blocked the save with "Invalid recurrence settings".
+      // Falling back to this row's own deadline keeps the form valid; the user
+      // extends it only when they actually want to reshape the schedule.
+      endDate: task.next_occurrence_date || task.initial_deadline || ""
+    });
+
+  } else {
+    // Non-recurring
+    setRecurrence({
+      enabled: false,
+      frequency: "weekly",
+      weekly: { weekdays: [] },
+      monthly: null,
+      startDate: "",
+      endDate: ""
+    });
+  }
+
+  setIsEditing(true);
+  setEditSeries(editSeries);
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+
+  /* ----------------------------------
+     RENDER
+  ---------------------------------- */
+return (
+  <div style={{ padding: 20, ...dark }}>
+
+    {/* STICKY BAR */}
+    <div style={stickyBar(darkMode)}>
+     
+
+      <div style={{ paddingTop: 10 }}>
+        <button
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(9, 1fr)",
-            gap: 20,
-            width: "100%",
-            alignItems: "end"
+            padding: "8px 16px",
+            borderRadius: 6,
+            border: "none",
+            background: "#444",
+            color: "white",
+            cursor: "pointer"
           }}
+          onClick={toggleDarkMode}
         >
-          {/* ROW 1 */}
-          <label style={formLabel}>
-            Title *
-            <input
-              style={formInput}
-              value={form.title}
-              onChange={e =>
-                setForm(f => ({ ...f, title: e.target.value }))
-              }
-            />
-          </label>
-
-          <label style={formLabel}>
-            Assigned date *
-            <input
-              type="date"
-              style={formInput}
-              value={form.assigned_date}
-              onChange={e =>
-                setForm(f => ({ ...f, assigned_date: e.target.value }))
-              }
-            />
-          </label>
-
-          
-          {/* ============= OWNER ============= */}
-          <label style={formLabel}>
-            {isEditing ? "Owner *" : "Owner(s) *"}
-
-            {isEditing ? (
-              // EDIT MODE — single native select.
-              // Options the actor can't assign to are disabled rather
-              // than hidden, so the current owner of a task still
-              // renders correctly even if they're out of scope.
-              <select
-                style={{ ...formInput, appearance: "none" }}
-                value={form.owner_id || ""}
-                onChange={handleSingleOwnerChange}
-              >
-                <option value="">Select owner</option>
-                {owners.map(o => {
-                  const lockedOut =
-                    !canAssignTo(o.id, assignCtx) && o.id !== form.owner_id;
-
-                  return (
-                    <option
-                      key={o.id}
-                      value={o.id}
-                      disabled={lockedOut}
-                    >
-                      {o.owner_label}
-                    </option>
-                  );
-                })}
-              </select>
-            ) : (
-              // CREATE MODE — multi-checkbox dropdown
-              <OwnerMultiDropdown
-                owners={owners}
-                selectedIds={form.owner_ids || []}
-                onChange={handleOwnerIdsChange}
-                assignCtx={assignCtx}
-                dark={dark}
-              />
-            )}
-          </label>
-
-
-          <label style={formLabel}>
-            Requester *
-            <select
-              style={formInput}
-              value={form.requester}
-              required
-              onChange={e =>
-                setForm(f => ({
-                  ...f,
-                  requester: e.target.value,
-                  requester_other:
-                    e.target.value === "OTHER" ? f.requester_other : ""
-                }))
-              }
-            >
-              <option value="">Select requester</option>
-              {REQUESTERS.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-            </label>
-
-
-          <label style={formLabel}>
-            Initial deadline *
-            <input
-              type="date"
-              style={formInput}
-              value={form.initial_deadline}
-              onChange={e =>
-                setForm(f => ({
-                  ...f,
-                  initial_deadline: e.target.value
-                }))
-              }
-            />
-          </label>
-      
-
-          <label style={formLabel}>
-            New deadline
-            <input
-              type="date"
-              style={formInput}
-              value={form.new_deadline}
-              onChange={e =>
-                setForm(f => ({ ...f, new_deadline: e.target.value }))
-              }
-            />
-          </label>
-
-              
-
-
-          
-          <label style={formLabel}>
-          <input
-            type="checkbox"
-            checked={recurrence.enabled}
-            onChange={e =>
-              setRecurrence(r => ({
-                ...r,
-                enabled: e.target.checked
-              }))
-            }
-          />  
-          Recurring task
-        </label>
-
-             {/* RECURRENCE FREQUENCY */}
-              {recurrence.enabled && (
-                <label style={formLabel}>
-                  Recurrence frequency
-                  <select
-                    style={formInput}
-                    value={recurrence.frequency}
-                      onChange={e =>
-                        setRecurrence(r => ({
-                          ...r,
-                          frequency: e.target.value,
-                          weekly: { weekdays: [] },
-                          monthly:
-                            e.target.value === "monthly"
-                              ? {
-                                  type: "day_of_month",
-                                  day: dayFromISO(form.initial_deadline)
-                                }
-                              : null
-                        }))
-                      }
-
-                  >
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Bi-weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </label>
-              )}
-
-          
-          {/* ================= MONTHLY RECURRENCE BLOCK ================= */}
-                {recurrence.enabled && recurrence.frequency === "monthly" && (
-                  <div
-                    style={{
-                      gridColumn: "span 9",
-                      padding: 12,
-                      border: "1px dashed #999",
-                      borderRadius: 6
-                    }}
-                  >
-                    {/* Monthly rule selector (nth weekday / last weekday / day of month) */}
-                      <MonthlyRuleSelector
-                        value={recurrence.monthly}
-                        baseDate={form.initial_deadline}
-                        onChange={rule =>
-                          setRecurrence(r => ({
-                            ...r,
-                            monthly: rule
-                          }))
-                        }
-                      />
-
-                
-                    {/* Date range for monthly recurrence */}
-                    <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-                      <label>
-                        From
-                        <input
-                          type="date"
-                          value={recurrence.startDate}
-                          onChange={e =>
-                            setRecurrence(r => ({
-                              ...r,
-                              startDate: e.target.value
-                            }))
-                          }
-                        />
-                      </label>
-                
-                      <label>
-                        To
-                        <input
-                          type="date"
-                          value={recurrence.endDate}
-                          onChange={e =>
-                            setRecurrence(r => ({
-                              ...r,
-                              endDate: e.target.value
-                            }))
-                          }
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
-  {/* ================= END MONTHLY RECURRENCE BLOCK ================= */}
-
-
-
-          { /*  START WEEKLY/BIWEEKLY FREQUENCY SELECTOR BLOCK   */}
-        {recurrence.enabled && (recurrence.frequency === "weekly" || recurrence.frequency === "biweekly") && (
-
-          <div
-            style={{
-              gridColumn: "span 9",
-              padding: 12,
-              border: "1px dashed #999",
-              borderRadius: 6
-            }}
-          >
-            <div style={{ marginBottom: 10, fontWeight: 700 }}>             
-                            
-              Repeat on
-            </div>
-        
-            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-              {WEEKDAYS.map(d => (
-                <label key={d.value}>
-                  <input
-                    type="checkbox"
-                    checked={recurrence.weekly.weekdays.includes(d.value)}
-
-                    onChange={() =>
-                      setRecurrence(r => ({
-                        ...r,
-                        weekly: {
-                          ...r.weekly,
-                          weekdays: r.weekly.weekdays.includes(d.value)
-                            ? r.weekly.weekdays.filter(x => x !== d.value)
-                            : [...r.weekly.weekdays, d.value]
-                        }
-                      }))
-                    }
-
-                    
-                  />
-                  {d.label}
-                </label>
-              ))}
-            </div>
-        
-            <div style={{ display: "flex", gap: 12 }}>
-              <label>
-                From
-                <input
-                  type="date"
-                    value={recurrence.startDate}
-                    onChange={e =>
-                      setRecurrence(r => ({
-                        ...r,
-                        startDate: e.target.value
-                      }))
-                    }
-
-                />
-              </label>
-        
-              <label>
-                To
-                <input
-                  type="date"
-                    value={recurrence.endDate}
-                    onChange={e =>
-                      setRecurrence(r => ({
-                        ...r,
-                        endDate: e.target.value
-                      }))
-                    }
-
-                />
-              </label>
-            </div>
-          </div>
-        )}             
-          
-          <label style={formLabel}>
-            Closing Date
-            <input
-              type="date"
-              style={formInput}
-              value={form.closing_date || ""}
-              min={
-                role?.toLowerCase() !== "admin"
-                  ? new Date(Date.now() - 100 * 24 * 60 * 60 * 1000)
-                      .toISOString()
-                      .slice(0, 10)
-                  : undefined
-              }
-              onChange={e =>
-                setForm(f => ({ ...f, closing_date: e.target.value }))
-              }
-            />
-          </label>
-          
-          <label style={formLabel}>
-            Comments
-           <textarea
-             style={{
-               ...formInput,
-               minHeight: 30,
-               resize: "both"
-             }}
-             value={form.comments}
-             onChange={e =>
-               setForm(f => ({ ...f, comments: e.target.value }))
-             }
-             placeholder="Type your comment here…"
-           />
-         </label>
-
-        </div>
-
-          <button
-          onClick={saveTask}
-          disabled={isSubmitting}
-          style={{
-            marginTop: 10,
-            opacity: isSubmitting ? 0.6 : 1,
-            cursor: isSubmitting ? "not-allowed" : "pointer"
-          }}
-        >
-          {isSubmitting
-            ? (isEditing ? "Updating..." : "Creating...")
-            : isEditing
-            ? "Update Task"
-            : (form.owner_ids?.length > 1
-                ? `Create ${form.owner_ids.length} Tasks`
-                : "Create Task")}
+          {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
         </button>
+      </div>
+    </div>
+
+    <h1>Tasks</h1>
+
+    
+    <TaskForm
+      form={form}
+      setForm={setForm}
+      owners={owners}
+      permissions={permissions}
+      user={user}
+      role={role}
+      myTeam={myTeam}
+      recurrence={recurrence}
+      setRecurrence={setRecurrence}
+      isEditing={isEditing}
+      isSubmitting={isSubmitting}
+      saveTask={saveTask}
+      WEEKDAYS={WEEKDAYS}
+      dark={dark}
+    />
+
+
+      {/* EXISTING TASKS */}
+      <h2 style={{ marginTop: 100 }}>EXISTING TASKS</h2>
+
+      {status && (
+      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
+      📊 Filtered from chart
+      </div>)}
+
+    {/* FILTER BAR */}
+    <TaskFilters
+      filterKey={filterKey}
+      filters={filters}
+      setFilters={setFilters}
+      owners={owners}
+      creatorOptions={creatorOptions}
+      TEAMS={TEAMS}
+      REQUESTERS={REQUESTERS}
+      STATUSES={STATUSES}
+      resetTableFilters={resetTableFilters}
+      />
+
+      {/* TASK TABLE */}
+     <TaskTable
+      loading={loading}
+      sortedTasks={sortedTasks}
+      requestSort={requestSort}
+      arrow={arrow}
+      editTask={editTask}
+      deleteTask={deleteTask}
+      darkMode={darkMode}
+      dark={dark}
+      STATUS_COLORS={STATUS_COLORS}
+      table={table}
+      th={th}
+      td={td}
+    />
     </div>
   );
 }
-
-
-
 
 /* ----------------------------------
    STYLES
@@ -748,4 +1136,57 @@ const formInput = {
   borderRadius: 4,
   height: 36,
   boxSizing: "border-box"
+};
+
+
+const filterBar = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+  marginBottom: 20
+};
+
+const table = dark => ({
+  width: "100%",
+  borderCollapse: "collapse",
+  tableLayout: "fixed",
+  background: dark ? "#111" : "white"
+});
+
+
+const th = dark => ({
+  border: dark ? "1px solid #333" : "1px solid #D1D5DB",
+  padding: 8,
+  background: dark ? "#111" : "#F3F4F6",
+  textAlign: "center",
+  cursor: "pointer",
+  fontWeight: 700,
+  userSelect: "none"
+});
+
+const td = dark => ({
+  border: dark ? "1px solid #333" : "1px solid #D1D5DB",
+  padding: 8,
+  textAlign: "center",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  verticalAlign: "top"
+});
+
+
+const stickyBar = dark => ({
+  position: "sticky",
+  top: 70,
+  zIndex: 10,
+  background: dark ? "#000" : "#fff",
+  paddingBottom: 10,
+  marginBottom: 20
+});
+
+const filterItem = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 13,
+  fontWeight: 600
 };
