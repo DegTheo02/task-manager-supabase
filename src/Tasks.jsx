@@ -8,12 +8,14 @@ import TaskForm from "./components/tasks/TaskForm";
 import TaskFilters from "./components/tasks/TaskFilters";
 import TaskTable from "./components/tasks/TaskTable";
 import { useTasks } from "./hooks/useTasks";
+
+/* Shared assignment policy — the SAME module TaskForm.jsx uses to gate the
+   dropdowns. Importing it here is the whole point: the form and the write
+   must answer "may this person own this task?" from one implementation. */
 import {
-  OWNER_SCOPE,
-  ownerScopeFor,
   canAssignTo,
-  assignmentDeniedMessage,
-  teamForAssignment
+  teamForAssignment,
+  assignmentDeniedMessage
 } from "./utils/ownerAssignment";
 
 
@@ -24,6 +26,7 @@ import {
   OWNERS,
   TEAMS,
   STATUS_COLORS,
+  OWNER_TEAM_MAP,
   RECURRENCE_TYPES,
   REQUESTERS
 } from "./constants/taskConstants";
@@ -117,7 +120,32 @@ const friendlyDbError = err => {
     );
   }
 
+  /* 42501 = new row violates row-level security policy.
+     The UPDATE policy on tasks has no WITH CHECK clause, so Postgres reuses
+     the USING expression against the NEW row. Reassigning a task to someone
+     the caller can't reach therefore fails here rather than silently. */
+  if (err?.code === "42501" || msg.includes("row-level security")) {
+    return (
+      "The database refused this change. You can only hand a task to someone " +
+      "whose team you are allowed to write to — reassigning it outside that " +
+      "scope would make the task invisible to you."
+    );
+  }
+
   return msg || "Something went wrong";
+};
+
+/* Supabase does NOT error when RLS simply matches no rows: the update reports
+   success with zero rows touched. Every update below therefore asks for the
+   ids back and treats an empty result as a failure. */
+const assertRowsTouched = (rows, what) => {
+  if (!rows || rows.length === 0) {
+    throw new Error(
+      `${what} did not change any rows. This is almost always a permissions ` +
+      `problem: your account can read the task but is not allowed to write ` +
+      `it. Nothing was saved.`
+    );
+  }
 };
 
 /* Stable, comparable fingerprint of a recurrence rule.
@@ -334,40 +362,37 @@ const emptyTask = {
       loadOwners();
     }, [user, role]);
 
-
-  /* ----------------------------------
-     ASSIGNMENT CONTEXT
-
-     The exact same inputs TaskForm hands to its owner dropdowns, so the
-     guard in saveTask() and the guard in the UI can never drift apart.
-     The policy itself lives in utils/ownerAssignment.
-  ---------------------------------- */
+  /* -------- ASSIGNMENT CONTEXT --------
+     Same shape TaskForm.jsx builds for its dropdowns. Constructed here too
+     so the guard in saveTask() and the guard on the <select> cannot drift. */
   const assignCtx = useMemo(
     () => ({ owners, permissions, role, user, myTeam }),
     [owners, permissions, role, user, myTeam]
   );
 
 
-  /* SEED THE OWNER FOR PEOPLE WHO CAN ONLY EVER PICK THEMSELVES.
-     Two changes from the old version:
-       • scoped to SELF — managers may now pick teammates, so pinning them
-         to themselves would fight their own dropdown;
-       • skipped while editing — this effect re-runs on every `owners`
-         refresh, and mid-edit that silently snapped the owner back to the
-         actor, undoing a reassignment before it was ever saved. */
-  useEffect(() => {
-    if (!user || isEditing) return;
-    if (ownerScopeFor(assignCtx) !== OWNER_SCOPE.SELF) return;
 
+  /* Seed the CREATE form with the current user as owner.
+
+     `!isEditing` is load-bearing. Without it this effect fires whenever
+     `owners` resolves and stamps the actor's own id over whatever task is
+     open in the edit form — which silently reverted a manager's
+     reassignment back to themselves before the save even ran. It is a
+     default for a blank form, never an override of an open one. */
+  useEffect(() => {
+  if (isEditing) return;
+
+  if (user && !permissions?.manage_users) {
     const currentOwner = owners.find(o => o.id === user.id);
 
     setForm(f => ({
       ...f,
       owner_id: user.id,
       owner: currentOwner?.owner_label || "",
-      owner_ids: [user.id]
+      owner_ids: [user.id]                          // ✅ NEW — seed multi-select
     }));
-  }, [user, isEditing, assignCtx, owners]);
+  }
+}, [user, permissions, owners, isEditing]);
 
   
   /* FILTER + TODAY LOGIC */
@@ -638,21 +663,26 @@ useEffect(() => {
     return;
   }
 
-  // ✅ Permission guard — ONE rule, shared with the form's dropdowns.
-  //    Admins: anyone. Managers: their own team. Everyone else: themselves.
-  //    This is the UX layer; the server-side backstop for a *new* owner_id
-  //    (a BEFORE UPDATE OF owner_id trigger) is still outstanding.
+  /* ✅ Permission guard — now delegated to utils/ownerAssignment.
+
+     The old version hard-coded `form.owner_id !== user.id` for every
+     non-admin. That did two wrong things at once: it blocked a manager from
+     reassigning inside their own team (which the INSERT policy has always
+     allowed), and it blocked a manager from making ANY edit — a typo fix on
+     the title included — to a task owned by a teammate.
+
+     canAssignTo() encodes the real rule: admins anyone, managers their own
+     team, everyone else only themselves. */
   if (isEditing) {
     if (!canAssignTo(form.owner_id, assignCtx)) {
       alert(assignmentDeniedMessage(assignCtx));
       return;
     }
   } else {
-    const denied = (form.owner_ids || []).filter(
+    const disallowed = (form.owner_ids || []).filter(
       id => !canAssignTo(id, assignCtx)
     );
-
-    if (denied.length) {
+    if (disallowed.length) {
       alert(assignmentDeniedMessage(assignCtx));
       return;
     }
@@ -698,23 +728,35 @@ useEffect(() => {
     // ✏️ UPDATE (single-owner edit)
     // =========================
     if (isEditing) {
-      const selectedOwner = owners.find(o => o.id === form.owner_id);
+      /* ---------------------------------------------------------------
+         🔑 THE OWNER FIX
+
+         owner_id used to be left out of this payload, on the assumption
+         that an edit could never reassign a task. The form has allowed
+         reassignment for a while now, so the label moved and the foreign
+         key did not: `owner` said one person, `owner_id` still pointed at
+         the previous one. Everything keyed on owner_id then addressed the
+         wrong human — RLS visibility, own-task filters, and the overdue
+         reminder emails most visibly of all.
+
+         owner_id is now the source of truth. The label and the team are
+         both DERIVED from the profile it names, so the three columns
+         cannot disagree.
+      --------------------------------------------------------------- */
+      const ownerProfile = owners.find(o => o.id === form.owner_id);
+
+      if (!ownerProfile) {
+        throw new Error(
+          "That owner is not in the list of people you can assign to, so the " +
+          "task was not saved. Reopen the task and pick the owner again."
+        );
+      }
 
       const updatePayload = {
         ...basePayload,
-
-        // owner_id is the column every RLS policy keys off. Writing only the
-        // `owner` label left it pointing at the previous owner, so a
-        // reassigned task LOOKED moved in the table while staying invisible —
-        // and uneditable — for the person it was supposedly moved to.
-        owner_id: form.owner_id,
-        owner: form.owner,
-
-        // Team follows the OWNER for admins; stays locked to the actor's own
-        // team for everyone else. The old expression used form.team for
-        // admins, which handleSingleOwnerChange had set to the ADMIN's team
-        // rather than the new owner's.
-        team: teamForAssignment(selectedOwner, assignCtx, form.team)
+        owner_id: ownerProfile.id,
+        owner: ownerProfile.owner_label,
+        team: teamForAssignment(ownerProfile, assignCtx, form.team)
       };
 
       // An edit must never re-stamp the creator. basePayload sets created_by
@@ -759,10 +801,6 @@ useEffect(() => {
         const seriesPayload = { ...updatePayload };
         OCCURRENCE_FIELDS.forEach(k => delete seriesPayload[k]);
 
-        // .select() is not cosmetic: an UPDATE that RLS refuses comes back
-        // with NO error and NO rows, so without it the UI cheerfully reports
-        // success while nothing moved — the same silent-failure class as the
-        // dropped owner_id.
         const { data: seriesRows, error: seriesErr } = await supabase
           .from("tasks")
           .update(seriesPayload)
@@ -770,13 +808,7 @@ useEffect(() => {
           .select("id");
 
         if (seriesErr) throw seriesErr;
-
-        if (!seriesRows?.length) {
-          throw new Error(
-            "Nothing was updated — the database refused the write. You may " +
-            "not have permission to edit this series."
-          );
-        }
+        assertRowsTouched(seriesRows, "The series update");
 
         // -------------------------------------------------------------
         // PER-OCCURRENCE FIELDS
@@ -794,13 +826,7 @@ useEffect(() => {
           .select("id");
 
         if (rowErr) throw rowErr;
-
-        if (!rowRows?.length) {
-          throw new Error(
-            "The series was updated, but this occurrence's dates were not — " +
-            "the database refused that write."
-          );
-        }
+        assertRowsTouched(rowRows, "The occurrence update");
 
         // -------------------------------------------------------------
         // CADENCE CHANGE → move the series pointer
@@ -820,20 +846,14 @@ useEffect(() => {
         }
 
       } else {
-        const { data: updated, error } = await supabase
+        const { data: updatedRows, error } = await supabase
           .from("tasks")
           .update(updatePayload)
           .eq("id", form.id)
           .select("id");
 
         if (error) throw error;
-
-        if (!updated?.length) {
-          throw new Error(
-            "Nothing was updated — the database refused the write. You may " +
-            "not have permission to edit this task."
-          );
-        }
+        assertRowsTouched(updatedRows, "The task update");
       }
     }
 
@@ -847,10 +867,13 @@ useEffect(() => {
         const ownerProfile = owners.find(o => o.id === ownerId);
         if (!ownerProfile) continue;
 
-        // Team for THIS owner. Same helper the edit path and the form use, so
-        // a task created for someone lands on the same team it would land on
-        // if it were reassigned to them instead.
-        const ownerTeam = teamForAssignment(ownerProfile, assignCtx);
+        // Determine team for THIS owner (admin uses owner's real team,
+        // non-admin is locked to their own team)
+        const ownerTeam = permissions?.manage_users
+          ? (OWNER_TEAM_MAP[ownerProfile.owner_label] ||
+             ownerProfile.team ||
+             "")
+          : myTeam;
 
         const ownerPayload = {
           ...basePayload,
