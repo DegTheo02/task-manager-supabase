@@ -84,7 +84,7 @@ export const REQUESTERS = [
   "FINANCE",
   "HR",
   "INTERNAL AUDIT",
-  "IT",
+  "TECHNOLOGY",
   "MFS",
   "MTN GROUP",
   "OPS REVIEW",
