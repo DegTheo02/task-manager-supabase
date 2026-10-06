@@ -17,14 +17,18 @@ import { localDateString } from "./services/taskService";
 import {
   canAssignTo,
   teamForAssignment,
-  assignmentDeniedMessage
+  assignmentDeniedMessage,
+  ownerScopeFor,
+  OWNER_SCOPE
 } from "./utils/ownerAssignment";
 
+/* OWNER_TEAM_MAP is deliberately NOT imported any more. The create loop used
+   to apply it inline for manage_users holders, which is the duplicated rule
+   ownerAssignment exists to retire. teamForAssignment() owns that map now. */
 import {
   STATUSES,
   TEAMS,
   STATUS_COLORS,
-  OWNER_TEAM_MAP,
   REQUESTERS
 } from "./constants/taskConstants";
 
@@ -499,11 +503,19 @@ export default function Tasks() {
      `owners` resolves and stamps the actor's own id over whatever task is
      open in the edit form — which silently reverted a manager's
      reassignment back to themselves before the save even ran. It is a
-     default for a blank form, never an override of an open one. */
+     default for a blank form, never an override of an open one.
+
+     The condition was `!permissions?.manage_users`. It is now the scope
+     itself: seed only an actor who CANNOT assign to anyone else, because
+     for them self-ownership is the only legal outcome and pre-filling it
+     saves a click. Managers and admins can legitimately create for other
+     people, so their blank form stays empty and they choose — which is
+     also exactly what the old condition produced, since every manager
+     held manage_users. Behaviour is unchanged; the axis is now role. */
   useEffect(() => {
     if (isEditing) return;
 
-    if (user && !permissions?.manage_users) {
+    if (user && ownerScopeFor(assignCtx) === OWNER_SCOPE.SELF) {
       const currentOwner = owners.find(o => o.id === user.id);
 
       setForm(f => ({
@@ -513,7 +525,7 @@ export default function Tasks() {
         owner_ids: [user.id]
       }));
     }
-  }, [user, permissions, owners, isEditing]);
+  }, [user, assignCtx, owners, isEditing]);
 
   /* SORTING
 
@@ -856,13 +868,14 @@ export default function Tasks() {
           const ownerProfile = owners.find(o => o.id === ownerId);
           if (!ownerProfile) continue;
 
-          // Determine team for THIS owner (admin uses owner's real team,
-          // non-admin is locked to their own team)
-          const ownerTeam = permissions?.manage_users
-            ? (OWNER_TEAM_MAP[ownerProfile.owner_label] ||
-               ownerProfile.team ||
-               "")
-            : myTeam;
+          /* Determine team for THIS owner. Same call the edit path above
+             already makes — admin follows the owner's real team, manager
+             and user are locked to their own. The inline ternary this
+             replaces read permissions.manage_users, which both managers
+             held, so it took the admin branch for them and stamped a
+             cross-team value that "Role based task insert" then rejected
+             on the server. */
+          const ownerTeam = teamForAssignment(ownerProfile, assignCtx);
 
           const ownerPayload = {
             ...basePayload,
